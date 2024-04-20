@@ -1,0 +1,29 @@
+{
+  "name": "ogoo",
+  "version": "0.0.1",
+  "description": "Open Group Open Offer",
+  "main": "index.js",
+  "keywords": [
+    "smart",
+    "contract",
+    "offer",
+    "group",
+    "open"
+  ],
+  "author": "Vsevolod Novikov",
+  "license": "LGPL-3.0-or-later",
+  "dependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.11.1",
+    "solidity-dynamic-array": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "chai": "^4.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

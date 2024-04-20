@@ -1,0 +1,298 @@
+const { expect, should } = require("chai");
+const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
+
+should();
+
+function to$(wei) {
+  var cents_per_ether = 300000n;
+  var weis_per_ether = 1000000000000000000n;
+  return hre.ethers.toNumber((wei * cents_per_ether) / weis_per_ether ) / 100.;
+}
+
+describe("Contract Tests", function () {
+  var test_definition = {
+        "caption": "Test",
+        "description": "Test Description",
+        "full_details": "Test Details",
+        "share_unlock_timeout": 1n,
+        "observer_award": 0n,
+        "share_min_balance": 30000000000000000n,
+        "observers_vote_share": 10000n,
+        "shareholders_vote_share": 10000n,
+        "shareholders_vote_amount_share": 10000n,
+  };
+  var test_definition_values = [];
+  for(var k in test_definition) {
+    test_definition_values.push(test_definition[k]);
+  }
+
+  it("Test the contract access", async function () {
+    console.log("Setting up the contract");
+    accounts = await hre.ethers.getSigners();
+    account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var start_balance = await account_owner.provider.getBalance(account_owner.address);
+    console.debug("Owner account before deployment:", start_balance);
+    Offer = await ethers.getContractFactory("Offer", account_owner);
+    // Start deployment, returning a promise that resolves to a contract object
+    offer = await Offer.deploy(test_definition);
+    console.info("Waiting for deployment...");
+    var v = await offer.waitForDeployment();
+    console.info("Contract deployed to address:", offer.target);
+    var end_balance = await account_owner.provider.getBalance(account_owner.address);
+    var diff = start_balance - end_balance;
+    console.debug("Owner account after deployment:", end_balance, "Diff WEI:", diff, "Amount $:", to$(diff));
+    console.info("Contract owner is:", await offer.owner());
+
+    account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    account_observer = accounts[1]; // the account will be a signer to check an access from the observer
+    account_shareholder = accounts[2]; // the account will be a signer to check an access from the shareholder
+    account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    account_outside = accounts[4]; // the account will be a signer to check an access from the outside
+    contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    // Gettings access from the owner
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner, // Signer to get access to the contract
+    )
+
+    // Getting access from the observer
+    var observer_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_observer, // Observer account trying access to the contract
+    )
+
+    // Getting access from the shareholder
+    var shareholder_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_shareholder, // Shareholder account trying access to the contract
+    )
+
+    // Getting access from the contractor
+    var contractor_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contractor, // Contractor account trying access to the contract
+    )
+
+    // Getting access from the outside
+    var outside_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_outside, // Outside account trying access to the contract
+    )
+
+    await o.waitForDeployment();
+    var owner = await o.owner();
+    expect(owner).to.equal(accounts[0].address);
+    var definition = await o.definition();
+    expect(test_definition_values).to.have.deep.members(definition);
+    // Creating an observer
+    var txo = await o.create_observer(account_observer.address);
+    var txo_receipt = await txo.wait();
+
+    var observer_address = await observer_access.get_observer_for_address(account_observer.address);
+    console.log("Got observer address:", observer_address);
+
+    // incorrectly find an observer address
+    outside_access.get_observer_for_address(account_outside.address).should.eventually.rejectedWith('reverted');
+
+    var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
+    console.debug("Shareholder account before creating share:", start_balance_shareholder);
+
+    var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
+    console.debug("Owner account before creating share:", start_balance_owner);
+
+    var start_balance_offer = await account_owner.provider.getBalance(offer.target);
+    console.debug("Offer account before creating share:", start_balance_offer);
+
+    // the shareholder can create share not less than a share_min_balance
+    shareholder_access.create_share().should.eventually.rejectedWith('reverted');
+
+    var create_share_estimate_gas = await shareholder_access.create_share.estimateGas({value: 30000000000000001n});
+    console.debug("Create share estimated gas:", create_share_estimate_gas);
+
+    var gas_price = (await account_shareholder.provider.getFeeData()).gasPrice;
+    console.debug("Gas Price:", gas_price);
+
+    console.debug("Create share calculated gas price:", gas_price * create_share_estimate_gas);
+
+    // the shareholder created an account sending there an amount
+    var txs = await shareholder_access.create_share({value: 30000000000000001n});
+    var txs_receipt = await txs.wait();
+
+    var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
+    var diff = start_balance_shareholder - end_balance_shareholder;
+    console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+
+    var end_balance_owner = await account_owner.provider.getBalance(account_owner.address);
+    console.debug("Owner account after creating share:", end_balance_owner);
+
+    var end_balance_offer = await account_owner.provider.getBalance(offer.target);
+    console.debug("Offer account after creating share:", start_balance_offer);
+
+    var share_address = await shareholder_access.get_share_for_origin();
+    console.log("Got share address:", share_address);
+
+    // everybody can get access to only his own address
+    outside_access.interface.parseError(
+        // try ... catch(e) { parseError(e.data) ...
+        (await outside_access.get_share_for_origin().should.eventually.rejectedWith('reverted')).data
+    ).name.should.be.equal('EnumerableMapNonexistentKey')
+
+    var end_balance_share = await account_shareholder.provider.getBalance(share_address);
+    end_balance_share.should.be.equal(30000000000000001n);
+  });
+
+  it("Test the observer access", async function () {
+    console.log("Setting up the contract");
+    accounts = await hre.ethers.getSigners();
+    account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var start_balance = await account_owner.provider.getBalance(account_owner.address);
+    console.debug("Owner account before deployment:", start_balance);
+    Offer = await ethers.getContractFactory("Offer", account_owner);
+    // Start deployment, returning a promise that resolves to a contract object
+    offer = await Offer.deploy(test_definition);
+    console.info("Waiting for deployment...");
+    var v = await offer.waitForDeployment();
+    console.info("Contract deployed to address:", offer.target);
+    var end_balance = await account_owner.provider.getBalance(account_owner.address);
+    var diff = start_balance - end_balance;
+    console.debug("Owner account after deployment:", end_balance, "Diff WEI:", diff, "Amount $:", to$(diff));
+    console.info("Contract owner is:", await offer.owner());
+
+    account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    account_observer = accounts[1]; // the account will be a signer to check an access from the observer
+    account_shareholder = accounts[2]; // the account will be a signer to check an access from the shareholder
+    account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    account_outside = accounts[4]; // the account will be a signer to check an access from the outside
+    contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    // Gettings access from the owner
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner, // Signer to get access to the contract
+    )
+
+    // Getting access from the observer
+    var observer_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_observer, // Observer account trying access to the contract
+    )
+
+    // Getting access from the shareholder
+    var shareholder_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_shareholder, // Shareholder account trying access to the contract
+    )
+
+    // Getting access from the contractor
+    var contractor_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contractor, // Contractor account trying access to the contract
+    )
+
+    // Getting access from the outside
+    var outside_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_outside, // Outside account trying access to the contract
+    )
+
+    var txo1 = await o.create_observer(account_outside.address);
+    var txo1_receipt = await txo1.wait();
+
+    var observer1_address = await outside_access.get_observer_for_address(account_outside.address);
+    console.log("Got observer address to cancel:", observer1_address);
+
+    var observer_abi = require("../artifacts/contracts/ogoo.sol/Observer.json");
+    var observer1 = new ethers.Contract(
+      observer1_address,
+      observer_abi.abi,
+      account_outside, // Signer to get access to this observer
+    )
+
+    var txo1c = await observer1.cancel();
+    var txo1c_receipt = await txo1c.wait();
+
+    // Cancelled => removed
+    outside_access.get_observer_for_address(account_outside.address).should.eventually.rejectedWith('reverted');
+  });
+
+  it("Test the approved contract fixed", async function () {
+    console.log("Setting up the contract");
+    accounts = await hre.ethers.getSigners();
+    account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var start_balance = await account_owner.provider.getBalance(account_owner.address);
+    console.debug("Owner account before deployment:", start_balance);
+    Offer = await ethers.getContractFactory("Offer", account_owner);
+    // Start deployment, returning a promise that resolves to a contract object
+    offer = await Offer.deploy(test_definition);
+    console.info("Waiting for deployment...");
+    var v = await offer.waitForDeployment();
+    console.info("Contract deployed to address:", offer.target);
+    var end_balance = await account_owner.provider.getBalance(account_owner.address);
+    var diff = start_balance - end_balance;
+    console.debug("Owner account after deployment:", end_balance, "Diff WEI:", diff, "Amount $:", to$(diff));
+    console.info("Contract owner is:", await offer.owner());
+
+    account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    account_observer = accounts[1]; // the account will be a signer to check an access from the observer
+    account_shareholder = accounts[2]; // the account will be a signer to check an access from the shareholder
+    account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    account_outside = accounts[4]; // the account will be a signer to check an access from the outside
+    contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    // Gettings access from the owner
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner, // Signer to get access to the contract
+    )
+
+    // Getting access from the observer
+    var observer_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_observer, // Observer account trying access to the contract
+    )
+
+    // Getting access from the shareholder
+    var shareholder_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_shareholder, // Shareholder account trying access to the contract
+    )
+
+    // Getting access from the contractor
+    var contractor_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contractor, // Contractor account trying access to the contract
+    )
+
+    // Getting access from the outside
+    var outside_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_outside, // Outside account trying access to the contract
+    )
+
+    // Approve the contract, observer list can not be extended
+    var txo = await o.approve();
+    var txo_receipt = await txo.wait();
+
+    o.interface.parseError(
+        // try ... catch(e) { parseError(e.data) ...
+        (await o.create_observer(account_outside.address).should.eventually.rejectedWith('reverted')).data
+    ).name.should.be.equal('PreparedOnly')
+  });
+
+});
