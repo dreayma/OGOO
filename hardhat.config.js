@@ -57,5 +57,8 @@ module.exports = {
     },
     // mainnet config...
     // testnet config...
+  },
+  mocha: {
+    timeout: 6000000
   }
 };

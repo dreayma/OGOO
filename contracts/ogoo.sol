@@ -58,10 +58,10 @@ abstract contract HasOffer {
 
 abstract contract CanVoteForContractor is HasOwner, HasOffer {
     // If a contract CanVoteForContractor, it is HasOffer.
-    // Additionally, it can vote for any Contractor of the offer.
+    // Additionally, it can vote for any contractor account.
 
-    // Voted Contractor
-    Contractor public voted;
+    // Voted contractor address
+    address payable public voted;
 
     constructor(Offer offer_) HasOffer(offer_) {
     }
@@ -103,11 +103,6 @@ contract Offer is HasOwner {
     // offer supporter's community. When creating a share, the shareholder agrees
     // with the offer and contract.
     //
-    // Potential contractors create Contractor to complete the contract.
-    // Creating Contractor, the contractor agrees with the offer and contract.
-    // Many contractors may create Contractor to complete the contract, but the only one
-    // will get reward when the contract is completed.
-    //
     // Shareholders and observers decide, whether the contract is completed and by whom,
     // or failed, or running yet.
     //
@@ -137,13 +132,14 @@ contract Offer is HasOwner {
     // Dynamic contract state
     using EnumerableMap for EnumerableMap.UintToAddressMap;
     EnumerableMap.UintToAddressMap private share_owners;            // share owner -> share instance
-    EnumerableMap.UintToAddressMap private contractor_owners;       // contractor owner -> contractor instance
-    EnumerableMap.UintToAddressMap private observer_accounts;       // observer account -> observer instance
+    EnumerableMap.UintToAddressMap private observer_voted;          // observer account -> address to vote
 
     using ArrayMap for Map;
 
     // The contract running state
     OfferState public state = OfferState.INITIAL;                 // Current state of the contract
+    // The winner who received the money
+    address payable public winner;
 
     constructor(OfferDefinition memory offer_definition) {
         _definition = offer_definition;
@@ -171,6 +167,12 @@ contract Offer is HasOwner {
         _;
     }
 
+    modifier not_completed_only() {
+        if( state == OfferState.COMPLETED )
+            revert StartedOnly();
+        _;
+    }
+
     modifier finished_only() {
         if( !is_finished() )
             revert FinishedOnly();
@@ -194,11 +196,8 @@ contract Offer is HasOwner {
     // the event emitted by the create_share method
     event CreateShare (Share share);
 
-    // the event emitted by the create_contractor method
-    event CreateContractor (Contractor contractor);
-
     // the event emitted by the create_observer method
-    event CreateObserver (Observer observer);
+    event CreateObserver (address payable observer);
 
     // Add members - can be called only from the context of member contracts
     //
@@ -231,69 +230,45 @@ contract Offer is HasOwner {
         return Share(payable(share_address));
     }
 
-    function get_share_for_origin() external view returns(Share) {
-        // Returns share whose owner is tx.origin
-        return Share(payable(share_owners.get(uint256(uint160(tx.origin)))));
-    }
-
-    function create_contractor() external started_only() returns (Contractor) {
-        // Creating an Contractor is available for anybody who would like to became a contractor
-        // See the Contractor instance for details
-        (bool got, address contractor_address) = contractor_owners.tryGet(uint256(uint160(tx.origin)));
-        if( !got ) {
-            contractor_address = address(new Contractor(this));
-            contractor_owners.set(uint256(uint160(tx.origin)), contractor_address);
-            emit CreateContractor(Contractor(payable(contractor_address)));
-        }
-        return Contractor(payable(contractor_address));
-    }
-
-    function get_contractor_for_origin() external view returns(Contractor) {
-        // Returns contractor whose owner is tx.origin
-        return Contractor(payable(contractor_owners.get(uint256(uint160(tx.origin)))));
-    }
-
-    function create_observer(address payable observer_account) external prepared_only() owner_only() returns (Observer) {
-        // Creating an Observer is available only for the owner of the Offer,
-        // while the contrac has not been started.
-        // The `observer_account` is an observers' address who is allowed to
-        // vote as an observer.
-        (bool got, address observer_address) = observer_accounts.tryGet(uint256(uint160(address(observer_account))));
-        if( !got ) {
-            observer_address = address(new Observer(this, observer_account));
-            observer_accounts.set(uint256(uint160(address(observer_account))), observer_address);
-            emit CreateObserver(Observer(payable(observer_address)));
-        }
-        return Observer(payable(observer_address));
-    }
-
-    function get_observer_for_address(address observer_address) external view returns(Observer) {
-        // Returns observer whose observer_address is tx.origin
-        return Observer(payable(observer_accounts.get(uint256(uint160(observer_address)))));
-    }
-
-    // Remove members - allowed to be called only from the members' account
-    function _remove_share(Share share) external started_only() {
+    function _remove_share(Share share) external not_completed_only() {
+        // Remove share - allowed to be called only from the shares' account
+        // and from the share account, i.e. only by the cancel method
         if( tx.origin != address(share.owner()) )
             revert OwnerOnly();
         if( msg.sender != address(share) )
             revert WrongSender();
         share_owners.remove(uint256(uint160(tx.origin)));
     }
-    function _remove_contractor(Contractor contractor) external started_only() {
-        if( tx.origin != address(contractor.owner()) )
-            revert OwnerOnly();
-        if( msg.sender != address(contractor) )
-            revert WrongSender();
-        contractor_owners.remove(uint256(uint160(tx.origin)));
+
+    function get_share_for_origin() external view returns(Share) {
+        // Returns share whose owner is tx.origin
+        return Share(payable(share_owners.get(uint256(uint160(tx.origin)))));
     }
-    function _remove_observer(Observer observer) external prepared_only() {
-        address observer_account = address(observer.observer_account());
-        if( tx.origin != address(observer.owner()) && tx.origin != observer_account )
+
+    // Observer is manipulated directly from the contract
+    function observer_create(address payable observer_account) external prepared_only() owner_only() returns (address payable) {
+        // Creating an observer record is available only for the owner of the Offer,
+        // while the contrac has not been started.
+        // The `observer_account` is an observers' address who is allowed to
+        // vote as an observer.
+        if( !observer_voted.contains(uint256(uint160(address(observer_account)))) ) {
+            observer_voted.set(uint256(uint160(address(observer_account))), address(0));
+            emit CreateObserver(observer_account);
+        }
+        return observer_account;
+    }
+
+    function observer_remove(address payable observer_account) external prepared_only() owner_only() {
+        // The only owner can directly remove the observer when the offer is in preparing state
+        observer_voted.remove(uint256(uint160(address(observer_account))));
+    }
+
+    function observer_vote(address payable voted_) external started_only() {
+        // The only observer can call this method to vote for the contractor
+        if( !observer_voted.contains(uint256(uint160(address(tx.origin)))) ) {
             revert OwnerOnly();
-        if( msg.sender != address(observer) )
-            revert WrongSender();
-        observer_accounts.remove(uint256(uint160(observer_account)));
+        }
+        observer_voted.set(uint256(uint160(address(tx.origin))), address(voted_));
     }
 
     function approve() external prepared_only() owner_only() {
@@ -306,29 +281,38 @@ contract Offer is HasOwner {
 
     function calculate_voting() external started_only() {
         // Counters
-        Contractor winner_shares = get_winner_shares();
-        Contractor winner_observers = get_winner_observers();
+        address payable winner_shares = get_winner_shares();
+        address payable winner_observers = get_winner_observers();
         if(
-            address(winner_shares) == address(0) ||
-            address(winner_observers) == address(0)
+            winner_shares == payable(address(0)) ||
+            winner_observers == payable(address(0))
         ) {
             return;
         }
 
-        Contractor winner_amount_shares = get_winner_amount_shares();
-        if( address(winner_amount_shares) == address(0) ) {
+        address payable winner_amount_shares = get_winner_amount_shares();
+        if( winner_amount_shares == payable(address(0)) ) {
             return;
         }
-        if( winner_observers == winner_shares || winner_observers == winner_amount_shares ) {
+        if( winner_observers == winner_shares ) {
             state = OfferState.COMPLETED;
-            // TODO: fix a winner
-            return;
+            winner = winner_observers;
+        } else if( winner_observers == winner_amount_shares ) {
+            state = OfferState.COMPLETED;
+            winner = winner_observers;
+        } else {
+            // TODO: can ve resolve it using some other way?
+            revert VotingConflict();
         }
-        // TODO: can ve resolve it using some other way?
-        revert VotingConflict();
+        uint shares_count = share_owners.length();
+        for(uint i=0; i < shares_count; i += 1) {
+            (, address addr) = share_owners.at(i);
+            Share share = Share(payable(addr));
+            share.reward_winner();
+        }
     }
 
-    function get_winner_shares() internal view returns (Contractor) {
+    function get_winner_shares() internal view returns (address payable) {
         // number of all shares
         uint shares_count = share_owners.length();
         // Map to store contractor counters
@@ -338,17 +322,18 @@ contract Offer is HasOwner {
         for(uint i=0; i < shares_count; i += 1) {
             (, address addr) = share_owners.at(i);
             Share share = Share(payable(addr));
-            Contractor voted = share.voted();
-            if( address(voted) != address(0) ) {
-                bytes memory cnts = contractors_map.get(abi.encode(address(voted)));
+            address payable voted = share.voted();
+            if( voted != payable(address(0)) ) {
                 uint cnt = 0;
-                if( cnts.length > 0 )
-                    cnt = abi.decode(cnts, (uint));
-                contractors_map.set(abi.encode(address(voted)), abi.encode(cnt + 1));
+                bytes memory key = abi.encode(address(voted));
+                if( contractors_map.contains(key) ) {
+                    cnt = abi.decode(contractors_map.get(key), (uint));
+                }
+                contractors_map.set(key, abi.encode(cnt + 1));
             }
         }
 
-        Contractor winner_shares;
+        address payable winner_shares;
         uint winner_shares_share;
         (bytes[] memory winners, bytes[] memory counts) = contractors_map.entries();
         for(uint i=0; i < winners.length; i += 1) {
@@ -356,10 +341,10 @@ contract Offer is HasOwner {
             uint voted_shares_share = voted_shares * 10000 / shares_count;
             if( voted_shares_share >= _definition.shareholders_vote_share ) {
                 if(
-                    winner_shares == Contractor(payable(address(0))) ||
+                    winner_shares == payable(address(0)) ||
                     winner_shares_share < voted_shares_share  // Will we ignore rare case when they are equal?
                 ) {
-                    winner_shares = Contractor(payable(abi.decode(winners[i], (address))));
+                    winner_shares = payable(abi.decode(winners[i], (address)));
                     winner_shares_share = voted_shares_share;
                 }
             }
@@ -367,7 +352,7 @@ contract Offer is HasOwner {
         return winner_shares;
     }
 
-    function get_winner_amount_shares() internal view returns (Contractor) {
+    function get_winner_amount_shares() internal view returns (address payable) {
         // number of all shares
         uint shares_count = share_owners.length();
         // Map to store contractor counters
@@ -382,17 +367,18 @@ contract Offer is HasOwner {
         for(uint i=0; i < shares_count; i += 1) {
             (, address addr) = share_owners.at(i);
             Share share = Share(payable(addr));
-            Contractor voted = share.voted();
-            if( address(voted) != address(0) ) {
-                bytes memory amts = contractors_map.get(abi.encode(address(voted)));
+            address payable voted = share.voted();
+            if( voted != payable(address(0)) ) {
                 uint amt = 0;
-                if( amts.length > 0 )
-                    amt = abi.decode(amts, (uint));
-                contractors_map.set(abi.encode(address(voted)), abi.encode(amt + address(share).balance));
+                bytes memory key = abi.encode(address(voted));
+                if( contractors_map.contains(key) ) {
+                    amt = abi.decode(contractors_map.get(key), (uint));
+                }
+                contractors_map.set(key, abi.encode(amt + address(share).balance));
             }
         }
 
-        Contractor winner_shares;
+        address payable winner_shares;
         uint winner_shares_share;
         (bytes[] memory winners, bytes[] memory amounts) = contractors_map.entries();
         for(uint i=0; i < winners.length; i += 1) {
@@ -400,10 +386,10 @@ contract Offer is HasOwner {
             uint voted_shares_share = voted_shares * 10000 / shares_amount;
             if( voted_shares_share >= _definition.shareholders_vote_amount_share ) {
                 if(
-                    winner_shares == Contractor(payable(address(0))) ||
+                    winner_shares == payable(address(0)) ||
                     winner_shares_share < voted_shares_share  // Will we ignore rare case when they are equal?
                 ) {
-                    winner_shares = Contractor(payable(abi.decode(winners[i], (address))));
+                    winner_shares = payable(abi.decode(winners[i], (address)));
                     winner_shares_share = voted_shares_share;
                 }
             }
@@ -411,27 +397,26 @@ contract Offer is HasOwner {
         return winner_shares;
     }
 
-    function get_winner_observers() internal view returns (Contractor) {
+    function get_winner_observers() internal view returns (address payable) {
         // number of all observers
-        uint observers_count = observer_accounts.length();
+        uint observers_count = observer_voted.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < observers_count; i += 1) {
-            (, address addr) = observer_accounts.at(i);
-            Observer observer = Observer(payable(addr));
-            Contractor voted = observer.voted();
-            if( address(voted) != address(0) ) {
-                bytes memory cnts = contractors_map.get(abi.encode(address(voted)));
+            (, address voted) = observer_voted.at(i);
+            if( voted != address(0) ) {
                 uint cnt = 0;
-                if( cnts.length > 0 )
-                    cnt = abi.decode(cnts, (uint));
-                contractors_map.set(abi.encode(address(voted)), abi.encode(cnt + 1));
+                bytes memory key = abi.encode(address(voted));
+                if( contractors_map.contains(key) ) {
+                    cnt = abi.decode(contractors_map.get(key), (uint));
+                }
+                contractors_map.set(key, abi.encode(cnt + 1));
             }
         }
 
-        Contractor winner_observers;
+        address payable winner_observers;
         uint winner_observers_share;
         (bytes[] memory winners, bytes[] memory counts) = contractors_map.entries();
         for(uint i=0; i < winners.length; i += 1) {
@@ -439,10 +424,10 @@ contract Offer is HasOwner {
             uint voted_observers_share = voted_observers * 10000 / observers_count;
             if( voted_observers_share >= _definition.observers_vote_share ) {
                 if(
-                    winner_observers == Contractor(payable(address(0))) ||
+                    winner_observers == payable(address(0)) ||
                     winner_observers_share < voted_observers_share  // Will we ignore rare case when they are equal?
                 ) {
-                    winner_observers = Contractor(payable(abi.decode(winners[i], (address))));
+                    winner_observers = payable(abi.decode(winners[i], (address)));
                     winner_observers_share = voted_observers_share;
                 }
             }
@@ -460,7 +445,7 @@ contract Share is CanVoteForContractor {
     // The shareholder may return funds from the share before the contract is completed,
     // after some timeout period determined by the contract.
     //
-    // The Share will transfer money to the Contractor account when the contract is successfully completed.
+    // The Share will transfer money to the contractor account when the contract is successfully completed.
 
     // Block timestamp when the cancel function has been called for the first time
     uint public cancelled_at;
@@ -528,76 +513,18 @@ contract Share is CanVoteForContractor {
         // emit Received(msg.sender, msg.value);
     }
 
-    function vote(Contractor voted_) external owner_only() {
-        if( address(voted_) != address(0) ) {
-            if( voted_.offer() != offer )
-                revert WrongParameter();
-        }
+    function vote(address payable voted_) external owner_only() {
         voted = voted_;
     }
-}
 
-contract Contractor is HasOffer, HasOwner {
-    // Contractor is an individual account of every contractor candidate.
-    //
-    // Before getting an award, the contractor subscribes to the offer creating an contractor.
-    //
-    // When the contract shareholders decide whether the contract is completed, they
-    // complete a special voting and set up a particular contractor who complete the contract.
-    //
-    // After the voting is finished, the most voted contractor's account gets an award.
-
-    constructor(Offer offer_) HasOffer(offer_) {
-        if( msg.sender != address(offer_) )
-            revert WrongSender();
-    }
-
-    function cancel() owner_only() external {
-        if( offer != Offer(address(0)) )
-            offer._remove_contractor(this);
-        offer = Offer(address(0));
-    }
-
-    receive() external payable {
-        // emit Received(msg.sender, msg.value);
-    }
-}
-
-contract Observer is CanVoteForContractor {
-    // Observer is an individual account which is allowed to vote for the contract state
-    // as a Share, but not having own funds. The Observer list is fixed when the
-    // contract is approved.
-    //
-    // The observer may be awarded for voting action to the Observer account.
-
-    error ObserverAccountOnly();
-
-    // The original observer account
-    address payable public observer_account;
-
-    constructor(Offer offer_, address payable observer_account_) CanVoteForContractor(offer_) {
-        if( msg.sender != address(offer_) )
-            revert WrongSender();
-        if( tx.origin != address(offer_.owner()) )
-            revert OwnerOnly();
-        observer_account = observer_account_;
-    }
-
-    function cancel() external {
-        if( tx.origin != address(owner) && tx.origin != address(observer_account) )
-            revert OwnerOnly();
-        if( offer != Offer(address(0)) )
-            offer._remove_observer(this);
-        offer = Offer(address(0));
-    }
-
-    function vote(Contractor voted_) external {
-        if( tx.origin != address(observer_account) )
-            revert ObserverAccountOnly();
-        if( address(voted_) != address(0) ) {
-            if( voted_.offer() != offer )
-                revert WrongParameter();
-        }
-        voted = voted_;
+    function reward_winner() external {
+        if(address(offer) == address(0))
+            return;
+        address payable winner = offer.winner();
+        if(address(winner) == address(0))
+            return;
+        if(offer.state() != OfferState.COMPLETED)
+            return;
+        winner.transfer(address(this).balance);
     }
 }
