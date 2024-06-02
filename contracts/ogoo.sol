@@ -10,8 +10,8 @@ pragma solidity ^0.8.20;
 
 import { ArrayMap, Map } from "solidity-dynamic-array/contracts/ArrayMap.sol";
 import { EnumerableMap } from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-error WrongSender(); // Protocol broken, this function should be called only from inside another contract
 error WrongState(); // The function should not be called in this state of the contract
 error WrongParameter(); // The function should not be called with this parameter
 error TooLowShareBalance(); // Creating share with the balance less than provided is forbidden
@@ -41,29 +41,6 @@ abstract contract HasOwner {
         if( msg.sender != address(owner) )
             revert OwnerOnly();
         _;
-    }
-}
-
-abstract contract HasOffer {
-    // If a contract HasOffer it accepts an `offer` parameter in the
-    // constructor and sets up it's attribute to this value
-
-    // This attribute relates to the offer to which the instance belongs
-    Offer public offer;
-
-    constructor(Offer offer_) {
-        offer = offer_;
-    }
-}
-
-abstract contract CanVoteForContractor is HasOwner, HasOffer {
-    // If a contract CanVoteForContractor, it is HasOffer.
-    // Additionally, it can vote for any contractor account.
-
-    // Voted contractor address
-    address payable public voted;
-
-    constructor(Offer offer_) HasOffer(offer_) {
     }
 }
 
@@ -131,8 +108,12 @@ contract Offer is HasOwner {
 
     // Dynamic contract state
     using EnumerableMap for EnumerableMap.UintToAddressMap;
-    EnumerableMap.UintToAddressMap private share_owners;            // share owner -> share instance
-    EnumerableMap.UintToAddressMap private observer_voted;          // observer account -> address to vote
+    using EnumerableSet for EnumerableSet.AddressSet;
+    EnumerableSet.AddressSet private _shareholders;                 // shareholders set
+    mapping(address => address) private _shareholder_voted;         // shareholder account -> address to vote
+    mapping(address => uint) private _shareholder_share;            // share amount of the shareholder
+    mapping(address => uint) private _shareholder_cancelled_at;     // share cancellation timeout
+    EnumerableMap.UintToAddressMap private _observer_voted;         // observer account -> address to vote
 
     using ArrayMap for Map;
 
@@ -140,11 +121,6 @@ contract Offer is HasOwner {
     OfferState public state = OfferState.INITIAL;                 // Current state of the contract
     // The winner who received the money
     address payable public winner;
-
-    constructor(OfferDefinition memory offer_definition) {
-        _definition = offer_definition;
-        state = OfferState.INITIAL;
-    }
 
     // Metastate request functions
 
@@ -157,7 +133,6 @@ contract Offer is HasOwner {
     }
 
     error StartedOnly();
-    error FinishedOnly();
     error PreparedOnly();
     error RunningOnly();
     // Metastate check modifiers
@@ -173,12 +148,6 @@ contract Offer is HasOwner {
         _;
     }
 
-    modifier finished_only() {
-        if( !is_finished() )
-            revert FinishedOnly();
-        _;
-    }
-
     modifier prepared_only() {
         if( state != OfferState.INITIAL )
             revert PreparedOnly();
@@ -191,58 +160,76 @@ contract Offer is HasOwner {
         _;
     }
 
+    // Constructor
+    constructor(OfferDefinition memory offer_definition) {
+        _definition = offer_definition;
+        state = OfferState.INITIAL;
+    }
+
     // Updating functions
 
-    // the event emitted by the create_share method
-    event CreateShare (Share share);
+    // the event emitted by the create_share method when creating a new share
+    event CreateShare (address payable shareholder);
+
+    // the event emitted by the create_share method when adding funds, and contains the total share
+    event UpdatedShare (address payable shareholder, uint amount);
+
+    // the event emitted by the cancel_share method when cancelling the share
+    event CancelShare (address payable shareholder);
 
     // the event emitted by the create_observer method
     event CreateObserver (address payable observer);
 
+    function definition_update(OfferDefinition memory offer_definition) external prepared_only() owner_only() {
+        _definition = offer_definition;
+    }
+
     // Add members - can be called only from the context of member contracts
     //
 
-    function create_share() external payable started_only() returns (Share) {
-        // Creating a Share is available for anybody who would like to became a shareholder
-        // See the Share contract for details.
-        //i
-        // You should immediately send the minimal share amount calling this function,
-        // to create a share, using syntax like
+    function share_create() external payable {
+        // The share is created or updated with any transfer to the offer,
+        // except when the offer is finished, or the amount is too low.
+        // This method has been added to increase the external usability.
+        //
+        // Use JS syntax like
         // ```
-        // share = offer.create_share{value: amount}();
+        // var txs = await shareholder_access.create_share({value: 30000000000000001n});
+        // var txs_receipt = await txs.wait();
         // ```
-        // The amount sent will be immediately transferred to the just created share account
-        // Your account will be assigned as an owner of the share account.
+        // or transfer funds directly to the offer account.
+        //
+        // See restrictions and rules for the share in the `receive` definition
+    }
+
+    receive() external payable {
+        // Creating a share is available for anybody who would like to became a shareholder
+        //
+        // You should send the minimal share amount when creating a share.
+        // You also will increace share amount every time sending any amount after that.
+        //
+        // The amount sent will be immediately transferred to the offer account
         //
         // You can increase your share later. Removing the share is a special procedure.
-        // See Share.cancel() and Share.revert_share().
-        //
+        // See share_cancel() and share_revert_share(). Reverting share will move
+        // the whole share amount back to the shareholder's account
+        if( is_finished() )
+            revert StartedOnly();
 
-        (bool got, address share_address) = share_owners.tryGet(uint256(uint160(tx.origin)));
+        bool got = _shareholders.contains(tx.origin);
         if( !got ) {
             if( msg.value < _definition.share_min_balance )
                 revert TooLowShareBalance();
-            share_address = address(new Share(this));
-            share_owners.set(uint256(uint160(tx.origin)), share_address);
-            emit CreateShare(Share(payable(share_address)));
+            _shareholders.add(tx.origin);
+            emit CreateShare(payable(tx.origin));
         }
-        payable(share_address).transfer(msg.value);
-        return Share(payable(share_address));
+        _shareholder_share[tx.origin] += msg.value;
+        emit UpdatedShare(payable(tx.origin), _shareholder_share[tx.origin]);
     }
 
-    function _remove_share(Share share) external not_completed_only() {
-        // Remove share - allowed to be called only from the shares' account
-        // and from the share account, i.e. only by the cancel method
-        if( tx.origin != address(share.owner()) )
-            revert OwnerOnly();
-        if( msg.sender != address(share) )
-            revert WrongSender();
-        share_owners.remove(uint256(uint160(tx.origin)));
-    }
-
-    function get_share_for_origin() external view returns(Share) {
-        // Returns share whose owner is tx.origin
-        return Share(payable(share_owners.get(uint256(uint160(tx.origin)))));
+    function share_get_for_origin() external view returns(uint) {
+        // Returns share amount for the tx.origin
+        return _shareholder_share[tx.origin];
     }
 
     // Observer is manipulated directly from the contract
@@ -251,8 +238,8 @@ contract Offer is HasOwner {
         // while the contrac has not been started.
         // The `observer_account` is an observers' address who is allowed to
         // vote as an observer.
-        if( !observer_voted.contains(uint256(uint160(address(observer_account)))) ) {
-            observer_voted.set(uint256(uint160(address(observer_account))), address(0));
+        if( !_observer_voted.contains(uint256(uint160(address(observer_account)))) ) {
+            _observer_voted.set(uint256(uint160(address(observer_account))), address(0));
             emit CreateObserver(observer_account);
         }
         return observer_account;
@@ -260,26 +247,33 @@ contract Offer is HasOwner {
 
     function observer_remove(address payable observer_account) external prepared_only() owner_only() {
         // The only owner can directly remove the observer when the offer is in preparing state
-        observer_voted.remove(uint256(uint160(address(observer_account))));
+        _observer_voted.remove(uint256(uint160(address(observer_account))));
     }
 
     function observer_vote(address payable voted_) external started_only() {
         // The only observer can call this method to vote for the contractor
-        if( !observer_voted.contains(uint256(uint160(address(tx.origin)))) ) {
+        if( !_observer_voted.contains(uint256(uint160(address(tx.origin)))) ) {
             revert OwnerOnly();
         }
-        observer_voted.set(uint256(uint160(address(tx.origin))), address(voted_));
+        _observer_voted.set(uint256(uint160(address(tx.origin))), address(voted_));
     }
 
     function approve() external prepared_only() owner_only() {
         // starts the contract evaluation. It blocks any changes
-        // in the contract, except adding or cancelling shares, and
-        // adding or cancelling contractors. Observers are fixed
-        // and can not be removed od added.
+        // in the contract, except adding or cancelling shares
+        // Observers list is fixed and can not be modified since that.
         state = OfferState.APPROVED;
     }
 
     function calculate_voting() external started_only() {
+        // This complex call can be called by anybody to
+        // calculate offer's state. It counts votings and
+        // updates the contract state, if the offer definition
+        // parameters describing the contract success or failure
+        // are met.
+        //
+        // 
+
         // Counters
         address payable winner_shares = get_winner_shares();
         address payable winner_observers = get_winner_observers();
@@ -304,25 +298,20 @@ contract Offer is HasOwner {
             // TODO: can ve resolve it using some other way?
             revert VotingConflict();
         }
-        uint shares_count = share_owners.length();
-        for(uint i=0; i < shares_count; i += 1) {
-            (, address addr) = share_owners.at(i);
-            Share share = Share(payable(addr));
-            share.reward_winner();
-        }
+        // Award the winner by everything collected
+        winner.transfer(address(this).balance);
     }
 
     function get_winner_shares() internal view returns (address payable) {
         // number of all shares
-        uint shares_count = share_owners.length();
+        uint shares_count = _shareholders.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < shares_count; i += 1) {
-            (, address addr) = share_owners.at(i);
-            Share share = Share(payable(addr));
-            address payable voted = share.voted();
+            address addr = _shareholders.at(i);
+            address payable voted = payable(_shareholder_voted[addr]);
             if( voted != payable(address(0)) ) {
                 uint cnt = 0;
                 bytes memory key = abi.encode(address(voted));
@@ -354,27 +343,26 @@ contract Offer is HasOwner {
 
     function get_winner_amount_shares() internal view returns (address payable) {
         // number of all shares
-        uint shares_count = share_owners.length();
+        uint shares_count = _shareholders.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
         uint shares_amount;
-        for(uint i=0; i < share_owners.length(); i += 1) {
-            (, address addr) = share_owners.at(i);
-            shares_amount += payable(addr).balance;
+        for(uint i=0; i < shares_count; i += 1) {
+            address addr = _shareholders.at(i);
+            shares_amount += _shareholder_share[addr];
         }
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < shares_count; i += 1) {
-            (, address addr) = share_owners.at(i);
-            Share share = Share(payable(addr));
-            address payable voted = share.voted();
+            address addr = _shareholders.at(i);
+            address payable voted = payable(_shareholder_voted[addr]);
             if( voted != payable(address(0)) ) {
                 uint amt = 0;
                 bytes memory key = abi.encode(address(voted));
                 if( contractors_map.contains(key) ) {
                     amt = abi.decode(contractors_map.get(key), (uint));
                 }
-                contractors_map.set(key, abi.encode(amt + address(share).balance));
+                contractors_map.set(key, abi.encode(amt + _shareholder_share[addr]));
             }
         }
 
@@ -399,13 +387,13 @@ contract Offer is HasOwner {
 
     function get_winner_observers() internal view returns (address payable) {
         // number of all observers
-        uint observers_count = observer_voted.length();
+        uint observers_count = _observer_voted.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < observers_count; i += 1) {
-            (, address voted) = observer_voted.at(i);
+            (, address voted) = _observer_voted.at(i);
             if( voted != address(0) ) {
                 uint cnt = 0;
                 bytes memory key = abi.encode(address(voted));
@@ -434,97 +422,56 @@ contract Offer is HasOwner {
         }
         return winner_observers;
     }
-}
 
-contract Share is CanVoteForContractor {
-    // Share is an individual account of every shareholder among the contract.
-    // The shareholder is determined by the transaction origin.
-    //
-    // Funds on the share are frozen until the contract is completed, or failed.
-    //
-    // The shareholder may return funds from the share before the contract is completed,
-    // after some timeout period determined by the contract.
-    //
-    // The Share will transfer money to the contractor account when the contract is successfully completed.
-
-    // Block timestamp when the cancel function has been called for the first time
-    uint public cancelled_at;
-
-    constructor(Offer offer_) CanVoteForContractor(offer_) {
-        if( msg.sender != address(offer_) )
-            revert WrongSender();
-    }
-
-    function can_be_canceled() external view returns(uint timeout) {
+    function share_can_be_canceled(address payable shareholder) public view not_completed_only() returns (uint timeout) {
         // Returns a time differente when it can be really cancelled
         // after the first cancel request
         //
         // Returns timeout left for cancel to be finished.
         // When the timeout has expired, returns 0
-        if(address(offer) == address(0))
-            return 0;
-        OfferDefinition memory definition = offer.definition();
+        if( !_shareholders.contains(address(shareholder)) )
+            revert WrongParameter();
+        uint cancelled_at = _shareholder_cancelled_at[address(shareholder)];
         if( cancelled_at == 0 ) {
-            return definition.share_unlock_timeout;
+            return _definition.share_unlock_timeout;
         }
-        if( cancelled_at + definition.share_unlock_timeout > block.timestamp ) {
-            return cancelled_at + definition.share_unlock_timeout - block.timestamp;
+        if( cancelled_at + _definition.share_unlock_timeout > block.timestamp ) {
+            return cancelled_at + _definition.share_unlock_timeout - block.timestamp;
         }
         return 0;
     }
-
-    function is_canceled() external view returns(bool cancelled) {
-        return address(offer) == address(0);
-    }
-
-    function cancel() external owner_only() {
+    
+    function share_cancel() external started_only() {
         // Should be the only way to cancel the share
         //
         // If it was not yet called, starts the waiting period.
         // 
-        // If the waiting period is expired, zeroes the offer reference,
-        // to make a back payment to the owner's account available.
-        //
-        // Returns timeout left for cancel to be finished.
-        // When the timeout has expired, returns 0
-        if(address(offer) == address(0))
-            return;
+        // If the waiting period is expired, and the contract is not finished,
+        // makes the payment back to the shareholder's account
+        // and removes the share from the list of shareholders
+        if( !_shareholders.contains(tx.origin) ) {
+            revert OwnerOnly();
+        }
+        uint cancelled_at = _shareholder_cancelled_at[tx.origin];
         if( cancelled_at == 0 ) {
-            cancelled_at = block.timestamp;
+            _shareholder_cancelled_at[tx.origin] = block.timestamp;
         }
-        OfferDefinition memory definition = offer.definition();
-        if( cancelled_at + definition.share_unlock_timeout > block.timestamp ) {
+        if( cancelled_at + _definition.share_unlock_timeout > block.timestamp ) {
             return;
         }
-        offer._remove_share(this);
-        offer = Offer(address(0));
-        return;
+        payable(tx.origin).transfer(_shareholder_share[tx.origin]);
+        _shareholders.remove(tx.origin);
+        _shareholder_share[tx.origin] = 0;
+        _shareholder_voted[tx.origin] = address(0);
+        _shareholder_cancelled_at[tx.origin] = 0;
+        emit CancelShare(payable(tx.origin));
     }
 
-    function revert_share() external owner_only() {
-        // After the share is cancelled, call this method
-        // to revert the share back to the owner's account
-        if( address(offer) != address(0) )
-            revert WrongState();
-        owner.transfer(address(this).balance);
-    }
-
-    receive() external payable {
-        // emit Received(msg.sender, msg.value);
-    }
-
-    function vote(address payable voted_) external owner_only() {
-        voted = voted_;
-    }
-
-    function reward_winner() external {
-        if(address(offer) == address(0))
-            return;
-        address payable winner = offer.winner();
-        if(address(winner) == address(0))
-            return;
-        if(offer.state() != OfferState.COMPLETED)
-            return;
-        winner.transfer(address(this).balance);
+    function share_vote(address payable voted_) external started_only() {
+        // The only shareholder can call this method to vote for the contractor
+        if( !_shareholders.contains(tx.origin) ) {
+            revert OwnerOnly();
+        }
+        _shareholder_voted[tx.origin] = address(voted_);
     }
 }

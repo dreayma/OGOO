@@ -87,7 +87,7 @@ describe("Contract Tests", function () {
 
     await o.waitForDeployment();
     var owner = await o.owner();
-    expect(owner).to.equal(accounts[0].address);
+    expect(owner).to.equal(account_owner.address);
     var definition = await o.definition();
     expect(test_definition_values).to.have.deep.members(definition);
 
@@ -101,9 +101,9 @@ describe("Contract Tests", function () {
     console.debug("Offer account before creating share:", start_balance_offer);
 
     // the shareholder can create share not less than a share_min_balance
-    shareholder_access.create_share().should.eventually.rejectedWith('reverted');
+    shareholder_access.share_create().should.eventually.rejectedWith('reverted');
 
-    var create_share_estimate_gas = await shareholder_access.create_share.estimateGas({value: 30000000000000001n});
+    var create_share_estimate_gas = await shareholder_access.share_create.estimateGas({value: 30000000000000001n});
     console.debug("Create share estimated gas:", create_share_estimate_gas);
 
     var gas_price = (await account_shareholder.provider.getFeeData()).gasPrice;
@@ -112,7 +112,7 @@ describe("Contract Tests", function () {
     console.debug("Create share calculated gas price:", gas_price * create_share_estimate_gas);
 
     // the shareholder created an account sending there an amount
-    var txs = await shareholder_access.create_share({value: 30000000000000001n});
+    var txs = await shareholder_access.share_create({value: 30000000000000001n});
     var txs_receipt = await txs.wait();
 
     var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
@@ -125,31 +125,17 @@ describe("Contract Tests", function () {
     var end_balance_offer = await account_owner.provider.getBalance(offer.target);
     console.debug("Offer account after creating share:", start_balance_offer);
 
-    var share_address = await shareholder_access.get_share_for_origin();
+    var share_address = await shareholder_access.share_get_for_origin();
     console.log("Got share address:", share_address);
 
     // everybody can get access to only his own address
     outside_access.interface.parseError(
         // try ... catch(e) { parseError(e.data) ...
-        (await outside_access.get_share_for_origin().should.eventually.rejectedWith('reverted')).data
+        (await outside_access.share_get_for_origin().should.eventually.rejectedWith('reverted')).data
     ).name.should.be.equal('EnumerableMapNonexistentKey')
 
     var end_balance_share = await account_shareholder.provider.getBalance(share_address);
     end_balance_share.should.be.equal(30000000000000001n);
-
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
-      offer.target,
-      contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
-    )
-
-    // Getting access from the outside
-    var outside_access = new ethers.Contract(
-      offer.target,
-      contract_abi.abi,
-      account_outside, // Outside account trying access to the contract
-    )
 
     var txo1 = await o.observer_create(account_outside.address);
     var txo1_receipt = await txo1.wait();
