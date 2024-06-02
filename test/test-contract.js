@@ -102,6 +102,7 @@ describe("Contract Tests", function () {
 
     // the shareholder can create share not less than a share_min_balance
     shareholder_access.share_create().should.eventually.rejectedWith('reverted');
+    shareholder_access.share_create({value: 20000000000000001n}).should.eventually.rejectedWith('reverted');
 
     var create_share_estimate_gas = await shareholder_access.share_create.estimateGas({value: 30000000000000001n});
     console.debug("Create share estimated gas:", create_share_estimate_gas);
@@ -123,25 +124,27 @@ describe("Contract Tests", function () {
     console.debug("Owner account after creating share:", end_balance_owner);
 
     var end_balance_offer = await account_owner.provider.getBalance(offer.target);
-    console.debug("Offer account after creating share:", start_balance_offer);
+    console.debug("Offer account after creating share:", end_balance_offer);
 
-    var share_address = await shareholder_access.share_get_for_origin();
-    console.log("Got share address:", share_address);
+//     // everybody can get access to only his own address
+//     outside_access.interface.parseError(
+//         // try ... catch(e) { parseError(e.data) ...
+//         (await outside_access.share_get_for_origin().should.eventually.rejectedWith('reverted')).data
+//     ).name.should.be.equal('EnumerableMapNonexistentKey')
 
-    // everybody can get access to only his own address
-    outside_access.interface.parseError(
-        // try ... catch(e) { parseError(e.data) ...
-        (await outside_access.share_get_for_origin().should.eventually.rejectedWith('reverted')).data
-    ).name.should.be.equal('EnumerableMapNonexistentKey')
+    var outside_share = await outside_access.share_get_for_origin();
+    outside_share.should.be.equal(0n);
 
-    var end_balance_share = await account_shareholder.provider.getBalance(share_address);
-    end_balance_share.should.be.equal(30000000000000001n);
+    var shareholder_share = await shareholder_access.share_get_for_origin();
+    shareholder_share.should.be.equal(30000000000000001n);
 
+    await new Promise(resolve => setTimeout(resolve, 1000));
     var txo1 = await o.observer_create(account_outside.address);
     var txo1_receipt = await txo1.wait();
 
     console.log("Registered observer address to cancel:", account_outside.address);
 
+    await new Promise(resolve => setTimeout(resolve, 1000));
     var txo1c = await o.observer_remove(account_outside.address);
     var txo1c_receipt = await txo1c.wait();
 
@@ -149,6 +152,7 @@ describe("Contract Tests", function () {
     o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted');
 
     // Approve the contract, observer list can not be extended
+    await new Promise(resolve => setTimeout(resolve, 1000));
     var txo = await o.approve();
     var txo_receipt = await txo.wait();
 

@@ -197,12 +197,6 @@ contract Offer is HasOwner {
         // var txs = await shareholder_access.create_share({value: 30000000000000001n});
         // var txs_receipt = await txs.wait();
         // ```
-        // or transfer funds directly to the offer account.
-        //
-        // See restrictions and rules for the share in the `receive` definition
-    }
-
-    receive() external payable {
         // Creating a share is available for anybody who would like to became a shareholder
         //
         // You should send the minimal share amount when creating a share.
@@ -215,7 +209,6 @@ contract Offer is HasOwner {
         // the whole share amount back to the shareholder's account
         if( is_finished() )
             revert StartedOnly();
-
         bool got = _shareholders.contains(tx.origin);
         if( !got ) {
             if( msg.value < _definition.share_min_balance )
