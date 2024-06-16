@@ -117,10 +117,11 @@ contract Offer is HasOwner {
     using EnumerableMap for EnumerableMap.UintToAddressMap;
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private _shareholders;                 // shareholders set
-    mapping(address => address) private _shareholder_voted;         // shareholder account -> address to vote
+    mapping(address => uint) private _shareholder_voting;           // shareholder account -> voting for address or failure
     mapping(address => uint) private _shareholder_share;            // share amount of the shareholder
     mapping(address => uint) private _shareholder_cancelled_at;     // share cancellation timeout
-    EnumerableMap.UintToAddressMap private _observer_voted;         // observer account -> address to vote
+    EnumerableSet.AddressSet private _observers;                    // observers set
+    mapping(address => uint) private _observer_voting;              // observer account -> voting for arress or failure
 
     using ArrayMap for Map;
 
@@ -238,8 +239,8 @@ contract Offer is HasOwner {
         // while the contract has not been started.
         // The `observer_account` is an observers' address who is allowed to
         // vote as an observer.
-        if( !_observer_voted.contains(uint256(uint160(address(observer_account)))) ) {
-            _observer_voted.set(uint256(uint160(address(observer_account))), address(0));
+        if( !_observers.contains(address(observer_account)) ) {
+            _observers.add(address(observer_account));
             emit CreateObserver(observer_account);
         }
         return observer_account;
@@ -247,15 +248,15 @@ contract Offer is HasOwner {
 
     function observer_remove(address payable observer_account) external prepared_only() owner_only() {
         // The only owner can directly remove the observer when the offer is in preparing state
-        _observer_voted.remove(uint256(uint160(address(observer_account))));
+        _observers.remove(address(observer_account));
     }
 
     function observer_vote(address payable voted_) external started_only() sender_origin() {
         // The only observer can call this method to vote for the contractor
-        if( !_observer_voted.contains(uint256(uint160(address(tx.origin)))) ) {
+        if( !_observers.contains(address(tx.origin)) ) {
             revert OwnerOnly();
         }
-        _observer_voted.set(uint256(uint160(address(tx.origin))), address(voted_));
+        _observer_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
     }
 
     function approve() external prepared_only() owner_only() {
@@ -310,8 +311,8 @@ contract Offer is HasOwner {
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < shares_count; i += 1) {
-            address addr = _shareholders.at(i);
-            address payable voted = payable(_shareholder_voted[addr]);
+            uint256 voting = _shareholder_voting[_shareholders.at(i)];
+            address payable voted = payable(address(uint160(voting)));
             if( voted != payable(address(0)) ) {
                 uint cnt = 0;
                 bytes memory key = abi.encode(address(voted));
@@ -348,14 +349,14 @@ contract Offer is HasOwner {
         Map memory contractors_map = ArrayMap.empty();
         uint shares_amount;
         for(uint i=0; i < shares_count; i += 1) {
-            address addr = _shareholders.at(i);
-            shares_amount += _shareholder_share[addr];
+            shares_amount += _shareholder_share[_shareholders.at(i)];
         }
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < shares_count; i += 1) {
             address addr = _shareholders.at(i);
-            address payable voted = payable(_shareholder_voted[addr]);
+            uint256 voting = _shareholder_voting[addr];
+            address payable voted = payable(address(uint160(voting)));
             if( voted != payable(address(0)) ) {
                 uint amt = 0;
                 bytes memory key = abi.encode(address(voted));
@@ -387,13 +388,14 @@ contract Offer is HasOwner {
 
     function get_winner_observers() internal view returns (address payable) {
         // number of all observers
-        uint observers_count = _observer_voted.length();
+        uint observers_count = _observers.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < observers_count; i += 1) {
-            (, address voted) = _observer_voted.at(i);
+            uint256 voting = _observer_voting[_observers.at(i)];
+            address voted = address(uint160(voting));
             if( voted != address(0) ) {
                 uint cnt = 0;
                 bytes memory key = abi.encode(address(voted));
@@ -462,7 +464,7 @@ contract Offer is HasOwner {
         payable(tx.origin).transfer(_shareholder_share[tx.origin]);
         _shareholders.remove(tx.origin);
         _shareholder_share[tx.origin] = 0;
-        _shareholder_voted[tx.origin] = address(0);
+        _shareholder_voting[tx.origin] = 0;
         _shareholder_cancelled_at[tx.origin] = 0;
         emit CancelShare(payable(tx.origin));
     }
@@ -472,6 +474,6 @@ contract Offer is HasOwner {
         if( !_shareholders.contains(tx.origin) ) {
             revert OwnerOnly();
         }
-        _shareholder_voted[tx.origin] = address(voted_);
+        _shareholder_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
     }
 }
