@@ -16,6 +16,7 @@ error WrongState(); // The function should not be called in this state of the co
 error WrongParameter(); // The function should not be called with this parameter
 error TooLowShareBalance(); // Creating share with the balance less than provided is forbidden
 error VotingConflict(); // Happens when the observers voting conflichs with the both, share count and share amount votings
+error ProxyForbidden(); // Happens if the ts.origin != msg.sender
 
 abstract contract HasOwner {
     // If a contract is HasOwner, it automatically creates a payable public attribute `owner`
@@ -42,6 +43,12 @@ abstract contract HasOwner {
             revert OwnerOnly();
         _;
     }
+    modifier sender_origin() {
+        // checks whether the call is directed from the origin immediately
+        if( tx.origin != msg.sender )
+            revert ProxyForbidden();
+        _;
+}
 }
 
 struct OfferDefinition {
@@ -161,7 +168,7 @@ contract Offer is HasOwner {
     }
 
     // Constructor
-    constructor(OfferDefinition memory offer_definition) {
+    constructor(OfferDefinition memory offer_definition) sender_origin() {
         _definition = offer_definition;
         state = OfferState.INITIAL;
     }
@@ -187,14 +194,13 @@ contract Offer is HasOwner {
     // Add members - can be called only from the context of member contracts
     //
 
-    function share_create() external payable {
+    function share_create() external payable sender_origin() {
         // The share is created or updated with any transfer to the offer,
         // except when the offer is finished, or the amount is too low.
-        // This method has been added to increase the external usability.
         //
         // Use JS syntax like
         // ```
-        // var txs = await shareholder_access.create_share({value: 30000000000000001n});
+        // var txs = await shareholder_access.share_create({value: 30000000000000001n});
         // var txs_receipt = await txs.wait();
         // ```
         // Creating a share is available for anybody who would like to became a shareholder
@@ -206,7 +212,8 @@ contract Offer is HasOwner {
         //
         // You can increase your share later. Removing the share is a special procedure.
         // See share_cancel() and share_revert_share(). Reverting share will move
-        // the whole share amount back to the shareholder's account
+        // the whole share amount back to the shareholder's account. It's available
+        // only for the not-finished offer.
         if( is_finished() )
             revert StartedOnly();
         bool got = _shareholders.contains(tx.origin);
@@ -228,7 +235,7 @@ contract Offer is HasOwner {
     // Observer is manipulated directly from the contract
     function observer_create(address payable observer_account) external prepared_only() owner_only() returns (address payable) {
         // Creating an observer record is available only for the owner of the Offer,
-        // while the contrac has not been started.
+        // while the contract has not been started.
         // The `observer_account` is an observers' address who is allowed to
         // vote as an observer.
         if( !_observer_voted.contains(uint256(uint160(address(observer_account)))) ) {
@@ -243,7 +250,7 @@ contract Offer is HasOwner {
         _observer_voted.remove(uint256(uint160(address(observer_account))));
     }
 
-    function observer_vote(address payable voted_) external started_only() {
+    function observer_vote(address payable voted_) external started_only() sender_origin() {
         // The only observer can call this method to vote for the contractor
         if( !_observer_voted.contains(uint256(uint160(address(tx.origin)))) ) {
             revert OwnerOnly();
@@ -434,7 +441,7 @@ contract Offer is HasOwner {
         return 0;
     }
     
-    function share_cancel() external started_only() {
+    function share_cancel() external started_only() sender_origin() {
         // Should be the only way to cancel the share
         //
         // If it was not yet called, starts the waiting period.
@@ -460,7 +467,7 @@ contract Offer is HasOwner {
         emit CancelShare(payable(tx.origin));
     }
 
-    function share_vote(address payable voted_) external started_only() {
+    function share_vote(address payable voted_) external started_only() sender_origin() {
         // The only shareholder can call this method to vote for the contractor
         if( !_shareholders.contains(tx.origin) ) {
             revert OwnerOnly();

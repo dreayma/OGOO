@@ -91,6 +91,19 @@ describe("Contract Tests", function () {
     var definition = await o.definition();
     expect(test_definition_values).to.have.deep.members(definition);
 
+    test_definition.shareholders_vote_amount_share = 9900n;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    var txod = await o.definition_update(test_definition);
+    var txod_receipt = await txod.wait();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    definition = await o.definition();
+    test_definition_values = [];
+    for(var k in test_definition) {
+      test_definition_values.push(test_definition[k]);
+    }
+    expect(test_definition_values).to.have.deep.members(definition);
+    
+
     var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
     console.debug("Shareholder account before creating share:", start_balance_shareholder);
 
@@ -145,10 +158,17 @@ describe("Contract Tests", function () {
     console.log("Registered observer address to cancel:", account_outside.address);
 
     await new Promise(resolve => setTimeout(resolve, 1000));
+    var txo2 = await o.observer_create(account_observer.address);
+    var txo2_receipt = await txo2.wait();
+
+    console.log("Registered observer address to work with:", account_observer.address);
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
     var txo1c = await o.observer_remove(account_outside.address);
     var txo1c_receipt = await txo1c.wait();
 
     // Cancelled => removed
+    await new Promise(resolve => setTimeout(resolve, 1000));
     o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted');
 
     // Approve the contract, observer list can not be extended
@@ -159,12 +179,49 @@ describe("Contract Tests", function () {
     o.interface.parseError(
         // try ... catch(e) { parseError(e.data) ...
         (await o.observer_create(account_outside.address).should.eventually.rejectedWith('reverted')).data
-    ).name.should.be.equal('PreparedOnly')
+    ).name.should.be.equal('PreparedOnly');
 
     o.interface.parseError(
         // try ... catch(e) { parseError(e.data) ...
         (await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted')).data
-    ).name.should.be.equal('PreparedOnly')
+    ).name.should.be.equal('PreparedOnly');
+
+    // voting
+    var state = await contractor_access.state();
+    console.log('State before first vote', state);
+    state.should.be.equal(1n);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    var txsv = await shareholder_access.share_vote(account_contractor.address);
+    var txsv_receipt = await txsv.wait();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    var txac = await contractor_access.calculate_voting();
+    var txac_receipt = await txac.wait();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    state = await contractor_access.state();
+    console.log('State after shareholder vote', state)
+    state.should.be.equal(1n);
+
+    var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
+    console.debug("Contractor account before contract success:", start_balance_contractor);
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    var txov = await observer_access.observer_vote(account_contractor.address);
+    var txov_receipt = await txov.wait();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    var txac1 = await contractor_access.calculate_voting();
+    var txac1_receipt = await txac1.wait();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    state = await contractor_access.state();
+    console.log('State after observer vote', state);
+    state.should.be.equal(2n);
+    var final_balance_offer = await account_owner.provider.getBalance(offer.target);
+    console.debug("Offer account after contract completion", final_balance_offer);
+    final_balance_offer.should.be.equal(0n);
+
+    var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
+    console.debug("Contractor account after contract success:", end_balance_contractor);
+    console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+
   });
 
 });
