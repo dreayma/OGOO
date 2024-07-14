@@ -234,6 +234,9 @@ describe("Contract Tests", function () {
     console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
 
   });
+  it("Test the case without observers", async function () {
+    console.log('TODO');
+  });
   it("Test the share unlock timeout", async function () {
     console.log('TODO');
   });

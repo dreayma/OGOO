@@ -351,10 +351,11 @@ contract Offer is HasOwner {
         }
 
         // Counters
+        uint observers_count = _observers.length();
         uint256 winner_shares = get_winner_shares();
         uint256 winner_observers = get_winner_observers();
         if(
-            winner_shares == 0 || winner_observers == 0
+            winner_shares == 0 || winner_observers == 0 && observers_count != 0
         ) {
             return;
         }
@@ -364,11 +365,20 @@ contract Offer is HasOwner {
             return;
         }
         uint256 winner_local = 0;
-        if( winner_observers == winner_shares ) {
-            state = OfferState.COMPLETED;
-            completed_at = block.timestamp;
-            winner_local = winner_observers;
-        } else if( winner_observers == winner_amount_shares ) {
+        if( observers_count != 0 ) {
+            if( winner_observers == winner_shares ) {
+                state = OfferState.COMPLETED;
+                completed_at = block.timestamp;
+                winner_local = winner_observers;
+            } else if( winner_observers == winner_amount_shares ) {
+                state = OfferState.COMPLETED;
+                completed_at = block.timestamp;
+                winner_local = winner_observers;
+            } else {
+                // TODO: can ve resolve it using some other way?
+                revert VotingConflict();
+            }
+        } else if( winner_amount_shares == winner_shares ) {
             state = OfferState.COMPLETED;
             completed_at = block.timestamp;
             winner_local = winner_observers;
@@ -376,6 +386,7 @@ contract Offer is HasOwner {
             // TODO: can ve resolve it using some other way?
             revert VotingConflict();
         }
+
         if( winner_local == CONTRACT_FAILED ) {
             state = OfferState.FAILED;
             failed_at = block.timestamp;
@@ -420,6 +431,8 @@ contract Offer is HasOwner {
             }
         }
 
+        if( shares_actual_count == 0 )
+            return 0;
         // Voting winner
         address payable winner_shares;
         // Winner's share
@@ -460,6 +473,9 @@ contract Offer is HasOwner {
                 continue;
             shares_amount += _shareholder_share[shareholder];
         }
+
+        if( shares_amount == 0 )
+            return 0;
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < shares_count; i += 1) {
@@ -512,6 +528,8 @@ contract Offer is HasOwner {
         // number of all observers
         uint observers_count = _observers.length();
         // Map to store contractor counters
+        if( observers_count == 0 )
+            return 0;
         Map memory contractors_map = ArrayMap.empty();
         // Count of observers voted for contract fail
         uint failed_count = 0;
