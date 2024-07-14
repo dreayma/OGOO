@@ -10,24 +10,27 @@ function to$(wei) {
 }
 
 describe("Contract Tests", function () {
-  var test_definition = {
+  it("Test the contract life circle main path", async function () {
+    console.log("Setting up the contract");
+    var test_definition = {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
         "share_unlock_timeout": 1n,
         "observer_award": 0n,
         "share_min_balance": 30000000000000000n,
+        "voting_start_balance": 0n,
+        "voting_start_count": 0n,
+        "voting_start_timeout": 3600n,
+        "voting_fail_timeout": 3600n,
         "observers_vote_share": 10000n,
         "shareholders_vote_share": 10000n,
         "shareholders_vote_amount_share": 10000n,
-  };
-  var test_definition_values = [];
-  for(var k in test_definition) {
-    test_definition_values.push(test_definition[k]);
-  }
-
-  it("Test the contract access", async function () {
-    console.log("Setting up the contract");
+    };
+    var test_definition_values = [];
+    for(var k in test_definition) {
+        test_definition_values.push(test_definition[k]);
+    }
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var start_balance = await account_owner.provider.getBalance(account_owner.address);
@@ -90,9 +93,9 @@ describe("Contract Tests", function () {
     expect(owner).to.equal(account_owner.address);
     var definition = await o.definition();
     expect(test_definition_values).to.have.deep.members(definition);
-
-    test_definition.shareholders_vote_amount_share = 9900n;
     await new Promise(resolve => setTimeout(resolve, 1000));
+    // test updating the definition
+    test_definition.shareholders_vote_amount_share = 9900n;
     var txod = await o.definition_update(test_definition);
     var txod_receipt = await txod.wait();
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -102,7 +105,6 @@ describe("Contract Tests", function () {
       test_definition_values.push(test_definition[k]);
     }
     expect(test_definition_values).to.have.deep.members(definition);
-    
 
     var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
     console.debug("Shareholder account before creating share:", start_balance_shareholder);
@@ -113,7 +115,7 @@ describe("Contract Tests", function () {
     var start_balance_offer = await account_owner.provider.getBalance(offer.target);
     console.debug("Offer account before creating share:", start_balance_offer);
 
-    // the shareholder can create share not less than a share_min_balance
+    // test the shareholder share_min_balance
     shareholder_access.share_create().should.eventually.rejectedWith('reverted');
     shareholder_access.share_create({value: 20000000000000001n}).should.eventually.rejectedWith('reverted');
 
@@ -125,7 +127,7 @@ describe("Contract Tests", function () {
 
     console.debug("Create share calculated gas price:", gas_price * create_share_estimate_gas);
 
-    // the shareholder created an account sending there an amount
+    // test the shareholder created an account sending there enough amount
     var txs = await shareholder_access.share_create({value: 30000000000000001n});
     var txs_receipt = await txs.wait();
 
@@ -133,24 +135,31 @@ describe("Contract Tests", function () {
     var diff = start_balance_shareholder - end_balance_shareholder;
     console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
 
+    end_balance_offer = await account_owner.provider.getBalance(offer.target);
+    console.debug("Offer account after creating share:", end_balance_offer);
+
+    // test the shareholder can increase the balance
+    txs = await shareholder_access.share_create({value: 10000000000000001n});
+    txs_receipt = await txs.wait();
+
+    end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
+    diff = start_balance_shareholder - end_balance_shareholder;
+    console.debug("Shareholder account after updating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+
+    end_balance_offer = await account_owner.provider.getBalance(offer.target);
+    console.debug("Offer account after updating share:", end_balance_offer);
+
     var end_balance_owner = await account_owner.provider.getBalance(account_owner.address);
     console.debug("Owner account after creating share:", end_balance_owner);
 
-    var end_balance_offer = await account_owner.provider.getBalance(offer.target);
-    console.debug("Offer account after creating share:", end_balance_offer);
-
-//     // everybody can get access to only his own address
-//     outside_access.interface.parseError(
-//         // try ... catch(e) { parseError(e.data) ...
-//         (await outside_access.share_get_for_origin().should.eventually.rejectedWith('reverted')).data
-//     ).name.should.be.equal('EnumerableMapNonexistentKey')
-
+    // test access to the origin's share
     var outside_share = await outside_access.share_get_for_origin();
     outside_share.should.be.equal(0n);
 
     var shareholder_share = await shareholder_access.share_get_for_origin();
-    shareholder_share.should.be.equal(30000000000000001n);
+    shareholder_share.should.be.equal(40000000000000002n);
 
+    // testing observers creation
     await new Promise(resolve => setTimeout(resolve, 1000));
     var txo1 = await o.observer_create(account_outside.address);
     var txo1_receipt = await txo1.wait();
@@ -164,18 +173,20 @@ describe("Contract Tests", function () {
     console.log("Registered observer address to work with:", account_observer.address);
 
     await new Promise(resolve => setTimeout(resolve, 1000));
+    // test observer's removing
     var txo1c = await o.observer_remove(account_outside.address);
     var txo1c_receipt = await txo1c.wait();
 
-    // Cancelled => removed
+    // test removing absent observer
     await new Promise(resolve => setTimeout(resolve, 1000));
     o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted');
 
-    // Approve the contract, observer list can not be extended
+    // Approve the contract to make it unmutable
     await new Promise(resolve => setTimeout(resolve, 1000));
     var txo = await o.approve();
     var txo_receipt = await txo.wait();
 
+    // Trying to modify observers list should be failed
     o.interface.parseError(
         // try ... catch(e) { parseError(e.data) ...
         (await o.observer_create(account_outside.address).should.eventually.rejectedWith('reverted')).data
@@ -186,12 +197,12 @@ describe("Contract Tests", function () {
         (await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted')).data
     ).name.should.be.equal('PreparedOnly');
 
-    // voting
+    // voting process
     var state = await contractor_access.state();
     console.log('State before first vote', state);
     state.should.be.equal(1n);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    var txsv = await shareholder_access.share_vote(account_contractor.address);
+    var txsv = await shareholder_access.share_vote(account_contractor.address, false);
     var txsv_receipt = await txsv.wait();
     await new Promise(resolve => setTimeout(resolve, 1000));
     var txac = await contractor_access.calculate_voting();
@@ -205,7 +216,7 @@ describe("Contract Tests", function () {
     console.debug("Contractor account before contract success:", start_balance_contractor);
 
     await new Promise(resolve => setTimeout(resolve, 1000));
-    var txov = await observer_access.observer_vote(account_contractor.address);
+    var txov = await observer_access.observer_vote(account_contractor.address, false);
     var txov_receipt = await txov.wait();
     await new Promise(resolve => setTimeout(resolve, 1000));
     var txac1 = await contractor_access.calculate_voting();
@@ -223,5 +234,40 @@ describe("Contract Tests", function () {
     console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
 
   });
-
+  it("Test the share unlock timeout", async function () {
+    console.log('TODO');
+  });
+  it("Test the voting start balance", async function () {
+    console.log('TODO');
+  });
+  it("Test the voting start count", async function () {
+    console.log('TODO');
+  });
+  it("Test the voting start count", async function () {
+    console.log('TODO');
+  });
+  it("Test the voting start timeout", async function () {
+    console.log('TODO');
+  });
+  it("Test the voting fail timeout", async function () {
+    console.log('TODO');
+  });
+  it("Test the observers vote share", async function () {
+    console.log('TODO');
+  });
+  it("Test the shareholders vote share", async function () {
+    console.log('TODO');
+  });
+  it("Test the shareholders vote amount share", async function () {
+    console.log('TODO');
+  });
+  it("Test the contract share cancel before and after fail", async function () {
+    console.log('TODO');
+  });
+  it("Test the contract voting impossible after success", async function () {
+    console.log('TODO');
+  });
+  it("Test the contract voting impossible after share cancelling start", async function () {
+    console.log('TODO');
+  });
 });

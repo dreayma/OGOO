@@ -53,15 +53,29 @@ abstract contract HasOwner {
 
 struct OfferDefinition {
     // Definition of the offer, parameter details
+    //
+    // Parameter units:
+    //  - timeouts in seconds
+    //  - amounts in wei
+    //  - share is a percentage, 1 = 0.01%, 0 = 0%, 10000=100%,
+    //    the percentage is always rounded to the lower bound during the calculation:
+    //    1.001% ~= 1.00%, 1.009% ~= 1.00%, 1.019% ~= 1.01%
+
     string caption;                         // Short one-line caption of the offer
     string description;                     // Longer multiline unformal text description of the offer supporting `.md` format
-    string full_details;                    // All legal details of the contract to print as a document, supporting `.md` format
-    uint16 share_unlock_timeout;            // Timeout to unlock an individual share to return to the shareholder, in days
-    uint observer_award;                    // Award amount (if present) for each observer in wei
+    string full_details;                    // All legal details of the contract to print as a document, supporting `.md` format, may be compressed
+    uint share_unlock_timeout;              // Timeout to unlock an individual share to return to the shareholder
+    uint observer_award;                    // Award amount (if present) for each observer
 
-    uint share_min_balance;                 // Minimal share balance to allow voting
-    // Vote share is calculated in percents 1 = 0.01%, available values are from 0 = 0% to 10000 = 100%
-    // While comparison, the real share is always rounded down to the `floor`: 1.009% ~= 1%, 1.019% ~= 1.01%
+    uint share_min_balance;                 // Minimal share balance to make the share
+
+    // Offer voting bounds. The offer should exceed minimal voting bounds within voting start timeout to make voting available
+    uint voting_start_balance;              // Minimal offer balance to start voting
+    uint voting_start_count;                // Minimal number of the offer shareholders to start voting
+    uint voting_start_timeout;              // The offer should exceed minimal voting bounds after approve within this timeout, or the offer has failed
+    uint voting_fail_timeout;               // The offer voting should be completed after approve within this timeout, or the offer has failed
+
+    // Shareholder voting parameters
     uint16 observers_vote_share;                      // Observers vote share (% of total count) to agree the observer's vote
     uint16 shareholders_vote_share;                   // Shareholders vote share (% of total count) to agree the shareholder's vote
     uint16 shareholders_vote_amount_share;            // Shareholders vote share (% of total amount) to agree the shareholder's vote
@@ -74,37 +88,40 @@ enum OfferState {
     FAILED
 }
 
+uint constant CONTRACT_FAILED = 1 << 255;
+
 contract Offer is HasOwner {
-    // Offer is a central part of the contract.
+    // The open offer proposes the people's contract to be completed by any contractor.
+    // The contract is paid by the offer shareholders community.
     //
-    // The offer owner creates the offer, and sets up it's definition.
-    // The offer owner adds independent observers while the contract is not yet agreed.
-    // The offer owner agrees the contract. After that, the owner can not control the offer.
-    // Only shareholders and observers are controlling the contract, instead of the owner,
-    // after it has been agreed.
+    // The offer shareholders vote for the particular contractor when the contract conditions
+    // are met, or for the contract failure, if the conrtract can not be completed for any reason.
     //
-    // People become shareholdes creating a share, appearing to be members of the
-    // offer supporter's community. When creating a share, the shareholder agrees
-    // with the offer and contract.
+    // The offer can have some number of observers who also vote for the contractor
+    // or the contract failure. If observers are present, their voting should match
+    // with the shareholders' voting to have the contract completed successfully
     //
-    // Shareholders and observers decide, whether the contract is completed and by whom,
-    // or failed, or running yet.
+    // When the offer owner creates the offer, he sets up it's definition,
+    // and adds independent observers. The offer owner can change the contract
+    // until the contract is agreed by him. After that, no any changes available
+    // to the contract parameters, or the list of observers, and only shareholders
+    // and observers are mutually controlling the contract state.
     //
-    // If the contract is completed, all collected shares move their funds automatically
-    // to the contractor, who complete the contract.
+    // People become shareholders by contributing their share, thereby agreeing to the details of the contract.
     //
-    // Failed contract unlocks shares and their owners can return funds back.
+    // Shareholders and observers control the contract state voting for changes.
     //
-    // If the observer's award is not zero, their awards are moved to the observer's contracts
-    // when the contract is finished (completed or failed), compensating proportionally
-    // from shares funds.
+    // If the contract is completed, all collected amount is moved to the voted contractor immediately
+    //
+    // Failed contract unlocks all shares and their owners can return funds back.
+    //
+    // If the observer's award is not zero, their awards are moved to the observer's contracts,
+    // compensating proportionally from shares funds [TODO]
     //
     // The shareholder may request unlocking it's share, and gets control to the share
     // after the declared timeout. Then it can close the share and return funds back.
     // The unlocked share doesn't participate in the contract even not yet closed.
     //
-    // If all the shares are unlocked after not less than one was created, the offer
-    // is failed.
 
     // OfferDefinition of the contract, immutable after the contract is approved
     OfferDefinition private _definition;
@@ -127,10 +144,18 @@ contract Offer is HasOwner {
 
     // The contract running state
     OfferState public state = OfferState.INITIAL;                 // Current state of the contract
+
+    // When the offer has been approved
+    uint public approved_at;
+
+    // When the offer has been completed
+    uint public completed_at;
+
+    // When the offer has been failed
+    uint public failed_at;
+
     // The winner who received the money
     address payable public winner;
-
-    // Metastate request functions
 
     function is_finished() internal view returns (bool) {
         // The contract is finished when completed or failed
@@ -140,9 +165,13 @@ contract Offer is HasOwner {
         );
     }
 
+    // Errors to revert when the state is wrong to call
     error StartedOnly();
     error PreparedOnly();
     error RunningOnly();
+    error OfferBalanceLow();
+    error OfferCountLow();
+
     // Metastate check modifiers
     modifier started_only() {
         if( is_finished() )
@@ -168,6 +197,14 @@ contract Offer is HasOwner {
         _;
     }
 
+    modifier voting_started() {
+        if( address(this).balance < _definition.voting_start_balance )
+            revert OfferBalanceLow();
+        if( _shareholders.length() < _definition.voting_start_count )
+            revert OfferCountLow();
+        _;
+    }
+
     // Constructor
     constructor(OfferDefinition memory offer_definition) sender_origin() {
         _definition = offer_definition;
@@ -188,33 +225,57 @@ contract Offer is HasOwner {
     // the event emitted by the create_observer method
     event CreateObserver (address payable observer);
 
+    // the event emitted by the approve method when the offer has approved
+    event OfferApproved ();
+
+    // the event emitted by the calculate_voting when the offer has completed
+    event OfferCompleted (address payable winner, uint amount);
+
+    // the event emitted by different update methods when the offer has failed
+    event OfferFailed ();
+
+    // Manual state manipulation
+
+    // Update definition on the initial state
     function definition_update(OfferDefinition memory offer_definition) external prepared_only() owner_only() {
         _definition = offer_definition;
     }
 
-    // Add members - can be called only from the context of member contracts
-    //
+    // Approve contract and make it self-controlled
+    function approve() external prepared_only() owner_only() {
+        // starts the contract evaluation. It blocks any changes
+        // in the contract, except adding or cancelling shares
+        // Observers list is fixed and can not be modified since that.
+        state = OfferState.APPROVED;
+        approved_at = block.timestamp;
+        emit OfferApproved();
+    }
 
+    // Create a share
+    //
+    // The share is created or updated with a transfer to the offer,
+    // except when the offer is finished, or the amount is too low.
+    //
+    // Creating a share is available for anybody who would like to became a shareholder
+    //
+    // You should call this method with an amount to be transferred as your share.
+    // Send the minimal share amount when creating a share.You also will increace
+    // share amount every time sending any amount using this function after that.
+    //
+    // The amount sent will be immediately transferred to the offer account, and your
+    // own share is stored in a separate data member.
+    //
+    // Cancelling your share is available and needs a special procedure.
+    // See share_cancel() and share_revert_share(). Reverting share will move
+    // the whole share amount back to the shareholder's account. It's available
+    // only for the not completed offer.
+    //
+    // Use Ethers JS syntax like
+    // ```
+    // var txs = await shareholder_access.share_create({value: 30000000000000001n});
+    // var txs_receipt = await txs.wait();
+    // ```
     function share_create() external payable sender_origin() {
-        // The share is created or updated with any transfer to the offer,
-        // except when the offer is finished, or the amount is too low.
-        //
-        // Use JS syntax like
-        // ```
-        // var txs = await shareholder_access.share_create({value: 30000000000000001n});
-        // var txs_receipt = await txs.wait();
-        // ```
-        // Creating a share is available for anybody who would like to became a shareholder
-        //
-        // You should send the minimal share amount when creating a share.
-        // You also will increace share amount every time sending any amount after that.
-        //
-        // The amount sent will be immediately transferred to the offer account
-        //
-        // You can increase your share later. Removing the share is a special procedure.
-        // See share_cancel() and share_revert_share(). Reverting share will move
-        // the whole share amount back to the shareholder's account. It's available
-        // only for the not-finished offer.
         if( is_finished() )
             revert StartedOnly();
         bool got = _shareholders.contains(tx.origin);
@@ -228,17 +289,18 @@ contract Offer is HasOwner {
         emit UpdatedShare(payable(tx.origin), _shareholder_share[tx.origin]);
     }
 
-    function share_get_for_origin() external view returns(uint) {
-        // Returns share amount for the tx.origin
+    // Returns share amount for the caller (tx.origin == msg.sender)
+    function share_get_for_origin() external view sender_origin() returns(uint) {
         return _shareholder_share[tx.origin];
     }
 
-    // Observer is manipulated directly from the contract
+    // Create an observer
+    //
+    // Only Offer original author can add observers on the initial stage
+    // while the contract has not been started.
+    // The `observer_account` is an observers' address who is allowed to
+    // vote as an observer.
     function observer_create(address payable observer_account) external prepared_only() owner_only() returns (address payable) {
-        // Creating an observer record is available only for the owner of the Offer,
-        // while the contract has not been started.
-        // The `observer_account` is an observers' address who is allowed to
-        // vote as an observer.
         if( !_observers.contains(address(observer_account)) ) {
             _observers.add(address(observer_account));
             emit CreateObserver(observer_account);
@@ -246,72 +308,107 @@ contract Offer is HasOwner {
         return observer_account;
     }
 
+    // Remove the observer
+    //
+    // The only owner can remove the observer on the initial stage
+    // while the contract has not been started.
+    // The `observer_account` is an observers' address who is removed
     function observer_remove(address payable observer_account) external prepared_only() owner_only() {
-        // The only owner can directly remove the observer when the offer is in preparing state
         _observers.remove(address(observer_account));
     }
 
-    function observer_vote(address payable voted_) external started_only() sender_origin() {
-        // The only observer can call this method to vote for the contractor
-        if( !_observers.contains(address(tx.origin)) ) {
-            revert OwnerOnly();
-        }
-        _observer_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
-    }
-
-    function approve() external prepared_only() owner_only() {
-        // starts the contract evaluation. It blocks any changes
-        // in the contract, except adding or cancelling shares
-        // Observers list is fixed and can not be modified since that.
-        state = OfferState.APPROVED;
-    }
-
+    // Calculate Voting
+    //
+    // This complex call can be called by anybody to
+    // calculate offer's state. It counts votings and
+    // updates the contract state, if the offer definition
+    // parameters describing the contract success or failure
+    // are met.
     function calculate_voting() external started_only() {
-        // This complex call can be called by anybody to
-        // calculate offer's state. It counts votings and
-        // updates the contract state, if the offer definition
-        // parameters describing the contract success or failure
-        // are met.
-        //
-        // 
+
+        if( block.timestamp > approved_at + _definition.voting_fail_timeout ) {
+            state = OfferState.FAILED;
+            failed_at = block.timestamp;
+            emit OfferFailed();
+            return;
+        }
+
+        if( block.timestamp > approved_at + _definition.voting_start_timeout ) {
+            uint shares_count = _shareholders.length();
+            uint balance = address(this).balance;
+            if( shares_count < _definition.voting_start_count ) {
+                state = OfferState.FAILED;
+                failed_at = block.timestamp;
+                emit OfferFailed();
+                return;
+            }
+            if( balance < _definition.voting_start_balance  ) {
+                state = OfferState.FAILED;
+                failed_at = block.timestamp;
+                emit OfferFailed();
+                return;
+            }
+        }
 
         // Counters
-        address payable winner_shares = get_winner_shares();
-        address payable winner_observers = get_winner_observers();
+        uint256 winner_shares = get_winner_shares();
+        uint256 winner_observers = get_winner_observers();
         if(
-            winner_shares == payable(address(0)) ||
-            winner_observers == payable(address(0))
+            winner_shares == 0 || winner_observers == 0
         ) {
             return;
         }
 
-        address payable winner_amount_shares = get_winner_amount_shares();
-        if( winner_amount_shares == payable(address(0)) ) {
+        uint256 winner_amount_shares = get_winner_amount_shares();
+        if( winner_amount_shares == 0 ) {
             return;
         }
+        uint256 winner_local = 0;
         if( winner_observers == winner_shares ) {
             state = OfferState.COMPLETED;
-            winner = winner_observers;
+            completed_at = block.timestamp;
+            winner_local = winner_observers;
         } else if( winner_observers == winner_amount_shares ) {
             state = OfferState.COMPLETED;
-            winner = winner_observers;
+            completed_at = block.timestamp;
+            winner_local = winner_observers;
         } else {
             // TODO: can ve resolve it using some other way?
             revert VotingConflict();
         }
-        // Award the winner by everything collected
+        if( winner_local == CONTRACT_FAILED ) {
+            state = OfferState.FAILED;
+            failed_at = block.timestamp;
+            emit OfferFailed();
+            return;
+        }
+        winner = payable(address(uint160(winner_local)));
+        // Award the winner by the whole collected amount
         winner.transfer(address(this).balance);
+        emit OfferCompleted(winner, address(this).balance);
     }
 
-    function get_winner_shares() internal view returns (address payable) {
-        // number of all shares
+    // Returns (uint) winner by share count, or CONTRACT_FAILED
+    function get_winner_shares() internal view returns (uint256) {
+        // Total shares count for the list iteration
         uint shares_count = _shareholders.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
-
+        // Count of shares voted for contract fail
+        uint failed_count = 0;
+        // Actual shares count minus those which are in cancelling state
+        uint shares_actual_count = 0;
         // Collecting contractor address -> voted count
         for(uint i=0; i < shares_count; i += 1) {
-            uint256 voting = _shareholder_voting[_shareholders.at(i)];
+            address shareholder = _shareholders.at(i);
+            if( _shareholder_cancelled_at[shareholder] != 0 )
+                continue;
+            shares_actual_count += 1;
+            uint256 voting = _shareholder_voting[shareholder];
+            if( voting == CONTRACT_FAILED ) {
+                failed_count += 1;
+                continue;
+            }
             address payable voted = payable(address(uint160(voting)));
             if( voted != payable(address(0)) ) {
                 uint cnt = 0;
@@ -323,12 +420,14 @@ contract Offer is HasOwner {
             }
         }
 
+        // Voting winner
         address payable winner_shares;
+        // Winner's share
         uint winner_shares_share;
         (bytes[] memory winners, bytes[] memory counts) = contractors_map.entries();
         for(uint i=0; i < winners.length; i += 1) {
             uint voted_shares = abi.decode(counts[i], (uint));
-            uint voted_shares_share = voted_shares * 10000 / shares_count;
+            uint voted_shares_share = voted_shares * 10000 / shares_actual_count;
             if( voted_shares_share >= _definition.shareholders_vote_share ) {
                 if(
                     winner_shares == payable(address(0)) ||
@@ -339,23 +438,40 @@ contract Offer is HasOwner {
                 }
             }
         }
-        return winner_shares;
+        failed_count = failed_count * 10000 / shares_actual_count;  // now it's a failed share
+        if( failed_count > winner_shares_share && failed_count >= _definition.shareholders_vote_share )
+            return CONTRACT_FAILED;
+        return uint256(uint160(address(winner_shares)));
     }
 
-    function get_winner_amount_shares() internal view returns (address payable) {
-        // number of all shares
+    // Returns (uint) winner by share amount, or CONTRACT_FAILED
+    function get_winner_amount_shares() internal view returns (uint256) {
+        // Total shares count for the list iteration
         uint shares_count = _shareholders.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
-        uint shares_amount;
+        // Count of shares voted for contract fail
+        uint failed_amount = 0;
+        // Actual shares amount, minus those which are in cancelling state
+        uint shares_amount = 0;
         for(uint i=0; i < shares_count; i += 1) {
-            shares_amount += _shareholder_share[_shareholders.at(i)];
+            address shareholder = _shareholders.at(i);
+            if( _shareholder_cancelled_at[shareholder] != 0 )
+                continue;
+            shares_amount += _shareholder_share[shareholder];
         }
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < shares_count; i += 1) {
-            address addr = _shareholders.at(i);
-            uint256 voting = _shareholder_voting[addr];
+            address shareholder = _shareholders.at(i);
+            if( _shareholder_cancelled_at[shareholder] != 0 )
+                continue;
+            uint256 voting = _shareholder_voting[shareholder];
+            uint share = _shareholder_share[shareholder];
+            if( voting == CONTRACT_FAILED ) {
+                failed_amount += share;
+                continue;
+            }
             address payable voted = payable(address(uint160(voting)));
             if( voted != payable(address(0)) ) {
                 uint amt = 0;
@@ -363,11 +479,13 @@ contract Offer is HasOwner {
                 if( contractors_map.contains(key) ) {
                     amt = abi.decode(contractors_map.get(key), (uint));
                 }
-                contractors_map.set(key, abi.encode(amt + _shareholder_share[addr]));
+                contractors_map.set(key, abi.encode(amt + share));
             }
         }
 
+        // Voting winner
         address payable winner_shares;
+        // Winner's share
         uint winner_shares_share;
         (bytes[] memory winners, bytes[] memory amounts) = contractors_map.entries();
         for(uint i=0; i < winners.length; i += 1) {
@@ -383,18 +501,28 @@ contract Offer is HasOwner {
                 }
             }
         }
-        return winner_shares;
+        failed_amount = failed_amount * 10000 / shares_amount;  // now it's a failed share
+        if( failed_amount > winner_shares_share && failed_amount >= _definition.shareholders_vote_amount_share )
+            return CONTRACT_FAILED;
+        return uint256(uint160(address(winner_shares)));
     }
 
-    function get_winner_observers() internal view returns (address payable) {
+    // Returns (uint) winner by observers, or CONTRACT_FAILED
+    function get_winner_observers() internal view returns (uint256) {
         // number of all observers
         uint observers_count = _observers.length();
         // Map to store contractor counters
         Map memory contractors_map = ArrayMap.empty();
+        // Count of observers voted for contract fail
+        uint failed_count = 0;
 
         // Collecting contractor address -> voted count
         for(uint i=0; i < observers_count; i += 1) {
             uint256 voting = _observer_voting[_observers.at(i)];
+            if( voting == CONTRACT_FAILED ) {
+                failed_count += 1;
+                continue;
+            }
             address voted = address(uint160(voting));
             if( voted != address(0) ) {
                 uint cnt = 0;
@@ -406,7 +534,9 @@ contract Offer is HasOwner {
             }
         }
 
+        // Voting winner
         address payable winner_observers;
+        // Winner's share
         uint winner_observers_share;
         (bytes[] memory winners, bytes[] memory counts) = contractors_map.entries();
         for(uint i=0; i < winners.length; i += 1) {
@@ -422,15 +552,20 @@ contract Offer is HasOwner {
                 }
             }
         }
-        return winner_observers;
+        failed_count = failed_count * 10000 / observers_count;  // now it's a failed share
+        if( failed_count > winner_observers_share && failed_count >= _definition.observers_vote_share )
+            return CONTRACT_FAILED;
+        return uint256(uint160(address(winner_observers)));
     }
 
+    // Returns a time differense when the share fill finish cancelling timeout
+    // and can be really cancelled after the first cancel request
+    //
+    // Returns timeout left for cancel to be finished.
+    // When the timeout has expired, returns 0
+    //
+    // If the share was not cancelled, returns share_unlock_timeout
     function share_can_be_canceled(address payable shareholder) public view not_completed_only() returns (uint timeout) {
-        // Returns a time differente when it can be really cancelled
-        // after the first cancel request
-        //
-        // Returns timeout left for cancel to be finished.
-        // When the timeout has expired, returns 0
         if( !_shareholders.contains(address(shareholder)) )
             revert WrongParameter();
         uint cancelled_at = _shareholder_cancelled_at[address(shareholder)];
@@ -443,23 +578,28 @@ contract Offer is HasOwner {
         return 0;
     }
     
-    function share_cancel() external started_only() sender_origin() {
-        // Should be the only way to cancel the share
-        //
-        // If it was not yet called, starts the waiting period.
-        // 
-        // If the waiting period is expired, and the contract is not finished,
-        // makes the payment back to the shareholder's account
-        // and removes the share from the list of shareholders
+    // The only way to cancel the share
+    //
+    // If it was not yet called, and contract has not been
+    // completed successfully, starts the waiting period.
+    // 
+    // If the waiting period is expired while the contract has not been completed,
+    // or if the contract is failed, makes the payment back to the shareholder's account
+    // and removes the share from the list of shareholders
+    function share_cancel() external not_completed_only() sender_origin() {
         if( !_shareholders.contains(tx.origin) ) {
             revert OwnerOnly();
         }
-        uint cancelled_at = _shareholder_cancelled_at[tx.origin];
-        if( cancelled_at == 0 ) {
-            _shareholder_cancelled_at[tx.origin] = block.timestamp;
-        }
-        if( cancelled_at + _definition.share_unlock_timeout > block.timestamp ) {
-            return;
+        if( state != OfferState.FAILED ) {
+            uint cancelled_at = _shareholder_cancelled_at[tx.origin];
+            if( cancelled_at == 0 ) {
+                _shareholder_cancelled_at[tx.origin] = block.timestamp;
+            }
+            if( cancelled_at + _definition.share_unlock_timeout > block.timestamp ) {
+                return;
+            }
+//         } else {
+//             _shareholder_cancelled_at[tx.origin] = block.timestamp;
         }
         payable(tx.origin).transfer(_shareholder_share[tx.origin]);
         _shareholders.remove(tx.origin);
@@ -469,11 +609,27 @@ contract Offer is HasOwner {
         emit CancelShare(payable(tx.origin));
     }
 
-    function share_vote(address payable voted_) external started_only() sender_origin() {
-        // The only shareholder can call this method to vote for the contractor
+    // Votings
+
+    // Shareholder voting.
+    // Send the address, or fail = True to vote for the contract failure
+    //
+    // The only shareholder can call this method
+    function share_vote(address payable voted_, bool fail) external started_only() voting_started() sender_origin() {
         if( !_shareholders.contains(tx.origin) ) {
             revert OwnerOnly();
         }
-        _shareholder_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
+        _shareholder_voting[address(tx.origin)] = fail? CONTRACT_FAILED : uint256(uint160(address(voted_)));
+    }
+
+    // Observer voting.
+    // Send the address, or fail = True to vote for the contract failure
+    //
+    // The only observer can call this method
+    function observer_vote(address payable voted_, bool fail) external started_only() voting_started() sender_origin() {
+        if( !_observers.contains(address(tx.origin)) ) {
+            revert OwnerOnly();
+        }
+        _observer_voting[address(tx.origin)] = fail? CONTRACT_FAILED : uint256(uint160(address(voted_)));
     }
 }

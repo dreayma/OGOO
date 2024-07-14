@@ -44,16 +44,16 @@ participants:
     node_selectors: {}
     tolerations: []
     count: 1
-    snooper_enabled: false
-    ethereum_metrics_exporter_enabled: false
-    xatu_sentry_enabled: false
+    snooper_enabled: null
+    ethereum_metrics_exporter_enabled: null
+    xatu_sentry_enabled: null
     prometheus_config:
       scrape_interval: 15s
       labels: {}
     blobber_enabled: false
     blobber_extra_params: []
     builder_network_params: null
-    keymanager_enabled: false
+    keymanager_enabled: null
 network_params:
   network: kurtosis
   network_id: "3151908"
@@ -76,11 +76,15 @@ network_params:
   electra_fork_epoch: 100000000
   eip7594_fork_epoch: 100000001
   eip7594_fork_version: "0x70000038"
-  network_sync_base_url: https://ethpandaops-ethereum-node-snapshots.ams3.digitaloceanspaces.com/
+  # network_sync_base_url: https://ethpandaops-ethereum-node-snapshots.ams3.digitaloceanspaces.com/
+  network_sync_base_url: https://ethpandaops-ethereum-node-snapshots.ams3.cdn.digitaloceanspaces.com/
   data_column_sidecar_subnet_count: 32
   samples_per_slot: 8
   custody_requirement: 1
   target_number_of_peers: 70
+  preset: "mainnet"
+  additional_preloaded_contracts: {}
+  devnet_repo: ethpandaops
 additional_services:
 #  - tx_spammer
 #  - blob_spammer
@@ -150,5 +154,16 @@ global_tolerations: []
 global_node_selectors: {}
 keymanager_enabled: false
 port_publisher:
-  public_port_start: null
   nat_exit_ip: KURTOSIS_IP_ADDR_PLACEHOLDER
+  el:
+    enabled: false
+    public_port_start: 32000
+  cl:
+    enabled: false
+    public_port_start: 33000
+  vc:
+    enabled: false
+    public_port_start: 34000
+  additional_services:
+    enabled: false
+    public_port_start: 35000
