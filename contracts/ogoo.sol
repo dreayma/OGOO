@@ -353,19 +353,19 @@ contract Offer is HasOwner {
         // Counters
         uint observers_count = _observers.length();
         uint256 winner_shares = get_winner_shares();
-        uint256 winner_observers = get_winner_observers();
-        if(
-            winner_shares == 0 || winner_observers == 0 && observers_count != 0
-        ) {
+        if( winner_shares == 0 ) {
             return;
         }
-
         uint256 winner_amount_shares = get_winner_amount_shares();
         if( winner_amount_shares == 0 ) {
             return;
         }
         uint256 winner_local = 0;
         if( observers_count != 0 ) {
+            uint256 winner_observers = get_winner_observers();
+            if( winner_observers == 0 ) {
+                return;
+            }
             if( winner_observers == winner_shares ) {
                 state = OfferState.COMPLETED;
                 completed_at = block.timestamp;
@@ -381,7 +381,7 @@ contract Offer is HasOwner {
         } else if( winner_amount_shares == winner_shares ) {
             state = OfferState.COMPLETED;
             completed_at = block.timestamp;
-            winner_local = winner_observers;
+            winner_local = winner_shares;
         } else {
             // TODO: can ve resolve it using some other way?
             revert VotingConflict();
@@ -583,10 +583,10 @@ contract Offer is HasOwner {
     // When the timeout has expired, returns 0
     //
     // If the share was not cancelled, returns share_unlock_timeout
-    function share_can_be_canceled(address payable shareholder) public view not_completed_only() returns (uint timeout) {
-        if( !_shareholders.contains(address(shareholder)) )
+    function share_can_be_canceled(address shareholder) public view not_completed_only() returns (uint timeout) {
+        if( !_shareholders.contains(shareholder) )
             revert WrongParameter();
-        uint cancelled_at = _shareholder_cancelled_at[address(shareholder)];
+        uint cancelled_at = _shareholder_cancelled_at[shareholder];
         if( cancelled_at == 0 ) {
             return _definition.share_unlock_timeout;
         }
@@ -611,7 +611,7 @@ contract Offer is HasOwner {
         if( state != OfferState.FAILED ) {
             uint cancelled_at = _shareholder_cancelled_at[tx.origin];
             if( cancelled_at == 0 ) {
-                _shareholder_cancelled_at[tx.origin] = block.timestamp;
+                cancelled_at = _shareholder_cancelled_at[tx.origin] = block.timestamp;
             }
             if( cancelled_at + _definition.share_unlock_timeout > block.timestamp ) {
                 return;

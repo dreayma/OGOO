@@ -58,7 +58,7 @@ network_params:
   network: kurtosis
   network_id: "3151908"
   deposit_contract_address: "0x4242424242424242424242424242424242424242"
-  seconds_per_slot: 12
+  seconds_per_slot: 5
   num_validator_keys_per_node: 64
   preregistered_validator_keys_mnemonic:
     "giant issue aisle success illegal bike spike
@@ -79,7 +79,7 @@ network_params:
   # network_sync_base_url: https://ethpandaops-ethereum-node-snapshots.ams3.digitaloceanspaces.com/
   network_sync_base_url: https://ethpandaops-ethereum-node-snapshots.ams3.cdn.digitaloceanspaces.com/
   data_column_sidecar_subnet_count: 32
-  samples_per_slot: 8
+  samples_per_slot: 4
   custody_requirement: 1
   target_number_of_peers: 70
   preset: "mainnet"
