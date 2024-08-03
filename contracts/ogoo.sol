@@ -169,8 +169,8 @@ contract Offer is HasOwner {
     error StartedOnly();
     error PreparedOnly();
     error RunningOnly();
-    error OfferBalanceLow();
-    error OfferCountLow();
+    error ShareBalanceLow();
+    error ShareCountLow();
 
     // Metastate check modifiers
     modifier started_only() {
@@ -199,9 +199,21 @@ contract Offer is HasOwner {
 
     modifier voting_started() {
         if( address(this).balance < _definition.voting_start_balance )
-            revert OfferBalanceLow();
+            revert ShareBalanceLow();
         if( _shareholders.length() < _definition.voting_start_count )
-            revert OfferCountLow();
+            revert ShareCountLow();
+        _;
+    }
+
+    modifier shareholder_only() {
+        if( !_shareholders.contains(tx.origin) )
+            revert OwnerOnly();
+        _;
+    }
+
+    modifier observer_only() {
+        if( !_observers.contains(tx.origin) )
+            revert OwnerOnly();
         _;
     }
 
@@ -604,10 +616,7 @@ contract Offer is HasOwner {
     // If the waiting period is expired while the contract has not been completed,
     // or if the contract is failed, makes the payment back to the shareholder's account
     // and removes the share from the list of shareholders
-    function share_cancel() external not_completed_only() sender_origin() {
-        if( !_shareholders.contains(tx.origin) ) {
-            revert OwnerOnly();
-        }
+    function share_cancel() external not_completed_only() shareholder_only() sender_origin() {
         if( state != OfferState.FAILED ) {
             uint cancelled_at = _shareholder_cancelled_at[tx.origin];
             if( cancelled_at == 0 ) {
@@ -616,8 +625,6 @@ contract Offer is HasOwner {
             if( cancelled_at + _definition.share_unlock_timeout > block.timestamp ) {
                 return;
             }
-//         } else {
-//             _shareholder_cancelled_at[tx.origin] = block.timestamp;
         }
         payable(tx.origin).transfer(_shareholder_share[tx.origin]);
         _shareholders.remove(tx.origin);
@@ -629,25 +636,21 @@ contract Offer is HasOwner {
 
     // Votings
 
-    // Shareholder voting.
-    // Send the address, or fail = True to vote for the contract failure
-    //
-    // The only shareholder can call this method
-    function share_vote(address payable voted_, bool fail) external started_only() voting_started() sender_origin() {
-        if( !_shareholders.contains(tx.origin) ) {
-            revert OwnerOnly();
-        }
-        _shareholder_voting[address(tx.origin)] = fail? CONTRACT_FAILED : uint256(uint160(address(voted_)));
+    // Shareholder voting for the contractor's address
+    function share_vote(address payable voted_) external started_only() shareholder_only()  voting_started() sender_origin() {
+        _shareholder_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
+    }
+    // Shareholder voting for the offer failure
+    function share_vote_failure() external started_only() shareholder_only() voting_started() sender_origin() {
+        _shareholder_voting[address(tx.origin)] = CONTRACT_FAILED;
     }
 
-    // Observer voting.
-    // Send the address, or fail = True to vote for the contract failure
-    //
-    // The only observer can call this method
-    function observer_vote(address payable voted_, bool fail) external started_only() voting_started() sender_origin() {
-        if( !_observers.contains(address(tx.origin)) ) {
-            revert OwnerOnly();
-        }
-        _observer_voting[address(tx.origin)] = fail? CONTRACT_FAILED : uint256(uint160(address(voted_)));
+    // Observer voting for the contractor's address
+    function observer_vote(address payable voted_) external started_only() observer_only() voting_started() sender_origin() {
+        _observer_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
+    }
+    // Observer voting for the offer failure
+    function observer_vote_failure() external started_only() observer_only() voting_started() sender_origin() {
+        _observer_voting[address(tx.origin)] = CONTRACT_FAILED;
     }
 }
