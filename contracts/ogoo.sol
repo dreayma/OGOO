@@ -270,26 +270,27 @@ contract Offer is HasOwner {
     //
     // Creating a share is available for anybody who would like to became a shareholder
     //
-    // You should call this method with an amount to be transferred as your share.
-    // Send the minimal share amount when creating a share.You also will increace
-    // share amount every time sending any amount using this function after that.
+    // You should transfer to the offer's account with an amount to be your share.
+    // Send the minimal share amount when creating a share. You also will increace
+    // share amount every time sending any amount after that.
     //
-    // The amount sent will be immediately transferred to the offer account, and your
-    // own share is stored in a separate data member.
+    // Your share is stored in a separate data member.
     //
     // Cancelling your share is available and needs a special procedure.
-    // See share_cancel() and share_revert_share(). Reverting share will move
+    // See share_cancel(). Reverting share will move
     // the whole share amount back to the shareholder's account. It's available
     // only for the not completed offer.
     //
     // Use Ethers JS syntax like
     // ```
-    // var txs = await shareholder_access.share_create({value: 30000000000000001n});
+    // var txs = await account_shareholder.sendTransaction({to: offer_address, value: 30000000000000001n});
     // var txs_receipt = await txs.wait();
     // ```
-    function share_create() external payable sender_origin() {
+    receive() external payable sender_origin() {
         if( is_finished() )
             revert StartedOnly();
+        if( tx.origin == address(0) )
+            revert WrongParameter();
         bool got = _shareholders.contains(tx.origin);
         if( !got ) {
             if( msg.value < _definition.share_min_balance )
