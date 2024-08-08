@@ -9,14 +9,7 @@
 pragma solidity ^0.8.20;
 
 import { ArrayMap, Map } from "solidity-dynamic-array/contracts/ArrayMap.sol";
-import { EnumerableMap } from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-error WrongState(); // The function should not be called in this state of the contract
-error WrongParameter(); // The function should not be called with this parameter
-error TooLowShareBalance(); // Creating share with the balance less than provided is forbidden
-error VotingConflict(); // Happens when the observers voting conflichs with the both, share count and share amount votings
-error ProxyForbidden(); // Happens if the ts.origin != msg.sender
 
 abstract contract HasOwner {
     // If a contract is HasOwner, it automatically creates a payable public attribute `owner`
@@ -24,6 +17,7 @@ abstract contract HasOwner {
     // the contract instance creation
 
     error OwnerOnly(); // Only owner allowed to evaluate this operation
+    error ProxyForbidden(); // Happens if the ts.origin != msg.sender
 
     // The attribute relates to the contract owner
     address payable public owner;
@@ -48,7 +42,7 @@ abstract contract HasOwner {
         if( tx.origin != msg.sender )
             revert ProxyForbidden();
         _;
-}
+    }
 }
 
 struct OfferDefinition {
@@ -131,7 +125,6 @@ contract Offer is HasOwner {
     }
 
     // Dynamic contract state
-    using EnumerableMap for EnumerableMap.UintToAddressMap;
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private _shareholders;                 // shareholders set
     mapping(address => uint) private _shareholder_voting;           // shareholder account -> voting for address or failure
@@ -166,11 +159,18 @@ contract Offer is HasOwner {
     }
 
     // Errors to revert when the state is wrong to call
+    error WrongState(); // The function should not be called in this state of the contract
+    error WrongParameter(); // The function should not be called with this parameter
+    error TooLowShareBalance(); // Creating share with the balance less than provided is forbidden
+    error VotingConflict(); // Happens when the observers voting conflichs with the both, share count and share amount votings
     error StartedOnly();
     error PreparedOnly();
     error RunningOnly();
     error ShareBalanceLow();
     error ShareCountLow();
+    error NoWinnerShares();
+    error NoWinnerSharesAmount();
+    error NoWinnerObservers();
 
     // Metastate check modifiers
     modifier started_only() {
@@ -367,17 +367,17 @@ contract Offer is HasOwner {
         uint observers_count = _observers.length();
         uint256 winner_shares = get_winner_shares();
         if( winner_shares == 0 ) {
-            return;
+            revert NoWinnerShares();
         }
         uint256 winner_amount_shares = get_winner_amount_shares();
         if( winner_amount_shares == 0 ) {
-            return;
+            revert NoWinnerSharesAmount();
         }
         uint256 winner_local = 0;
         if( observers_count != 0 ) {
             uint256 winner_observers = get_winner_observers();
             if( winner_observers == 0 ) {
-                return;
+                revert NoWinnerObservers();
             }
             if( winner_observers == winner_shares ) {
                 state = OfferState.COMPLETED;
@@ -408,8 +408,9 @@ contract Offer is HasOwner {
         }
         winner = payable(address(uint160(winner_local)));
         // Award the winner by the whole collected amount
-        winner.transfer(address(this).balance);
-        emit OfferCompleted(winner, address(this).balance);
+        uint amount = address(this).balance;
+        winner.transfer(amount);
+        emit OfferCompleted(winner, amount);
     }
 
     // Returns (uint) winner by share count, or CONTRACT_FAILED
@@ -627,11 +628,13 @@ contract Offer is HasOwner {
                 return;
             }
         }
-        payable(tx.origin).transfer(_shareholder_share[tx.origin]);
+        uint shareholder_share = _shareholder_share[tx.origin];
+        // All data should be zeroed to prevent data phantom and reentrance attack
         _shareholders.remove(tx.origin);
         _shareholder_share[tx.origin] = 0;
         _shareholder_voting[tx.origin] = 0;
         _shareholder_cancelled_at[tx.origin] = 0;
+        payable(tx.origin).transfer(shareholder_share);
         emit CancelShare(payable(tx.origin));
     }
 
