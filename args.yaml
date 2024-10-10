@@ -81,7 +81,7 @@ network_params:
   data_column_sidecar_subnet_count: 32
   samples_per_slot: 4
   custody_requirement: 1
-  target_number_of_peers: 70
+  #target_number_of_peers: 70
   preset: "mainnet"
   additional_preloaded_contracts: {}
   devnet_repo: ethpandaops
@@ -113,7 +113,7 @@ snooper_enabled: false
 ethereum_metrics_exporter_enabled: false
 parallel_keystore_generation: false
 disable_peer_scoring: false
-grafana_additional_dashboards: []
+#grafana_additional_dashboards: []
 persistent: false
 mev_type: null
 mev_params:

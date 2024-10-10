@@ -2,7 +2,7 @@
 
 set -x
 
-repositories=`docker images --format '{{ .Repository }}' | egrep '(kurtosistech|ethereum|ethpandaops|grafana|prometheus|lighthouse|flashbots|protolambda|badouralix|traefik|timberio|fluent)'`
+repositories=`docker images --format '{{ .Repository }}' | egrep '(alpine|kurtosistech|ethereum|ethpandaops|grafana|prometheus|lighthouse|flashbots|protolambda|badouralix|traefik|timberio|fluent)'`
 
 echo $repositories
 

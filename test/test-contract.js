@@ -15,16 +15,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 30000000000000000n,
+        "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var test_definition_values = [];
     for(var k in test_definition) {
@@ -32,13 +32,37 @@ describe("Contract Tests", function () {
     }
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var start_balance = await account_owner.provider.getBalance(account_owner.address);
-    console.debug("Owner account before deployment:", start_balance);
+    var beginning_balance = await account_owner.provider.getBalance(account_owner.address);
+    console.debug("Owner account at the beginning:", beginning_balance);
     var Offer = await ethers.getContractFactory("Offer", account_owner);
+    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+    // Gas price and other fee data
+    var fee_data = await account_owner.provider.getFeeData();
+    // Calculate gas for deployment
+    var deployment_gas_price = await account_owner.estimateGas(await Offer.getDeployTransaction(test_definition));
+    console.debug("Projected deployment price:", deployment_gas_price, deployment_gas_price * fee_data.gasPrice, "Amount $:", to$(deployment_gas_price * fee_data.gasPrice));
+    var start_balance = await account_owner.provider.getBalance(account_owner.address);
+    console.debug("Owner account before deployment:", start_balance, start_balance - beginning_balance);
     // Start deployment, returning a promise that resolves to a contract object
+
+    // sample for the online event filter for the OfferCreated event when the address is not yet known
+    var create_offer_filter = {
+        topics: [
+          ethers.id('OfferCreated()')
+        ]
+    }
+    var offer_created_log;
+    var create_offer_handler = (log) => {
+        console.log('OfferCreated event for:', log.address);
+        offer_created_log = log;
+    }
+    expect(offer_created_log).to.be.a('undefined');
+    account_owner.provider.on(create_offer_filter, create_offer_handler);
     var offer = await Offer.deploy(test_definition);
     console.info("Waiting for deployment...");
     var v = await offer.waitForDeployment();
+    account_owner.provider.off(create_offer_filter, create_offer_handler);
+    expect(offer_created_log).to.not.be.a('undefined');
     console.info("Contract deployed to address:", offer.target);
     var end_balance = await account_owner.provider.getBalance(account_owner.address);
     var diff = start_balance - end_balance;
@@ -47,10 +71,9 @@ describe("Contract Tests", function () {
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_observer = accounts[1]; // the account will be a signer to check an access from the observer
-    var account_shareholder = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
-    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
     // Gettings access from the owner
     var o = new ethers.Contract(
@@ -66,11 +89,11 @@ describe("Contract Tests", function () {
       account_observer, // Observer account trying access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -95,7 +118,7 @@ describe("Contract Tests", function () {
       expect(test_definition_values).to.have.deep.members(definition);
       await new Promise(resolve => setTimeout(resolve, 1000));
       // test updating the definition
-      test_definition.shareholders_vote_amount_share = 9900n;
+      test_definition.contributors_vote_fund_percent = 9900n;
       var txod = await o.definition_update(test_definition);
       var txod_receipt = await txod.wait();
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -106,48 +129,48 @@ describe("Contract Tests", function () {
       }
       expect(test_definition_values).to.have.deep.members(definition);
 
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
-      // test the shareholder share_min_balance
-      account_shareholder.sendTransaction({to:offer.target, value:0n}).should.eventually.rejectedWith('reverted');
-      account_shareholder.sendTransaction({to:offer.target, value:20000000000000001n}).should.eventually.rejectedWith('reverted');
+      // test the contributor contribution_min_balance
+      account_contributor.sendTransaction({to:offer.target, value:0n}).should.eventually.rejectedWith('reverted');
+      account_contributor.sendTransaction({to:offer.target, value:20000000000000001n}).should.eventually.rejectedWith('reverted');
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
 
-      var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      var diff = start_balance_shareholder - end_balance_shareholder;
-      console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
-
-      end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
-
-      // test the shareholder can increase the balance
-      await (await account_shareholder.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
-
-      end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      diff = start_balance_shareholder - end_balance_shareholder;
-      console.debug("Shareholder account after updating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+      var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      var diff = start_balance_contributor - end_balance_contributor;
+      console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after updating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
+
+      // test the contributor can increase the balance
+      await (await account_contributor.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
+
+      end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      diff = start_balance_contributor - end_balance_contributor;
+      console.debug("Contributor account after updating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
+
+      end_balance_offer = await account_owner.provider.getBalance(offer.target);
+      console.debug("Offer account after updating contribution:", end_balance_offer);
 
       var end_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account after creating share:", end_balance_owner);
+      console.debug("Owner account after creating contribution:", end_balance_owner);
 
-      // test access to the origin's share
-      var outside_share = await outside_access.share_get_for_origin();
-      outside_share.should.be.equal(0n);
+      // test access to the origin's contribution
+      var outside_contribution = await outside_access.contribution_get_for_origin();
+      outside_contribution.should.be.equal(0n);
 
-      var shareholder_share = await shareholder_access.share_get_for_origin();
-      shareholder_share.should.be.equal(40000000000000002n);
+      var contributor_contribution = await contributor_access.contribution_get_for_origin();
+      contributor_contribution.should.be.equal(40000000000000002n);
 
       // testing observers creation
       await (await o.observer_create(account_outside.address)).wait();
@@ -162,9 +185,25 @@ describe("Contract Tests", function () {
       // test removing absent observer
       o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted');
 
-      // Approve the contract to make it unmutable
-      await (await o.approve()).wait();
-
+      console.log('Going to approve the contract...');
+      // try to approve by the outside account should lead to revert
+      o.interface.parseError((await outside_access.approve().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('OwnerOnly');
+      // approve and check the runtime event generation
+      {
+          var offer_approved_event;
+          var offer_approved_event_outside;
+          o.once('OfferApproved', (event) => {
+            offer_approved_event = event;
+          });
+          outside_access.once('OfferApproved', (event) => {
+            offer_approved_event_outside = event;
+          });
+          // Approve the contract to make it unmutable
+          await (await o.approve()).wait();
+          expect(offer_approved_event).to.not.be.a('undefined');
+          expect(offer_approved_event_outside).to.not.be.a('undefined');
+      }
+      console.log('...the contract approved');
       // Trying to modify observers list should be failed
       o.interface.parseError((await o.observer_create(account_outside.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('PreparedOnly');
       o.interface.parseError((await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('PreparedOnly');
@@ -173,16 +212,19 @@ describe("Contract Tests", function () {
       var state = await contractor_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
-      await (await shareholder_access.share_vote(account_contractor.address)).wait();
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
       o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       state = await contractor_access.state();
-      console.log('State after shareholder vote', state)
+      console.log('State after contributor vote', state)
       state.should.be.equal(1n);
 
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
       await (await observer_access.observer_vote(account_contractor.address)).wait();
-      await (await contractor_access.calculate_voting()).wait();
+      var start_balance_calculator = await account_outside.provider.getBalance(account_outside.address);
+      await (await outside_access.calculate_voting()).wait();
+      var end_balance_calculator = await account_outside.provider.getBalance(account_outside.address);
+      console.debug("Spent for the calculation:", start_balance_calculator - end_balance_calculator, to$(start_balance_calculator - end_balance_calculator));
       state = await contractor_access.state();
       console.log('State after observer vote', state);
       state.should.be.equal(2n);
@@ -193,6 +235,60 @@ describe("Contract Tests", function () {
       var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account after contract success:", end_balance_contractor);
       console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+
+      // check the events history
+      {
+          var events = await o.queryFilter(o.filters.OfferCreated());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferDefinitionUpdated());
+          events.length.should.be.equal(1);
+          expect(events[0].args[0]).to.deep.equal(test_definition_values);
+      }
+      {
+          var events = await o.queryFilter(outside_access.filters.ObserverCreated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_outside.address);
+          expect(events[1].args[0]).to.equal(account_observer.address);
+      }
+      {
+          var events = await o.queryFilter(outside_access.filters.ObserverRemoved());
+          events.length.should.be.equal(1);
+          expect(events[0].args[0]).to.equal(account_outside.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferApproved());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCreated());
+          events.length.should.be.equal(1);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionUpdated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor.address);
+          expect(events[0].args[1]).to.equal(30000000000000001n);
+          expect(events[1].args[1]).to.equal(40000000000000002n);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributorVote());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
+      }
+      {
+          var events = await o.queryFilter(o.filters.ObserverVote());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_observer.address,account_contractor.address,false])
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferCompleted());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contractor.address,40000000000000002n])
+      }
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -206,16 +302,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 30000000000000000n,
+        "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -233,8 +329,8 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", await offer.owner());
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_shareholder = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
@@ -246,16 +342,16 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -278,48 +374,48 @@ describe("Contract Tests", function () {
       expect(owner).to.equal(account_owner.address);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
-      var start_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-      console.debug("Shareholder2 account before creating share:", start_balance_shareholder2);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
+      var start_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+      console.debug("Contributor2 account before creating contribution:", start_balance_contributor2);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder.sendTransaction({to:offer.target, value: 30000000000000001n})).wait();
-      await (await account_shareholder2.sendTransaction({to:offer.target, value: 30000000000000001n})).wait();
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor.sendTransaction({to:offer.target, value: 30000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 30000000000000001n})).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
       {
-        var end_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-        var diff = start_balance_shareholder2 - end_balance_shareholder2;
-        console.debug("Shareholder2 account after creating share:", end_balance_shareholder2, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+        var diff = start_balance_contributor2 - end_balance_contributor2;
+        console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
       var end_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account after creating share:", end_balance_owner);
+      console.debug("Owner account after creating contribution:", end_balance_owner);
 
-      // test access to the origin's share
-      var outside_share = await outside_access.share_get_for_origin();
-      outside_share.should.be.equal(0n);
+      // test access to the origin's contribution
+      var outside_contribution = await outside_access.contribution_get_for_origin();
+      outside_contribution.should.be.equal(0n);
 
       {
-        var shareholder_share = await shareholder_access.share_get_for_origin();
-        shareholder_share.should.be.equal(30000000000000001n);
+        var contributor_contribution = await contributor_access.contribution_get_for_origin();
+        contributor_contribution.should.be.equal(30000000000000001n);
       }
       {
-        var shareholder2_share = await shareholder2_access.share_get_for_origin();
-        shareholder2_share.should.be.equal(30000000000000001n);
+        var contributor2_contribution = await contributor2_access.contribution_get_for_origin();
+        contributor2_contribution.should.be.equal(30000000000000001n);
       }
 
       // Approve the contract to make it unmutable
@@ -337,14 +433,14 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      await (await shareholder_access.share_vote(account_contractor.address)).wait();
-      console.debug("Shareholder has just voted");
-      await (await shareholder2_access.share_vote(account_contractor.address)).wait();
-      console.debug("Shareholder2 has just voted");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributor has just voted");
+      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributor2 has just voted");
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just recalculated");
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -354,6 +450,42 @@ describe("Contract Tests", function () {
       var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account after contract success:", end_balance_contractor);
       console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+
+      // check the events history
+      {
+          var events = await o.queryFilter(o.filters.OfferCreated());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferApproved());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCreated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionUpdated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+          expect(events[0].args[1]).to.equal(30000000000000001n);
+          expect(events[1].args[1]).to.equal(30000000000000001n);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributorVote());
+          events.length.should.be.equal(2);
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
+          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contractor.address,false])
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferCompleted());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contractor.address,60000000000000002n])
+      }
+
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -361,22 +493,22 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
-  it("Test the share unlock timeout preventing share cancelling", async function () {
-    console.log("Test the share unlock timeout preventing share cancelling");
+  it("Test the contribution unlock timeout preventing contribution cancelling", async function () {
+    console.log("Test the contribution unlock timeout preventing contribution cancelling");
     var test_definition = {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 120n,
+        "contribution_unlock_timeout": 120n,
         "observer_award": 0n,
-        "share_min_balance": 30000000000000000n,
+        "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -394,8 +526,8 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", await offer.owner());
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_shareholder = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
@@ -407,16 +539,16 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -437,48 +569,48 @@ describe("Contract Tests", function () {
     var owner = await o.owner();
     try {
       expect(owner).to.equal(account_owner.address);
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
-      var start_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-      console.debug("Shareholder2 account before creating share:", start_balance_shareholder2);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
+      var start_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+      console.debug("Contributor2 account before creating contribution:", start_balance_contributor2);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder.sendTransaction({to: offer.target, value: 30000000000000001n})).wait();
-      await (await account_shareholder2.sendTransaction({to:offer.target, value: 30000000000000001n})).wait();
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor.sendTransaction({to: offer.target, value: 30000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 30000000000000001n})).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
       {
-        var end_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-        var diff = start_balance_shareholder2 - end_balance_shareholder2;
-        console.debug("Shareholder2 account after creating share:", end_balance_shareholder2, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+        var diff = start_balance_contributor2 - end_balance_contributor2;
+        console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
       var end_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account after creating share:", end_balance_owner);
+      console.debug("Owner account after creating contribution:", end_balance_owner);
 
-      // test access to the origin's share
-      var outside_share = await outside_access.share_get_for_origin();
-      outside_share.should.be.equal(0n);
+      // test access to the origin's contribution
+      var outside_contribution = await outside_access.contribution_get_for_origin();
+      outside_contribution.should.be.equal(0n);
 
       {
-        var shareholder_share = await shareholder_access.share_get_for_origin();
-        shareholder_share.should.be.equal(30000000000000001n);
+        var contributor_contribution = await contributor_access.contribution_get_for_origin();
+        contributor_contribution.should.be.equal(30000000000000001n);
       }
       {
-        var shareholder2_share = await shareholder2_access.share_get_for_origin();
-        shareholder2_share.should.be.equal(30000000000000001n);
+        var contributor2_contribution = await contributor2_access.contribution_get_for_origin();
+        contributor2_contribution.should.be.equal(30000000000000001n);
       }
 
       // Approve the contract to make it unmutable
@@ -492,18 +624,18 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      await(await shareholder_access.share_vote(account_contractor.address)).wait();
-      console.debug("Shareholder has just voted");
-      await (await shareholder2_access.share_cancel()).wait();
-      console.debug("Shareholder2 has just cancelled share");
+      await(await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributor has just voted");
+      await (await contributor2_access.contribution_cancel()).wait();
+      console.debug("Contributor2 has just cancelled contribution");
       {
-        var time_to_cancel = await shareholder2_access.share_can_be_canceled(account_shareholder2.address);
-        console.log("Shareholder2 time to cancel", time_to_cancel);
+        var time_to_cancel = await contributor2_access.contribution_can_be_canceled(account_contributor2.address);
+        console.log("Contributor2 time to cancel", time_to_cancel);
       }
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just recalculated");
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -520,22 +652,22 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
-  it("Test the share unlock timeout success share cancelling", async function () {
-    console.log("Test the share unlock timeout success share cancelling");
+  it("Test the contribution unlock timeout success contribution cancelling", async function () {
+    console.log("Test the contribution unlock timeout success contribution cancelling");
     var test_definition = {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 10n,
+        "contribution_unlock_timeout": 10n,
         "observer_award": 0n,
-        "share_min_balance": 30000000000000000n,
+        "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -553,8 +685,8 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", await offer.owner());
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_shareholder = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
@@ -566,16 +698,16 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -598,48 +730,48 @@ describe("Contract Tests", function () {
       expect(owner).to.equal(account_owner.address);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
-      var start_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-      console.debug("Shareholder2 account before creating share:", start_balance_shareholder2);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
+      var start_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+      console.debug("Contributor2 account before creating contribution:", start_balance_contributor2);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
-      await (await account_shareholder2.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
       {
-        var end_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-        var diff = start_balance_shareholder2 - end_balance_shareholder2;
-        console.debug("Shareholder2 account after creating share:", end_balance_shareholder2, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+        var diff = start_balance_contributor2 - end_balance_contributor2;
+        console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
       var end_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account after creating share:", end_balance_owner);
+      console.debug("Owner account after creating contribution:", end_balance_owner);
 
-      // test access to the origin's share
-      var outside_share = await outside_access.share_get_for_origin();
-      outside_share.should.be.equal(0n);
+      // test access to the origin's contribution
+      var outside_contribution = await outside_access.contribution_get_for_origin();
+      outside_contribution.should.be.equal(0n);
 
       {
-        var shareholder_share = await shareholder_access.share_get_for_origin();
-        shareholder_share.should.be.equal(30000000000000001n);
+        var contributor_contribution = await contributor_access.contribution_get_for_origin();
+        contributor_contribution.should.be.equal(30000000000000001n);
       }
       {
-        var shareholder2_share = await shareholder2_access.share_get_for_origin();
-        shareholder2_share.should.be.equal(30000000000000001n);
+        var contributor2_contribution = await contributor2_access.contribution_get_for_origin();
+        contributor2_contribution.should.be.equal(30000000000000001n);
       }
 
       // Approve the contract to make it unmutable
@@ -652,28 +784,28 @@ describe("Contract Tests", function () {
 
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await shareholder_access.share_vote(account_contractor.address)).wait();
-      console.debug("Shareholder has just voted");
-      await (await shareholder2_access.share_cancel()).wait();
-      console.debug("Shareholder2 has just cancelled share");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributor has just voted");
+      await (await contributor2_access.contribution_cancel()).wait();
+      console.debug("Contributor2 has just cancelled contribution");
       while(42) {
-        var time_to_cancel = await shareholder2_access.share_can_be_canceled(account_shareholder2.address);
+        var time_to_cancel = await contributor2_access.contribution_can_be_canceled(account_contributor2.address);
         if( !time_to_cancel )
           break;
-        console.log("Shareholder2 time to cancel", time_to_cancel);
+        console.log("Contributor2 time to cancel", time_to_cancel);
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      await (await shareholder2_access.share_cancel()).wait();
+      await (await contributor2_access.contribution_cancel()).wait();
       {
         var interm_balance_offer = await account_owner.provider.getBalance(offer.target);
-        console.debug("Offer account after cancel share", interm_balance_offer);
+        console.debug("Offer account after cancel contribution", interm_balance_offer);
         interm_balance_offer.should.be.equal(30000000000000001n);
       }
-      console.debug("Shareholder2 has just successfully cancelled share");
+      console.debug("Contributor2 has just successfully cancelled contribution");
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just recalculated");
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -683,6 +815,45 @@ describe("Contract Tests", function () {
       var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account after contract success:", end_balance_contractor);
       console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+
+      // check the events history
+      {
+          var events = await o.queryFilter(o.filters.OfferCreated());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferApproved());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCreated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionUpdated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+          expect(events[0].args[1]).to.equal(30000000000000001n);
+          expect(events[1].args[1]).to.equal(30000000000000001n);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributorVote());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCanceled());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contributor2.address])
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferCompleted());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contractor.address,30000000000000001n])
+      }
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -696,16 +867,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 10n,
+        "contribution_unlock_timeout": 10n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 20000000000000000n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -723,8 +894,8 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", await offer.owner());
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_shareholder = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
@@ -736,16 +907,16 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -768,25 +939,25 @@ describe("Contract Tests", function () {
       expect(owner).to.equal(account_owner.address);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
-      // test the shareholder created an account
-      await (await account_shareholder.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
+      // test the contributor created an account
+      await (await account_contributor.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
@@ -799,30 +970,30 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      o.interface.parseError((await shareholder_access.share_vote(account_contractor.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('ShareBalanceLow');
+      o.interface.parseError((await contributor_access.contributor_vote(account_contractor.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('ContributionFundLow');
       {
         var state = await contractor_access.state();
         console.log('State should not be changed', state);
         state.should.be.equal(1n);
       }
 
-      var start_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-      console.debug("Shareholder2 account before creating share:", start_balance_shareholder2);
-      await (await account_shareholder2.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
+      var start_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+      console.debug("Contributor2 account before creating contribution:", start_balance_contributor2);
+      await (await account_contributor2.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
       {
-        var end_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-        var diff = start_balance_shareholder2 - end_balance_shareholder2;
-        console.debug("Shareholder2 account after creating share:", end_balance_shareholder2, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+        var diff = start_balance_contributor2 - end_balance_contributor2;
+        console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
-      console.debug("Shareholders voting should success now");
-      await (await shareholder_access.share_vote(account_contractor.address)).wait();
-      await (await shareholder2_access.share_vote(account_contractor.address)).wait();
-      console.debug("Shareholders have just voted");
+      console.debug("Contributors voting should success now");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributors have just voted");
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just recalculated");
       {
         var state = await contractor_access.state();
-        console.log('State after shareholders vote', state)
+        console.log('State after contributors vote', state)
         state.should.be.equal(2n);
       }
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -832,6 +1003,42 @@ describe("Contract Tests", function () {
       var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account after contract success:", end_balance_contractor);
       console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+
+      // check the events history
+      {
+          var events = await o.queryFilter(o.filters.OfferCreated());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferApproved());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCreated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionUpdated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+          expect(events[0].args[1]).to.equal(10000000000000001n);
+          expect(events[1].args[1]).to.equal(30000000000000001n);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributorVote());
+          events.length.should.be.equal(2);
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
+          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contractor.address,false])
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferCompleted());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contractor.address,40000000000000002n])
+      }
+
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -845,16 +1052,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 10n,
+        "contribution_unlock_timeout": 10n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 2n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -872,8 +1079,8 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", await offer.owner());
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_shareholder = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
@@ -885,16 +1092,16 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -915,25 +1122,25 @@ describe("Contract Tests", function () {
     var owner = await o.owner();
     try {
       expect(owner).to.equal(account_owner.address);
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
-      // test the shareholder created an account
-      await (await account_shareholder.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
+      // test the contributor created an account
+      await (await account_contributor.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
@@ -946,31 +1153,31 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      o.interface.parseError((await shareholder_access.share_vote(account_contractor.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('ShareCountLow');
+      o.interface.parseError((await contributor_access.contributor_vote(account_contractor.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('ContributionsCountLow');
       {
         var state = await contractor_access.state();
         console.log('State should not be changed', state);
         state.should.be.equal(1n);
       }
 
-      var start_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-      console.debug("Shareholder2 account before creating share:", start_balance_shareholder2);
-      await (await account_shareholder2.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
+      var start_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+      console.debug("Contributor2 account before creating contribution:", start_balance_contributor2);
+      await (await account_contributor2.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
       {
-        var end_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-        var diff = start_balance_shareholder2 - end_balance_shareholder2;
-        console.debug("Shareholder2 account after creating share:", end_balance_shareholder2, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+        var diff = start_balance_contributor2 - end_balance_contributor2;
+        console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
-      console.debug("Shareholders voting should success now");
-      await (await shareholder_access.share_vote(account_contractor.address)).wait();
-      await (await shareholder2_access.share_vote(account_contractor.address)).wait();
-      console.debug("Shareholders have just voted");
+      console.debug("Contributors voting should success now");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributors have just voted");
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just recalculated");
 
       {
         var state = await contractor_access.state();
-        console.log('State after shareholders vote', state)
+        console.log('State after contributors vote', state)
         state.should.be.equal(2n);
       }
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -980,6 +1187,41 @@ describe("Contract Tests", function () {
       var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account after contract success:", end_balance_contractor);
       console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+
+      // check the events history
+      {
+          var events = await o.queryFilter(o.filters.OfferCreated());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferApproved());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCreated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionUpdated());
+          events.length.should.be.equal(2);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[1].args[0]).to.equal(account_contributor2.address);
+          expect(events[0].args[1]).to.equal(10000000000000001n);
+          expect(events[1].args[1]).to.equal(30000000000000001n);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributorVote());
+          events.length.should.be.equal(2);
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
+          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contractor.address,false])
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferCompleted());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contractor.address,40000000000000002n])
+      }
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -993,16 +1235,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 2n,
         "voting_start_timeout": 10n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1020,7 +1262,7 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", await offer.owner());
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_shareholder = accounts[1]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1031,11 +1273,11 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
 
     // Getting access from the outside
@@ -1049,14 +1291,14 @@ describe("Contract Tests", function () {
     var owner = await o.owner();
     try {
       expect(owner).to.equal(account_owner.address);
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
@@ -1065,16 +1307,16 @@ describe("Contract Tests", function () {
         console.log('State before first vote', state);
         state.should.be.equal(1n);
       }
-      // test the shareholder created an account
-      await (await account_shareholder.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
+      // test the contributor created an account
+      await (await account_contributor.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
       console.debug("Waiting for the voting start timeout");
       await new Promise(resolve => setTimeout(resolve, 10000));
@@ -1086,15 +1328,49 @@ describe("Contract Tests", function () {
         state.should.be.equal(3n);
       }
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after contract failure, share has not been reverted yet", final_balance_offer);
+      console.debug("Offer account after contract failure, contribution has not been reverted yet", final_balance_offer);
       final_balance_offer.should.be.equal(10000000000000001n);
 
-      console.log('Shareholder may revert the share immediately');
-      await (await shareholder_access.share_cancel()).wait();
+      console.log('Contributor may revert the contribution immediately');
+      await (await contributor_access.contribution_cancel()).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder's account after reverting share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor's account after reverting contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
+      }
+
+      // check the events history
+      {
+          var events = await o.queryFilter(o.filters.OfferCreated());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferApproved());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCreated());
+          events.length.should.be.equal(1);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionUpdated());
+          events.length.should.be.equal(1);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[0].args[1]).to.equal(10000000000000001n);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributorVote());
+          events.length.should.be.equal(0);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferFailed());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCanceled());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contributor.address])
       }
     } catch(e) {
       if( e.data ) {
@@ -1110,16 +1386,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 30000000000000000n,
+        "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var start_balance = await account_owner.provider.getBalance(account_owner.address);
@@ -1137,7 +1413,7 @@ describe("Contract Tests", function () {
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_observer = accounts[1]; // the account will be a signer to check an access from the observer
-    var account_shareholder = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
@@ -1156,11 +1432,11 @@ describe("Contract Tests", function () {
       account_observer, // Observer account trying access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -1183,24 +1459,24 @@ describe("Contract Tests", function () {
       expect(owner).to.equal(account_owner.address);
       // test updating the definition
 
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
 
-      var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      var diff = start_balance_shareholder - end_balance_shareholder;
-      console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+      var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      var diff = start_balance_contributor - end_balance_contributor;
+      console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
       await (await o.observer_create(account_observer.address)).wait();
       console.log("Registered observer address to work with:", account_observer.address);
@@ -1212,10 +1488,10 @@ describe("Contract Tests", function () {
       var state = await contractor_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
-      await (await shareholder_access.share_vote_failure()).wait();
+      await (await contributor_access.contributor_vote_failure()).wait();
       o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       state = await contractor_access.state();
-      console.log('State after shareholder vote', state)
+      console.log('State after contributor vote', state)
       state.should.be.equal(1n);
       await (await observer_access.observer_vote_failure()).wait();
       await (await contractor_access.calculate_voting()).wait();
@@ -1225,12 +1501,47 @@ describe("Contract Tests", function () {
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
       console.debug("Offer account after contract failure", final_balance_offer);
       final_balance_offer.should.be.equal(30000000000000001n);
-      console.log('Shareholder may revert the share immediately');
-      await (await shareholder_access.share_cancel()).wait();
+      console.log('Contributor may revert the contribution immediately');
+      await (await contributor_access.contribution_cancel()).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder's account after reverting share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor's account after reverting contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
+      }
+
+      // check the events history
+      {
+          var events = await o.queryFilter(o.filters.OfferCreated());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferApproved());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCreated());
+          events.length.should.be.equal(1);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionUpdated());
+          events.length.should.be.equal(1);
+          expect(events[0].args[0]).to.equal(account_contributor.address);
+          expect(events[0].args[1]).to.equal(30000000000000001n);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributorVote());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contributor.address,'0x0',true])
+      }
+      {
+          var events = await o.queryFilter(o.filters.OfferFailed());
+          events.length.should.be.equal(1);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ContributionCanceled());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_contributor.address])
       }
     } catch(e) {
       if( e.data ) {
@@ -1245,16 +1556,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 20n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 10000n,
-        "shareholders_vote_amount_share": 10000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1272,8 +1583,8 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", await offer.owner());
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_shareholder = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
+    var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
@@ -1285,16 +1596,16 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder, // Shareholder account trying access to the contract
+      account_contributor, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
 
     // Getting access from the outside
@@ -1310,10 +1621,10 @@ describe("Contract Tests", function () {
       expect(owner).to.equal(account_owner.address);
 
       var start_balance_owner = await account_owner.provider.getBalance(account_owner.address);
-      console.debug("Owner account before creating share:", start_balance_owner);
+      console.debug("Owner account before creating contribution:", start_balance_owner);
 
       var start_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account before creating share:", start_balance_offer);
+      console.debug("Offer account before creating contribution:", start_balance_offer);
 
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
@@ -1323,32 +1634,32 @@ describe("Contract Tests", function () {
         console.log('State before first vote', state);
         state.should.be.equal(1n);
       }
-      // test the shareholder created an account
-      var start_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-      console.debug("Shareholder account before creating share:", start_balance_shareholder);
+      // test the contributor created an account
+      var start_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+      console.debug("Contributor account before creating contribution:", start_balance_contributor);
       {
-        await (await account_shareholder.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
+        await (await account_contributor.sendTransaction({to:offer.target, value:10000000000000001n})).wait();
 
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
-      var start_balance_shareholder2 = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-      console.debug("Shareholder2 account before creating share:", start_balance_shareholder2);
+      var start_balance_contributor2 = await account_contributor2.provider.getBalance(account_contributor2.address);
+      console.debug("Contributor2 account before creating contribution:", start_balance_contributor2);
       {
-        await (await account_shareholder2.sendTransaction({to:offer.target, value:20000000000000002n})).wait();
+        await (await account_contributor2.sendTransaction({to:offer.target, value:20000000000000002n})).wait();
 
-        var end_balance_shareholder = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-        var diff = start_balance_shareholder2 - end_balance_shareholder;
-        console.debug("Shareholder2 account after creating share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor2.provider.getBalance(account_contributor2.address);
+        var diff = start_balance_contributor2 - end_balance_contributor;
+        console.debug("Contributor2 account after creating contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
 
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after creating share:", end_balance_offer);
+      console.debug("Offer account after creating contribution:", end_balance_offer);
 
-      await (await shareholder_access.share_vote(account_contractor.address)).wait();
-      console.debug("Shareholder has just voted");
-      o.interface.parseError((await outside_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerShares');
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributor has just voted");
+      o.interface.parseError((await outside_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerContributionsCount');
       var approved_at = await outside_access.approved_at();
       var failure_at = new Date().getTime() / 1000 - Number(approved_at);
       console.debug("Waiting for the voting failure timeout:", failure_at);
@@ -1361,21 +1672,21 @@ describe("Contract Tests", function () {
         state.should.be.equal(3n);
       }
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
-      console.debug("Offer account after contract failure, share has not been reverted yet", final_balance_offer);
+      console.debug("Offer account after contract failure, contribution has not been reverted yet", final_balance_offer);
       final_balance_offer.should.be.equal(30000000000000003n);
 
-      console.log('Shareholders may revert the share immediately');
-      await (await shareholder_access.share_cancel()).wait();
-      await (await shareholder2_access.share_cancel()).wait();
+      console.log('Contributors may revert the contribution immediately');
+      await (await contributor_access.contribution_cancel()).wait();
+      await (await contributor2_access.contribution_cancel()).wait();
       {
-        var end_balance_shareholder = await account_shareholder.provider.getBalance(account_shareholder.address);
-        var diff = start_balance_shareholder - end_balance_shareholder;
-        console.debug("Shareholder's account after reverting share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor.provider.getBalance(account_contributor.address);
+        var diff = start_balance_contributor - end_balance_contributor;
+        console.debug("Contributor's account after reverting contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
       {
-        var end_balance_shareholder = await account_shareholder2.provider.getBalance(account_shareholder2.address);
-        var diff = start_balance_shareholder2 - end_balance_shareholder;
-        console.debug("Shareholder's 2 account after reverting share:", end_balance_shareholder, "Diff WEI:", diff, "Amount $:", to$(diff));
+        var end_balance_contributor = await account_contributor2.provider.getBalance(account_contributor2.address);
+        var diff = start_balance_contributor2 - end_balance_contributor;
+        console.debug("Contributor's 2 account after reverting contribution:", end_balance_contributor, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
     } catch(e) {
       if( e.data ) {
@@ -1384,22 +1695,22 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
-  it("Test the shareholders vote share", async function () {
-    console.log("Test the shareholders vote share");
+  it("Test the contributors vote contribution", async function () {
+    console.log("Test the contributors vote contribution");
     var test_definition = {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 6000n,
-        "shareholders_vote_amount_share": 0n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 6000n,
+        "contributors_vote_fund_percent": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1413,9 +1724,9 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", owner);
     expect(owner).to.equal(account_owner.address);
 
-    var account_shareholder1 = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder3 = accounts[3]; // the account will be a signer to check an access from the shareholder
+    var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1426,21 +1737,21 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder1_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor1_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder1, // Shareholder account trying access to the contract
+      account_contributor1, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
-    var shareholder3_access = new ethers.Contract(
+    var contributor3_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder3, // Shareholder account trying access to the contract
+      account_contributor3, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -1453,13 +1764,13 @@ describe("Contract Tests", function () {
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
-      await (await account_shareholder2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
-      await (await account_shareholder3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await shareholder1_access.share_get_for_origin()).should.be.equal(10000000000000001n);
-      (await shareholder2_access.share_get_for_origin()).should.be.equal(20000000000000001n);
-      (await shareholder3_access.share_get_for_origin()).should.be.equal(30000000000000003n);
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
+      await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
+      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
+      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
+      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -1468,19 +1779,19 @@ describe("Contract Tests", function () {
 
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await shareholder3_access.share_vote(account_contractor.address)).wait();
-      console.debug("The most valuable shareholder has just voted");
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerShares');
+      await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("The most valuable contributor has just voted");
+      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerContributionsCount');
       console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(1n);
-      await (await shareholder1_access.share_vote(account_contractor.address)).wait();
-      console.debug("The least valuable shareholder has just voted");
+      await (await contributor1_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("The least valuable contributor has just voted");
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -1497,22 +1808,22 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
-  it("Test the shareholders vote amount share", async function () {
-    console.log("Test the shareholders vote amount share");
+  it("Test the contributors vote amount contribution", async function () {
+    console.log("Test the contributors vote amount contribution");
     var test_definition = {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 10000n,
-        "shareholders_vote_share": 0n,
-        "shareholders_vote_amount_share": 5000n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 0n,
+        "contributors_vote_fund_percent": 5000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1526,9 +1837,9 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", owner);
     expect(owner).to.equal(account_owner.address);
 
-    var account_shareholder1 = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder3 = accounts[3]; // the account will be a signer to check an access from the shareholder
+    var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1539,21 +1850,21 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder1_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor1_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder1, // Shareholder account trying access to the contract
+      account_contributor1, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
-    var shareholder3_access = new ethers.Contract(
+    var contributor3_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder3, // Shareholder account trying access to the contract
+      account_contributor3, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -1566,13 +1877,13 @@ describe("Contract Tests", function () {
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
-      await (await account_shareholder2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
-      await (await account_shareholder3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await shareholder1_access.share_get_for_origin()).should.be.equal(10000000000000001n);
-      (await shareholder2_access.share_get_for_origin()).should.be.equal(20000000000000001n);
-      (await shareholder3_access.share_get_for_origin()).should.be.equal(30000000000000003n);
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
+      await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
+      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
+      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
+      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -1581,12 +1892,12 @@ describe("Contract Tests", function () {
 
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await shareholder3_access.share_vote(account_contractor.address)).wait();
-      console.debug("The most valuable shareholder has just voted");
+      await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("The most valuable contributor has just voted");
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -1603,22 +1914,22 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
-  it("Test the observers vote share", async function () {
-    console.log("Test the observers vote share");
+  it("Test the observers vote contribution", async function () {
+    console.log("Test the observers vote contribution");
     var test_definition = {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 6000n,
-        "shareholders_vote_share": 0n,
-        "shareholders_vote_amount_share": 0n,
+        "observers_vote_percent": 6000n,
+        "contributors_vote_percent": 0n,
+        "contributors_vote_fund_percent": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1632,9 +1943,9 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", owner);
     expect(owner).to.equal(account_owner.address);
 
-    var account_shareholder1 = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder3 = accounts[3]; // the account will be a signer to check an access from the shareholder
+    var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1645,21 +1956,21 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder1_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor1_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder1, // Shareholder account trying access to the contract
+      account_contributor1, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
-    var shareholder3_access = new ethers.Contract(
+    var contributor3_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder3, // Shareholder account trying access to the contract
+      account_contributor3, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -1669,21 +1980,21 @@ describe("Contract Tests", function () {
       account_contractor, // Contractor account trying access to the contract
     )
     try {
-      // Shareholders also will be observers
-      await (await o.observer_create(account_shareholder1.address)).wait();
-      await (await o.observer_create(account_shareholder2.address)).wait();
-      await (await o.observer_create(account_shareholder3.address)).wait();
+      // Contributors also will be observers
+      await (await o.observer_create(account_contributor1.address)).wait();
+      await (await o.observer_create(account_contributor2.address)).wait();
+      await (await o.observer_create(account_contributor3.address)).wait();
 
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
-      await (await account_shareholder2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
-      await (await account_shareholder3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await shareholder1_access.share_get_for_origin()).should.be.equal(10000000000000001n);
-      (await shareholder2_access.share_get_for_origin()).should.be.equal(20000000000000001n);
-      (await shareholder3_access.share_get_for_origin()).should.be.equal(30000000000000003n);
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
+      await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
+      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
+      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
+      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -1692,21 +2003,21 @@ describe("Contract Tests", function () {
 
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await shareholder3_access.share_vote(account_contractor.address)).wait();
-      console.debug("The most valuable shareholder has just voted");
+      await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("The most valuable contributor has just voted");
       o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(1n);
-      await (await shareholder1_access.observer_vote(account_contractor.address)).wait();
+      await (await contributor1_access.observer_vote(account_contractor.address)).wait();
       console.debug("The observer has just voted");
       o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
       console.log('State after observers vote', state)
       state.should.be.equal(1n);
-      await (await shareholder2_access.observer_vote(account_contractor.address)).wait();
+      await (await contributor2_access.observer_vote(account_contractor.address)).wait();
       console.debug("The other observer has just voted");
       await (await contractor_access.calculate_voting()).wait();
       console.debug("Voting has just been recalculated");
@@ -1734,16 +2045,16 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "share_unlock_timeout": 1n,
+        "contribution_unlock_timeout": 1n,
         "observer_award": 0n,
-        "share_min_balance": 10000000000000000n,
+        "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
         "voting_start_timeout": 3600n,
         "voting_fail_timeout": 3600n,
-        "observers_vote_share": 3000n,
-        "shareholders_vote_share": 3000n,
-        "shareholders_vote_amount_share": 3000n,
+        "observers_vote_percent": 3000n,
+        "contributors_vote_percent": 3000n,
+        "contributors_vote_fund_percent": 3000n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1757,9 +2068,9 @@ describe("Contract Tests", function () {
     console.info("Contract owner is:", owner);
     expect(owner).to.equal(account_owner.address);
 
-    var account_shareholder1 = accounts[1]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder2 = accounts[2]; // the account will be a signer to check an access from the shareholder
-    var account_shareholder3 = accounts[3]; // the account will be a signer to check an access from the shareholder
+    var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
     var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1770,21 +2081,21 @@ describe("Contract Tests", function () {
       account_owner, // Signer to get access to the contract
     )
 
-    // Getting access from the shareholder
-    var shareholder1_access = new ethers.Contract(
+    // Getting access from the contributor
+    var contributor1_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder1, // Shareholder account trying access to the contract
+      account_contributor1, // Contributor account trying access to the contract
     )
-    var shareholder2_access = new ethers.Contract(
+    var contributor2_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder2, // Shareholder account trying access to the contract
+      account_contributor2, // Contributor account trying access to the contract
     )
-    var shareholder3_access = new ethers.Contract(
+    var contributor3_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_shareholder3, // Shareholder account trying access to the contract
+      account_contributor3, // Contributor account trying access to the contract
     )
 
     // Getting access from the contractor
@@ -1800,13 +2111,13 @@ describe("Contract Tests", function () {
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
 
-      // test the shareholder created an account sending there enough amount
-      await (await account_shareholder1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
-      await (await account_shareholder2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
-      await (await account_shareholder3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await shareholder1_access.share_get_for_origin()).should.be.equal(10000000000000001n);
-      (await shareholder2_access.share_get_for_origin()).should.be.equal(20000000000000001n);
-      (await shareholder3_access.share_get_for_origin()).should.be.equal(30000000000000003n);
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
+      await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
+      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
+      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
+      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -1816,14 +2127,14 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      await (await shareholder3_access.share_vote(account_shareholder3.address)).wait();
-      console.debug("The most valuable shareholder has just voted for himself");
-      await (await shareholder1_access.share_vote(account_shareholder1.address)).wait();
-      await (await shareholder2_access.share_vote(account_shareholder1.address)).wait();
-      console.debug("The least valuable shareholders has just voted for shareholder1");
+      await (await contributor3_access.contributor_vote(account_contributor3.address)).wait();
+      console.debug("The most valuable contributor has just voted for himself");
+      await (await contributor1_access.contributor_vote(account_contributor1.address)).wait();
+      await (await contributor2_access.contributor_vote(account_contributor1.address)).wait();
+      console.debug("The least valuable contributors has just voted for contributor1");
       o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       state = await contractor_access.state();
-      console.log('State after shareholders vote', state)
+      console.log('State after contributors vote', state)
       state.should.be.equal(1n);
 
       await (await contractor_access.observer_vote(account_contractor.address)).wait();
