@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>OGOO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" integrity="sha512-7Pi/otdlbbCR+LnW+F7PwFcSDJOuUJB3OxtEHbg4vSMvzvJjde4Po1v4BR9Gdc9aXNUNFVUY+SK51wWT8WF0Gg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.5.0/luxon.min.js" integrity="sha512-SN7iwxiJt9nFKiLayg3NjLItXPwRfBr4SQSIugMeBFrD4lIFJe1Z/exkTZYAg3Ul+AfZEGws2PQ+xSoaWfxRQQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/remarkable/2.0.1/remarkable.min.js" integrity="sha512-skYYbQHAuOTpeJTthhUH3flZohep8blA+qjZOY0VqmfXMDiYcWxu29F5UbxU4LxaIpGkRBk+3Qf8qaXfd9jngg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js" integrity="sha512-V3xRGsQMQ8CG4l2gVN44TCDmNY5cdlxbSvejrgmWxcLKHft0Q3XQDbeuJ9aot14mpNuRWGtI//WKraedDGNZ+g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js" integrity="sha512-NFUcDlm4V+a2sjPX7gREIXgCSFja9cHtKPOL1zj6QhnE0vcY695MODehqkaGYTLyL2wxe/wtr4Z49SvqXq12UQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js" integrity="sha512-a/IwksuXdv0Q60tVkQpwMk5qY+6cJ0FJgi33lrrIddoFItTRiRfSdU1qogP3uYjgHfrGY7+AC+4LU4J+b9HcgQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" integrity="sha512-dPXYcDub/aeb08c63jRq/k6GaKccl256JQy/AnOq7CAnEZ9FzSL9wSbcZkMp4R26vBsMLFYH4kQ67/bbV8XaCQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/favicon-16x16.png">
+    <link rel="manifest" href="/images/icons/site.webmanifest">
+    <link rel="mask-icon" href="/images/icons/safari-pinned-tab.svg" color="#5bbad5">
+    <link rel="shortcut icon" href="/images/icons/favicon.ico">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="msapplication-config" content="/images/icons/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+    
+    <script src="js/ogoo.js"></script>
+<style>
+
+/* extend body available field and fixed top navbar */
+body {
+  min-height: 75rem;
+  padding-top: 5rem;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* fix headers inside nav */
+nav h1,h2,h3,h4,h5 {
+    display: inline-block;
+}
+
+/* additional font size */
+.fs-05 {
+    font-size: 0.5rem;
+}
+
+/* determine half-size formatting of the markdown result */
+.markdown {
+    width:100%;
+    zoom: 0.5;
+}
+
+/* redefine to align a content properly */
+.form-check {
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+/* invalid/valid-feedback available anywhere inside form-check */
+.was-validated .form-check:has(:invalid) .invalid-feedback  {
+  display: block;
+}
+.was-validated .form-check:not(:has(:invalid)) .valid-feedback {
+  display: block;
+}
+
+</style>
+</head>
+<body>
+
+<!-- Modals -->
+
+<!--- No ethereum module Critical --->
+<div class="modal fade" id="no-ethereum" tabindex="-1" aria-labelledby="noEthereum" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+                <div class="modal-header text-bg-danger">
+                    <h1 class="modal-title fs-5">The Ethereum module not found</h1>
+                </div>
+                <div class="modal-body">
+                  <p>Please install some wallet supporting the Ethereum network. We recommend the <a href="https://metamask.io/download/">MetaMask Wallet</a>.</p>
+                  <p>Press the button when installed</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger" onclick="window.location.reload();">Reload</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+<!--- Database not available Critical --->
+<div class="modal fade" id="no-database" tabindex="-1" aria-labelledby="noDatabase" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+                <div class="modal-header text-bg-danger">
+                    <h1 class="modal-title fs-5">The local database can not be opened</h1>
+                </div>
+                <div class="modal-body">
+                  <p>The local database can not be opened. Please allow using IndexedDB module</p>
+                  <p>Press the button when complete</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger" onclick="window.location.reload();">Reload</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+<!--- No accounts Warning --->
+<div class="modal fade" id="no-accounts" tabindex="-1" aria-labelledby="noAccounts" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+                <div class="modal-header text-bg-warning">
+                    <h1 class="modal-title fs-5">Please allow access to your Ethereum account</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <p>Try to connect an account using the button "Connect Account" below, or open your wallet manually, allow access to your Ethereum account for the application and reload</p>
+                  <div class="text-bg-danger dialog-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="connect-account-button">Connect Account</button>
+                    <button type="submit" class="btn btn-warning"  onclick="window.location.reload();">Reload</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+<!--- TODO: Offer read failed Warning --->
+<div class="modal fade" id="offer-read-failed" tabindex="-1" aria-labelledby="noAccounts" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+                <div class="modal-header text-bg-warning">
+                    <h1 class="modal-title fs-5">Can't read the Offer</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <p>Error while reading the Offer<em id="offer-read-failed-address"></em></p>
+                  <div class="text-bg-danger dialog-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="offer-read-failed-delete-button">Remove Offer</button>
+                    <button type="submit" class="btn btn-secondary" data-bs-dismiss="modal">Ignore</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+<!--- Share Offer Modal -->
+<div class="modal fade" id="share-offer" tabindex="-1" aria-labelledby="watchOffer" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+                <div class="modal-header text-bg-light">
+                    <h1 class="modal-title fs-5">Share Offer address with others</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="share-offer-qr" style="text-align:center;"></div>
+                  <div class="share-offer-address" style="text-align:center;word-wrap:break-word;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+        </div>
+    </div>
+</div>
+
+<!--- Add Offer Modal -->
+<div class="modal fade" id="watch-offer" tabindex="-1" aria-labelledby="watchOffer" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form class="needs-validation" novalidate>
+                <div class="modal-header text-bg-light">
+                    <h1 class="modal-title fs-5">Add an address to the Offers list</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                      <video id="watch-offer-address-video" class="d-none" style="width:100%;"></video>
+                      <div class="text-bg-warning video-absent"></div>
+                    </div>
+                    <div>
+                      <label for="watch-offer-address">Offer Address</label>
+                      <input type="text" class="form-control" id="watch-offer-address" oninput="address_input_check('watch-offer-address')" placeholder="0x00000000000000000000000000000000">
+                      <div class="text-bg-danger dialog-error"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Offer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!--- Create Offer Submit Modal -->
+<div class="modal fade" id="create-offer-submit" tabindex="-1" aria-labelledby="watchOffer" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form class="needs-validation" novalidate>
+                <div class="modal-header text-bg-light">
+                    <h1 class="modal-title fs-5"></h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                      <p>Account <em class="current-account-id"></em> [<em class="current-account-balance"></em>] is going to create a new Offer contract</p>
+                    </div>
+                    <!-- caption -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Caption</div>
+                    </div>
+                    <div class="form-control input-caption">&nbsp;</div>
+                    <!-- contribution_min_balance -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Min Contribution</div>
+                    </div>
+                    <div class="form-control input-contribution-min-balance">&nbsp;</div>
+                    <!-- contribution_unlock_timeout -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Cancel Timeout</div>
+                    </div>
+                    <div class="form-control input-contribution-unlock-timeout">&nbsp;</div>
+                    <!-- voting_start_balance -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Start Balance</div>
+                    </div>
+                    <div class="form-control input-voting-start-balance">&nbsp;</div>
+                    <!-- voting_start_count -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Start Count</div>
+                    </div>
+                    <div class="form-control input-voting-start-count">&nbsp;</div>
+                    <!-- voting_start_timeout -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Start Timeout</div>
+                    </div>
+                    <div class="form-control input-voting-start-timeout">&nbsp;</div>
+                    <!-- voting_fail_timeout -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Fail Timeout</div>
+                    </div>
+                    <div class="form-control input-voting-fail-timeout">&nbsp;</div>
+                    <!-- observers_vote_percent -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Observers vote count %</div>
+                    </div>
+                    <div class="form-control input-observers-vote-percent">&nbsp;</div>
+                    <!-- contributors_vote_percent -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Contributors vote count %</div>
+                    </div>
+                    <div class="form-control input-contributors-vote-percent">&nbsp;</div>
+                    <!-- contributors_vote_fund_percent -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Contributors vote fund %</div>
+                    </div>
+                    <div class="form-control input-contributors-vote-fund-percent">&nbsp;</div>
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Description</div>
+                    </div>
+                    <div class="form-control markdown text-light bg-dark input-description">&nbsp;</div>
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Full Details</div>
+                    </div>
+                    <div class="form-control markdown text-light bg-dark input-full-details">&nbsp;</div>
+                </div>
+                <div class="modal-footer">
+                    <p class="modal-info text-info"></p>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Offer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Contribution Modal -->
+<div class="modal fade" id="create-contribution" tabindex="-1" aria-labelledby="createContribution" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form class="needs-validation" novalidate onsubmit="return false">
+                <div class="modal-header text-bg-light">
+                    <h1 class="modal-title fs-5">Create a new contribution</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-check p-0">
+                      <div class="form-floating mb-3">
+                          <input type="number" class="form-control" id="create-contribution-amount" placeholder="1234" min="0" step="1" required>
+                          <label for="create-contribution-amount">Contribution amount in GWEI</label>
+                          <div class="invalid-feedback">
+                            Input valid amount
+                          </div>
+                      </div>
+                    </div>
+                    <div class="form-check p-0">
+                      <div class="form-floating mb-3">
+                          <input type="text" class="form-control" id="create-contribution-address" placeholder="0x00000000000000000000000000000000" required>
+                          <label for="create-contribution-address">Offer Address</label>
+                          <div class="invalid-feedback">
+                            Input valid address
+                          </div>
+                      </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Contribution</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- NavBar -->
+<nav class="navbar navbar-expand-md fixed-top bg-dark" data-bs-theme="dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#"><image src="/images/icons/favicon-64x64.png"></a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarCollapse">
+      <ul class="navbar-nav me-auto mb-2 mb-md-0" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" role="tab" id="application-tab" data-bs-toggle="tab" data-bs-target="#application-page" aria-controls="application-page" aria-selected="true" href="#">OGOO</a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="offersdropdown" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-regular fa-handshake"></i>&nbsp;Offers</a>
+          <ul class="dropdown-menu" aria-labelledby="offersdropdown">
+            <li><a class="dropdown-item" role="tab" id="offers-list-tab" data-bs-toggle="tab" data-bs-target="#offers-list" aria-controls="offers-list" href="#">Offers List</a>
+            <li><a class="dropdown-item" role="tab" id="watch-offer-tab" data-bs-toggle="modal" data-bs-target="#watch-offer" aria-controls="watch-offer" href="#">Add Offer to the List</a>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="contributionsdropdown" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-hand-holding-dollar"></i>&nbsp;Contributions</a>
+          <ul class="dropdown-menu" aria-labelledby="contributionsdropdown">
+            <li><a class="dropdown-item" role="tab" id="contributions-list-tab" data-bs-toggle="tab" data-bs-target="#contributions-list" aria-controls="contributions-list" href="#">Contributions List</a>
+            <li><a class="dropdown-item" role="tab" id="create-contribution-tab" data-bs-toggle="modal" data-bs-target="#create-contribution" aria-controls="create-contribution" href="#">Create Contribution</a>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="observingdropdown" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-regular fa-eye"/></i>&nbsp;Observing</a>
+          <ul class="dropdown-menu" aria-labelledby="observingdropdown">
+            <li><a class="dropdown-item" role="tab" id="observing-list-tab" data-bs-toggle="tab" data-bs-target="#observing-list" aria-controls="observing-list" href="#">Observed Offers</a>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="offersadmindropdown" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-screwdriver-wrench"></i>&nbsp;Manage Offers</a>
+          <ul class="dropdown-menu" aria-labelledby="offersadmindropdown">
+            <li><a class="dropdown-item" role="tab" id="managed-offers-list-tab" data-bs-toggle="tab" data-bs-target="#managed-offers-list" aria-controls="managed-offers-list" href="#">List of Managed Offers</a>
+            <li><a class="dropdown-item" role="tab" id="create-offer-tab" data-bs-toggle="tab" data-bs-target="#create-offer" aria-controls="create-offer" href="#">Create Managed Offer</a>
+          </ul>
+        </li>
+      </ul>
+      <form class="d-flex" role="accounts">
+        <select class="btn btn-outline-secondary form-select" id="accounts-list" size style="background-image: none">
+        </select>
+      </form>
+    </div>
+  </div>
+</nav>
+<div class="progress invisible" id="progress">
+  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%;height: 3px;"></div>
+</div>
+<div class="tab-content">
+<!-- Main Applicatiion Page -->
+<div class="tab-pane fade show active" id="application-page" role="tabpanel" aria-labelledby="application-page">
+  <div class="container-fluid">
+    <div class="row row-cols-1 row-cols-sm-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 text-center">
+      <div class="col">
+        <div class="card mb-4 rounded-3 shadow-sm" id="offers-card">
+          <div class="card-header py-3">
+            <h4 class="my-0 fw-normal"><i class="fa-regular fa-handshake"></i> Offers</h4>
+          </div>
+          <div class="card-body">
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" id="offers-card-offers-button">Offers: <em id="all-offers-number">0</em></button>
+            <ul class="list-unstyled mt-3 mb-4">
+              <li>All Offers</li>
+              <li>See the status</li>
+              <li>Add funds</li>
+              <li>Vote for contractor</li>
+            </ul>
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#watch-offer" id="offers-card-add-offer-button">Add Offer</button>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card mb-4 rounded-3 shadow-sm" id="contributions-card">
+          <div class="card-header py-3">
+            <h4 class="my-0 fw-normal"><i class="fa-solid fa-hand-holding-dollar"></i> Contributions</h4>
+          </div>
+          <div class="card-body">
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" id="contributions-card-contributions-button">Contributions: <em id="all-contributions-number">0</em></button>
+            <ul class="list-unstyled mt-3 mb-4">
+              <li>Funded Offers</li>
+              <li>See the status</li>
+              <li>Vote for contractor</li>
+              <li>Cancel your contribution</li>
+            </ul>
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#create-contribution" id="contributions-card-create-contribution">Create Contribution</button>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card mb-4 rounded-3 shadow-sm" id="observing-card">
+          <div class="card-header py-3">
+            <h4 class="my-0 fw-normal"><i class="fa-regular fa-eye"></i> Observing</h4>
+          </div>
+          <div class="card-body">
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" id="observing-card-observers-button">Observed: <em id="all-observed-number">0</em></button>
+            <ul class="list-unstyled mt-3 mb-4">
+              <li>Observed Offers</li>
+              <li>See the status</li>
+              <li>Observer's vote</li>
+              <li>&nbsp;</li>
+            </ul>
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#watch-offer" id="observing-card-add-offer-button">Add Offer</button>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card mb-4 rounded-3 shadow-sm" id="manage-card">
+          <div class="card-header py-3">
+            <h4 class="my-0 fw-normal"><i class="fa-solid fa-screwdriver-wrench"></i> Manage Offers</h4>
+          </div>
+          <div class="card-body">
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" id="manage-card-managed-button">Managed: <em id="all-owned-number">0</em></button>
+            <ul class="list-unstyled mt-3 mb-4">
+              <li>Managed Offers</li>
+              <li>See the status</li>
+              <li>Edit offer</li>
+              <li>Approve offer</li>
+            </ul>
+            <button type="button" class="w-100 btn btn-lg btn-outline-secondary" id="manage-card-create-offer-button">Create Offer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- account relations -->
+<script id="icon-owner" language="html">
+  <i class="fa-regular fa-copyright text-success" title="Is Owner"></i>
+</script>
+<script id="icon-observer" language="html">
+  <i class="fa-regular fa-eye text-primary" title="Is Observer"></i>
+</script>
+<script id="icon-contributor" language="html">
+  <i class="fa-solid fa-hand-holding-dollar text-info" title="Is Contributor"></i>
+</script>
+<!-- offer state -->
+<script id="icon-state-INITIAL" language="html">
+  <i class="fa-solid fa-wrench text-warning" title="Under constructon"></i>
+</script>
+<script id="icon-state-APPROVED" language="html">
+  <i class="fa-solid fa-spinner text-success" title="Running"></i>
+</script>
+<script id="icon-state-COMPLETED" language="html">
+  <i class="fa-solid fa-check text-success" title="Successfully completed"></i>
+</script>
+<script id="icon-state-FAILED" language="html">
+  <i class="fa-solid fa-cross" title="Failed"></i>
+</script>
+<!-- Offer list row -->
+<script id="offer-list-row" language="html">
+            <tr>
+                <td class="m-0 p-0">
+                    <div class="bg-white bg-gradient rounded-pill p-1 offer-list-row-icon-box">
+                    </div>
+                </td>
+                <td class="m-0 p-0">
+                  <a href="#">
+                    <em class="fs-6 offer-list-row-name"></em>
+                    <br/>
+                    <p class="font-monospace fw-lighter fs-6 lh-1 d-none d-md-inline offer-address offer-list-row-address"></p>
+                  </a>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary offer-share-button"><i class="fa-solid fa-share-nodes"></i><span class="d-none d-lg-inline"> Share</span></button>
+                    <button type="button" class="btn btn-outline-secondary offer-remove-button"><i class="fa-solid fa-trash"></i><span class="d-none d-lg-inline"> Remove</span></button>
+                  </div>
+                </td>
+            </tr>
+</script>
+
+<!--Contribution list row-->
+<script id="contribution-list-row" language="html">
+            <tr>
+                <td class="m-0 p-0">
+                    <div class="bg-white bg-gradient rounded-pill p-1 contribution-list-row-icon-box">
+                    </div>
+                    <em class="contribution-list-row-contribution"></em><button type="button" class="btn btn-light btn-sm offer-add-contribution-button"><i class="fa-solid fa-plus" title="Add funds"></i></button>
+                </td>
+                <td class="m-0 p-0">
+                  <a href="#">
+                    <em class="fs-6 contribution-list-row-name"></em>
+                    <br/>
+                    <p class="font-monospace fw-lighter fs-6 lh-1 d-none d-md-inline offer-address contribution-list-row-address"></p>
+                  </a>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary offer-share-button"><i class="fa-solid fa-share-nodes"></i><span class="d-none d-lg-inline"> Share</span></button>
+                    <button type="button" class="btn btn-outline-secondary offer-vote-contribution-button"><i class="fa-regular fa-hand"></i><span class="d-none d-lg-inline"> Vote</button>
+                    <button type="button" class="btn btn-outline-secondary offer-cancel-contribution-button"><i class="fa-regular fa-circle-xmark"></i><span class="d-none d-lg-inline"> Cancel</span></button>
+                  </div>
+                </td>
+            </tr>
+</script>
+
+<!--Observing list row-->
+<script id="observing-list-row" language="html">
+            <tr>
+                <td class="m-0 p-0">
+                    <div class="bg-white bg-gradient rounded-pill p-1 observing-list-row-icon-box">
+                    </div>
+                </td>
+                <td class="m-0 p-0">
+                  <a href="#">
+                    <em class="fs-6 observing-list-row-name"></em>
+                    <br/>
+                    <p class="font-monospace fw-lighter fs-6 lh-1 d-none d-md-inline offer-address observing-list-row-address"></p>
+                  </a>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary offer-share-button"><i class="fa-solid fa-share-nodes"></i><span class="d-none d-lg-inline"> Share</span></button>
+                    <button type="button" class="btn btn-outline-secondary offer-vote-observing-button"><i class="fa-regular fa-hand"></i><span class="d-none d-lg-inline"> Vote</button>
+                  </div>
+                </td>
+            </tr>
+</script>
+
+<!--Managed Offers list row-->
+<script id="managed-list-row" language="html">
+            <tr>
+                <td class="m-0 p-0">
+                    <div class="bg-white bg-gradient rounded-pill p-1 managed-list-row-icon-box">
+                    </div>
+                </td>
+                <td class="m-0 p-0">
+                    <a href="#">
+                    <em class="fs-6 managed-list-row-name"></em>
+                    <br/>
+                    <p class="font-monospace fw-lighter fs-6 lh-1 d-none d-md-inline offer-address managed-list-row-address"></p>
+                    </a>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary offer-share-button"><i class="fa-solid fa-share-nodes"></i><span class="d-none d-lg-inline"> Share</span></button>
+                    <button type="button" class="btn btn-outline-secondary offer-approve-button"><i class="fa-solid fa-stamp"></i><span class="d-none d-lg-inline"> Approve</button>
+                  </div>
+                </td>
+            </tr>
+</script>
+
+<div class="tab-pane fade" id="offers-list" role="tabpanel" aria-labelledby="offers-list">
+  <div class="container-fluid">
+      <h2>Offers List</h2>
+      <div class="table-responsive small">
+      <table class="table table-light">
+        <tbody>
+        </tbody>
+      </table>
+      </div>
+  </div>
+  <div class="container-fluid">
+    <div class="btn-group" role="group">
+      <button class="btn btn-danger" type="button" data-bs-toggle="modal" data-bs-target="#watch-offer"><i class="fa-solid fa-plus"></i><span class="d-none d-lg-inline"> Add Offer</button>
+      <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-download"></i><span class="d-none d-lg-inline"> Save Archive</span></button>
+      <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-share-nodes"></i><span class="d-none d-lg-inline"> Share Acrchive</span></button>
+      <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-upload"></i><span class="d-none d-lg-inline"> Restore Archive</span></button>
+    </div>
+  </div>
+</div>
+<div class="tab-pane fade" id="contributions-list" role="tabpanel" aria-labelledby="contributions-list">
+  <div class="container-fluid">
+      <h2>Contributions List</h2>
+      <div class="table-responsive small">
+      <table class="table table-light">
+        <tbody>
+        </tbody>
+      </table>
+      </div>
+  </div>
+  <div class="container-fluid">
+    <div class="btn-group" role="group">
+      <button class="btn btn-danger" type="button" data-bs-toggle="modal" data-bs-target="#create-contribution"><i class="fa-solid fa-plus"></i><span class="d-none d-lg-inline"> Create Contribution</button>
+    </div>
+  </div>
+</div>
+<div class="tab-pane fade" id="observing-list" role="tabpanel" aria-labelledby="observing-list">
+  <div class="container-fluid">
+      <h2>Observing</h2>
+      <div class="table-responsive small">
+      <table class="table table-light">
+        <tbody>
+        </tbody>
+      </table>
+      </div>
+  </div>
+</div>
+<div class="tab-pane fade" id="managed-offers-list" role="tabpanel" aria-labelledby="managed-offers-list">
+  <div class="container-fluid">
+      <h2>Managed Offers</h2>
+      <div class="table-responsive small">
+      <table class="table table-light">
+        <tbody>
+        </tbody>
+      </table>
+      </div>
+  </div>
+  <div class="container-fluid">
+    <div class="btn-group" role="group">
+      <button class="btn btn-danger" type="button"><i class="fa-regular fa-square-plus"></i></i><span class="d-none d-lg-inline"> Create New Offer</button>
+    </div>
+  </div>
+</div>
+
+<div class="tab-pane fade" id="create-offer" role="tabpanel" aria-labelledby="create-offer">
+  <div class="container-fluid">
+      <h2 class="tab-pane-header">Create Offer</h2>
+      <form class="form needs-validation" novalidate onsubmit="return false">
+        <div class="row gx-1 gy-1">
+          <!-- error message if happened -->
+          <div class="error-message text-danger d-none"></div>
+          <!-- caption -->
+          <div class="form-check col col-12">
+            <input type="text" class="form-control input-caption" placeholder="Caption" required></input>
+            <div class="invalid-feedback">
+              Caption should not be empty
+            </div>
+            <div class="form-text">Short one-line caption of the offer</div>
+          </div>
+          <!-- contribution_min_balance -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="text" class="form-control w-50 input-contribution-min-balance" placeholder="Min contribution" pattern="[0-9]+(\.[0-9]{1,3})?" required>
+                <input type="hidden" class="select-value"> 
+                <select class="form-select input-group-text input-amount-unit" size style="width:100px;" aria-label="Min contribution units">
+                </select>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≥ 0, no more than 3 decimal digits
+            </div>
+            <div class="form-text">Minimal contribution balance to make the contribution</div>
+          </div>
+          <!-- contribution_unlock_timeout -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="number" class="form-control w-50 input-contribution-unlock-timeout" placeholder="Cancel timeout" min="0" step="0.1" required>
+                <input type="hidden" class="select-value"> 
+                <select class="form-select input-group-text input-timeout-unit"  size style="width:100px;" aria-label="Timeout units">
+                </select>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≥ 0, no more than 1 decimal digit
+            </div>
+            <div class="form-text">Timeout to unlock an individual contribution to return to the contributor</div>
+          </div>
+          <!-- voting_start_balance -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="text" class="form-control w-50 input-voting-start-balance" placeholder="Voting start balance" pattern="[0-9]+(\.[0-9]{1,3})?" required>
+                <input type="hidden" class="select-value"> 
+                <select class="form-select input-group-text input-amount-unit" size style="width:100px;" aria-label="Balance units">
+                </select>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≥ 0, no more than 3 decimal digits
+            </div>
+            <div class="form-text">Minimal offer balance to start voting</div>
+          </div>
+          <!-- voting_start_count -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="number" class="form-control w-50 input-voting-start-count" placeholder="Voting start count" min="0" step="1" required>
+            </div>
+            <div class="invalid-feedback">
+              Input integer value ≥ 0
+            </div>
+            <div class="form-text">Minimal number of the offer contributors to start voting</div>
+          </div>
+          <!-- voting_start_timeout -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="number" class="form-control w-50 input-voting-start-timeout" placeholder="Voting start timeout" min="0" step="0.1" required>
+                <input type="hidden" class="select-value"> 
+                <select class="form-select input-group-text input-timeout-unit" size style="width:100px;" aria-label="Timeout units">
+                </select>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≥ 0, no more than 1 decimal digit
+            </div>
+            <div class="form-text">The offer should exceed minimal voting bounds after approve within this timeout, or the offer has failed</div>
+          </div>
+          <!-- voting_fail_timeout -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="number" class="form-control w-50 input-voting-fail-timeout" placeholder="Voting fail timeout" min="0" step="0.1" required>
+                <input type="hidden" class="select-value"> 
+                <select class="form-select input-group-text input-timeout-unit" size style="width:100px;" aria-label="Timeout units">
+                </select>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≥ 0, no more than 1 decimal digit
+            </div>
+            <div class="form-text">The offer voting should be completed after approve within this timeout, or the offer has failed</div>
+          </div>
+          <!-- observers_vote_percent -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="number" class="form-control w-50 input-observers-vote-percent" placeholder="Observers vote count %" min="0" max="100" step="0.01" required>
+                <span class="input-group-text">%</span>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+            </div>
+            <div class="form-text">Observers vote percent (% of total count) to agree the observer's vote</div>
+          </div>
+          <!-- contributors_vote_percent -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="number" class="form-control w-50 input-contributors-vote-percent" placeholder="Contributors vote count %" min="0" max="100" step="0.01" required>
+                <span class="input-group-text">%</span>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+            </div>
+            <div class="form-text">Contributors vote percent (% of total count) to agree the contributor's vote</div>
+          </div>
+          <!-- contributors_vote_fund_percent -->
+          <div class="form-check col col-12 col-sm-6 col-lg-4">
+            <div class="input-group">
+                <input type="number" class="form-control w-50 input-contributors-vote-fund-percent" placeholder="Contributors vote fund %" min="0" max="100" step="0.01" required>
+                <span class="input-group-text">%</span>
+            </div>
+            <div class="invalid-feedback">
+              Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+            </div>
+            <div class="form-text">Contributors vote fund percent (% of total amount) to agree the contributor's vote</div>
+          </div>
+          <div class="col col-12">
+            <div class="input-group">
+                <textarea class="form-control input-description markdown-source" rows="3" placeholder="Offer Description"></textarea>
+            </div>
+            <div class="form-control markdown text-light bg-dark"></div>
+            <div class="form-text">Medium-sized multiline Markdown-formatted description of the offer (optional)</div>
+          </div>
+          <div class="col col-12">
+            <div class="input-group">
+                <textarea class="form-control input-full-details markdown-source" rows="3" placeholder="Offer Full Details"></textarea>
+            </div>
+            <div class="form-control markdown text-light bg-dark"></div>
+            <div class="form-text">Full Markdown-formatted details of the offer (optional)</div>
+          </div>
+          <button type="submit" class="btn btn-primary">Create Offer</button>
+        </div>
+      </form>
+  </div>
+</div>
+
+<div class="tab-pane fade" id="edit-offer" role="tabpanel" aria-labelledby="edit-offer">
+</div>
+
+</div>
+
+<!-- TODO: JS code to:
+    - create a hash from the current tab on tab change
+    - application button press actvates the tab probably using hash change
+see: https://codepen.io/rnr/pen/dMNZmx
+-->
+
+</body>
+</html>

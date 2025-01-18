@@ -692,4 +692,15 @@ contract Offer is HasOwner {
         _observer_voting[address(tx.origin)] = CONTRACT_FAILED;
         emit ObserverVote(payable(tx.origin), payable(address(0)), true);
     }
+    // Informational functions
+
+    // Checks whether the transaction origin is an observer
+    function is_origin_observer() external view returns(bool yes) {
+        return _observers.contains(tx.origin);
+    }
+
+    // Checks whether the transaction origin is a contributor
+    function is_origin_contributor() external view returns(bool yes) {
+        return _contributors.contains(tx.origin);
+    }
 }

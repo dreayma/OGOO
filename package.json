@@ -13,17 +13,17 @@
   "author": "Vsevolod Novikov",
   "license": "LGPL-3.0-or-later",
   "dependencies": {
-    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@openzeppelin/contracts": "^5.0.1",
-    "dotenv": "^16.4.5",
-    "ethers": "^6.11.1",
-    "node": "^18.20.2",
+    "@openzeppelin/contracts": "^5.1.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.4",
+    "node": "^18.20.5",
     "solidity-dynamic-array": "^0.4.0"
   },
   "devDependencies": {
-    "chai": "^4.4.1",
+    "chai": "^4.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.7.2"
   }
 }
