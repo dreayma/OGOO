@@ -8,12 +8,11 @@
 
 pragma solidity ^0.8.20;
 
-import { ArrayMap, Map } from "solidity-dynamic-array/contracts/ArrayMap.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 abstract contract HasOwner {
     // If a contract is HasOwner, it automatically creates a payable public attribute `owner`
-    // equal to the transactuion origin, i.e. initiator of the call sequence leading to
+    // equal to the transaction origin, i.e. initiator of the call sequence leading to
     // the contract instance creation
 
     error OwnerOnly(); // Only owner allowed to evaluate this operation
@@ -69,10 +68,11 @@ struct OfferDefinition {
     uint voting_start_timeout;              // The offer should exceed minimal voting bounds after approve within this timeout, or the offer has failed
     uint voting_fail_timeout;               // The offer voting should be completed after approve within this timeout, or the offer has failed
 
-    // Contributor voting parameters
+    // Voting parameters
     uint16 observers_vote_percent;          // Observers vote percent (% of total count) to agree the observer's vote
     uint16 contributors_vote_percent;       // Contributors vote percent (% of total count) to agree the contributor's vote
     uint16 contributors_vote_fund_percent;  // Contributors vote fund percent (% of total amount) to agree the contributor's vote
+    // TODO: another option? % of total - quorum to make voting available, and % of voted count/amount to calculate winner
 }
 
 enum OfferState {
@@ -112,11 +112,11 @@ contract Offer is HasOwner {
     //
     // If the observer's award is not zero, their awards are moved to the observer's addresses [TODO]
     //
-    // The contributor may request cancelling it's contribution, and gets control to the contribution
-    // after the declared cancelling timeout. Then it can cancel the contribution and return funds back.
-    // The contribution requested, but not cancelled yet, doesn't participate in the contract voting, but
+    // The contributor may request canceling it's contribution, and gets control to the contribution
+    // after the declared canceling timeout. Then it can cancel the contribution and return funds back.
+    // The contribution requested, but not canceled yet, doesn't participate in the contract voting, but
     // still can be paid to the contractor, if the voting has been successfully finished within
-    // the contribution cancellation period.
+    // the contribution cancelation period.
 
     OfferDefinition private _definition;
 
@@ -127,14 +127,28 @@ contract Offer is HasOwner {
 
     // Dynamic contract state
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
     EnumerableSet.AddressSet private _contributors;                 // contributors set
     mapping(address => uint) private _contributor_voting;           // contributor account -> voting for address or failure
     mapping(address => uint) private _contributor_contribution;     // contribution amount for the contributor
-    mapping(address => uint) private _contributor_cancelled_at;     // contribution cancellation timeout start
+    mapping(address => uint) private _contributor_canceled_at;      // contribution cancelation timeout start
     EnumerableSet.AddressSet private _observers;                    // observers set
     mapping(address => uint) private _observer_voting;              // observer account -> voting for arress or failure
-
-    using ArrayMap for Map;
+    EnumerableSet.UintSet    private _contractors;                  // proposed contractors (or CONTRACT_FAILED) set
+    mapping(uint => uint)    private _observer_votes_count;         // count of observer votes for the contractor
+    mapping(uint => uint)    private _contributor_votes_count;      // count of contributor votes for the contractor
+    mapping(uint => uint)    private _contributor_votes_amount;     // summary amount of contributor votes for the contractor
+    uint private _total_observer_votes_count;                       // total count of observer votes
+    uint private _total_contributor_votes_count;                    // total count of contributor votes except canceled
+    uint private _total_contributor_votes_amount;                   // total amount of contributor votes except canceled
+    uint private _total_contributors_count;                         // total count of contributors except canceled
+    uint private _total_contributors_fund;                          // total fund of contributors except canceled
+    uint private _observers_leader_count;                           // count of observer votes for the leader
+    uint private _observers_leader;                                 // observer votes leader
+    uint private _contributors_leader_count;                        // count of contributor votes for the leader
+    uint private _contributors_leader;                              // contributor votes leader
+    uint private _contributors_fund_leader_amount;                  // amount of contributor votes fund for the leader
+    uint private _contributors_fund_leader;                         // contributor fund votes leader
 
     // The contract running state
     OfferState public state = OfferState.INITIAL;                 // Current state of the contract
@@ -163,6 +177,7 @@ contract Offer is HasOwner {
     error WrongState();                 // The function should not be called in this state of the contract
     error WrongParameter();             // The function should not be called with this parameter
     error TooLowContribution();         // Creating contribution with the balance less than provided is forbidden
+    error CancelationInProgress();      // Contribute from the account with the cancelation in progress is forbidden
     error VotingConflict();             // When the observers voting conflichs with the both, contribution count and contribution amount votings
     error StartedOnly();                // When the operation has to be called only in the started state
     error PreparedOnly();               // When the operation has to be called only in the prepared state
@@ -241,7 +256,10 @@ contract Offer is HasOwner {
     // the event emitted by the payment when adding funds, and contains the total contribution
     event ContributionUpdated (address payable contributor, uint amount);
 
-    // the event emitted by the cancel_contribution method when cancelling the contribution
+    // the event emitted by the cancel_contribution method when the contributor starts cancelation
+    event ContributionCancelation (address payable contributor);
+
+    // the event emitted by the cancel_contribution method when the contributor finishes cancelation and the funds are returned back
     event ContributionCanceled (address payable contributor);
 
     // the event emitted by the calculate_voting when the offer has completed
@@ -302,7 +320,7 @@ contract Offer is HasOwner {
     // Approve contract and make it self-controlled
     function approve() external prepared_only() owner_only() {
         // starts the contract evaluation. It blocks any changes
-        // in the contract, except adding or cancelling contributions
+        // in the contract, except adding or canceling contributions
         // Observers list is fixed and can not be modified since that.
         state = OfferState.APPROVED;
         approved_at = block.timestamp;
@@ -322,10 +340,9 @@ contract Offer is HasOwner {
     //
     // Your contribution is stored in a separate data member.
     //
-    // Cancelling your contribution is available and needs a special procedure.
-    // See contribution_cancel(). Reverting contribution will move
-    // the whole contribution amount back to the contributor's account. It's available
-    // only for the not completed offer.
+    // Cancelation your contribution is available and needs a special procedure with some timeout.
+    // It's not possible to contribute from the account when the cancelation is in progress.
+    // See contribution_cancel().
     //
     // Use Ethers JS syntax like
     // ```
@@ -337,15 +354,76 @@ contract Offer is HasOwner {
             revert StartedOnly();
         if( tx.origin == address(0) )
             revert WrongParameter();
+        uint canceled_at = _contributor_canceled_at[tx.origin];
+        if( canceled_at > 0 ) {
+            revert CancelationInProgress();
+        }
         bool got = _contributors.contains(tx.origin);
         if( !got ) {
             if( msg.value < _definition.contribution_min_balance )
                 revert TooLowContribution();
             _contributors.add(tx.origin);
+            _total_contributors_count += 1;
             emit ContributionCreated(payable(tx.origin));
         }
         _contributor_contribution[tx.origin] += msg.value;
+        _total_contributors_fund += msg.value;
+        uint voting_ = _contributor_voting[tx.origin];
+        if( voting_ != 0 ) {
+            // if the contributor has already voted, the contributed amount was
+            // added to the _contributor_votes_amount for the voted contractor.
+            // So the _contributor_votes_amount for the voted contractor
+            // should be increased accordingly to the new addition.
+            _contributor_votes_amount[voting_] += msg.value;
+            _total_contributor_votes_amount += msg.value;
+            if( voting_ == _contributors_fund_leader ) {
+                _contributors_fund_leader_amount += msg.value;
+            } else {
+                _pretend_to_win_contributors_amount(voting_);
+            }
+        }
         emit ContributionUpdated(payable(tx.origin), _contributor_contribution[tx.origin]);
+    }
+
+    function _pretend_to_win_observers(uint voting_) internal {
+        // check whether the voting_ should now win for the observers count
+        if( _observer_votes_count[voting_] > _observers_leader_count ) {
+            _observers_leader_count = _observer_votes_count[voting_];
+            _observers_leader = voting_;
+        }
+    }
+
+    function _pretend_to_win_contributors(uint voting_) internal {
+        // check whether the voting_ should now win for the contributors count
+        if( _contributor_votes_count[voting_] > _contributors_leader_count ) {
+            _contributors_leader_count = _contributor_votes_count[voting_];
+            _contributors_leader = voting_;
+        }
+    }
+
+    function _pretend_to_win_contributors_amount(uint voting_) internal {
+        // check whether the voting_ should now win for the contributors fund amount
+        if( _contributor_votes_amount[voting_] > _contributors_fund_leader_amount ) {
+            _contributors_fund_leader_amount = _contributor_votes_amount[voting_];
+            _contributors_fund_leader = voting_;
+        }
+    }
+
+    function _reset_leaders() internal {
+        // check all contractors again and find leaders
+        uint contractors_count = _contractors.length();
+        _observers_leader_count = _contributors_leader_count = _contributors_fund_leader_amount =
+        _observers_leader = _contributors_leader = _contributors_fund_leader = 0;
+        if( contractors_count == 0 ) {
+            return;
+        }
+
+        for(uint i = 0; i < contractors_count; i += 1) {
+            uint contractor = _contractors.at(i);
+            _pretend_to_win_observers(contractor);
+            _pretend_to_win_contributors(contractor);
+            _pretend_to_win_contributors_amount(contractor);
+        }
     }
 
     // Returns contribution amount for the caller (tx.origin == msg.sender)
@@ -361,7 +439,6 @@ contract Offer is HasOwner {
     // parameters describing the contract success or failure
     // are met.
     function calculate_voting() external started_only() {
-
         if( block.timestamp > approved_at + _definition.voting_fail_timeout ) {
             state = OfferState.FAILED;
             failed_at = block.timestamp;
@@ -385,250 +462,76 @@ contract Offer is HasOwner {
                 return;
             }
         }
-
-        // Counters
-        uint observers_count = _observers.length();
-        uint256 winner_contributions = get_winner_contributions();
-        if( winner_contributions == 0 ) {
-            revert NoWinnerContributionsCount();
-        }
-        uint256 winner_amount_contributions = get_winner_amount_contributions();
-        if( winner_amount_contributions == 0 ) {
-            revert NoWinnerContributionsFund();
-        }
-        uint256 winner_local = 0;
-        if( observers_count != 0 ) {
-            uint256 winner_observers = get_winner_observers();
-            if( winner_observers == 0 ) {
-                revert NoWinnerObservers();
-            }
-            if( winner_observers == winner_contributions ) {
-                state = OfferState.COMPLETED;
-                completed_at = block.timestamp;
-                winner_local = winner_observers;
-            } else if( winner_observers == winner_amount_contributions ) {
-                state = OfferState.COMPLETED;
-                completed_at = block.timestamp;
-                winner_local = winner_observers;
-            } else {
-                // TODO: can ve resolve it using some other way?
-                revert VotingConflict();
-            }
-        } else if( winner_amount_contributions == winner_contributions ) {
-            state = OfferState.COMPLETED;
-            completed_at = block.timestamp;
-            winner_local = winner_contributions;
-        } else {
-            // TODO: can ve resolve it using some other way?
-            revert VotingConflict();
-        }
+        uint256 winner_local = _calculate_winner();
 
         if( winner_local == CONTRACT_FAILED ) {
             state = OfferState.FAILED;
             failed_at = block.timestamp;
             emit OfferFailed();
             return;
+        } else if( winner_local != 0 ) {
+            state = OfferState.COMPLETED;
+            completed_at = block.timestamp;
+            winner = payable(address(uint160(winner_local)));
+            // Award the winner by the whole collected amount
+            uint amount = address(this).balance;
+            winner.transfer(amount);
+            emit OfferCompleted(winner, amount);
         }
-        winner = payable(address(uint160(winner_local)));
-        // Award the winner by the whole collected amount
-        uint amount = address(this).balance;
-        winner.transfer(amount);
-        emit OfferCompleted(winner, amount);
     }
+    function _calculate_winner() internal view returns(uint256) {
+        uint contractors_count = _contractors.length();
+        if( contractors_count == 0 )
+            revert NoWinnerContributionsCount();
 
-    // Returns (uint) winner by contribution count, or CONTRACT_FAILED
-    function get_winner_contributions() internal view returns (uint256) {
-        // Total contributions count for the list iteration
-        uint contributions_count = _contributors.length();
-        // Map to store contractor counters
-        Map memory contractors_map = ArrayMap.empty();
-        // Count of contributions voted for contract fail
-        uint failed_count = 0;
-        // Actual contributions count minus those which are in cancelling state
-        uint contributions_actual_count = 0;
-        // Collecting contractor address -> voted count
-        for(uint i=0; i < contributions_count; i += 1) {
-            address contributor = _contributors.at(i);
-            if( _contributor_cancelled_at[contributor] != 0 )
-                continue;
-            contributions_actual_count += 1;
-            uint256 voting = _contributor_voting[contributor];
-            if( voting == CONTRACT_FAILED ) {
-                failed_count += 1;
-                continue;
-            }
-            address payable voted = payable(address(uint160(voting)));
-            if( voted != payable(address(0)) ) {
-                uint cnt = 0;
-                bytes memory key = abi.encode(address(voted));
-                if( contractors_map.contains(key) ) {
-                    cnt = abi.decode(contractors_map.get(key), (uint));
-                }
-                contractors_map.set(key, abi.encode(cnt + 1));
-            }
-        }
-
-        if( contributions_actual_count == 0 )
-            return 0;
-        // Voting winner
-        address payable winner_contributions;
-        // Winner's percent
-        uint winner_contributions_percent;
-        (bytes[] memory winners, bytes[] memory counts) = contractors_map.entries();
-        for(uint i=0; i < winners.length; i += 1) {
-            uint voted_contributions = abi.decode(counts[i], (uint));
-            uint voted_contributions_percent = voted_contributions * 10000 / contributions_actual_count;
-            if( voted_contributions_percent >= _definition.contributors_vote_percent ) {
-                if(
-                    winner_contributions == payable(address(0)) ||
-                    winner_contributions_percent < voted_contributions_percent  // Will we ignore rare case when they are equal?
-                ) {
-                    winner_contributions = payable(abi.decode(winners[i], (address)));
-                    winner_contributions_percent = voted_contributions_percent;
-                }
-            }
-        }
-        failed_count = failed_count * 10000 / contributions_actual_count;  // now it's a failed contribution
-        if( failed_count > winner_contributions_percent && failed_count >= _definition.contributors_vote_percent )
-            return CONTRACT_FAILED;
-        return uint256(uint160(address(winner_contributions)));
-    }
-
-    // Returns (uint) winner by contribution amount, or CONTRACT_FAILED
-    function get_winner_amount_contributions() internal view returns (uint256) {
-        // Total contributions count for the list iteration
-        uint contributions_count = _contributors.length();
-        // Map to store contractor counters
-        Map memory contractors_map = ArrayMap.empty();
-        // Count of contributions voted for contract fail
-        uint failed_amount = 0;
-        // Actual contributions amount, minus those which are in cancelling state
-        uint contributions_amount = 0;
-        for(uint i=0; i < contributions_count; i += 1) {
-            address contributor = _contributors.at(i);
-            if( _contributor_cancelled_at[contributor] != 0 )
-                continue;
-            contributions_amount += _contributor_contribution[contributor];
-        }
-
-        if( contributions_amount == 0 )
-            return 0;
-
-        // Collecting contractor address -> voted count
-        for(uint i=0; i < contributions_count; i += 1) {
-            address contributor = _contributors.at(i);
-            if( _contributor_cancelled_at[contributor] != 0 )
-                continue;
-            uint256 voting = _contributor_voting[contributor];
-            uint contribution = _contributor_contribution[contributor];
-            if( voting == CONTRACT_FAILED ) {
-                failed_amount += contribution;
-                continue;
-            }
-            address payable voted = payable(address(uint160(voting)));
-            if( voted != payable(address(0)) ) {
-                uint amt = 0;
-                bytes memory key = abi.encode(address(voted));
-                if( contractors_map.contains(key) ) {
-                    amt = abi.decode(contractors_map.get(key), (uint));
-                }
-                contractors_map.set(key, abi.encode(amt + contribution));
-            }
-        }
-
-        // Voting winner
-        address payable winner_contributions;
-        // Winner's percent
-        uint winner_contributions_percent;
-        (bytes[] memory winners, bytes[] memory amounts) = contractors_map.entries();
-        for(uint i=0; i < winners.length; i += 1) {
-            uint voted_contributions = abi.decode(amounts[i], (uint));
-            uint voted_contributions_percent = voted_contributions * 10000 / contributions_amount;
-            if( voted_contributions_percent >= _definition.contributors_vote_fund_percent ) {
-                if(
-                    winner_contributions == payable(address(0)) ||
-                    winner_contributions_percent < voted_contributions_percent  // Will we ignore rare case when they are equal?
-                ) {
-                    winner_contributions = payable(abi.decode(winners[i], (address)));
-                    winner_contributions_percent = voted_contributions_percent;
-                }
-            }
-        }
-        failed_amount = failed_amount * 10000 / contributions_amount;  // now it's a failed contribution
-        if( failed_amount > winner_contributions_percent && failed_amount >= _definition.contributors_vote_fund_percent )
-            return CONTRACT_FAILED;
-        return uint256(uint160(address(winner_contributions)));
-    }
-
-    // Returns (uint) winner by observers, or CONTRACT_FAILED
-    function get_winner_observers() internal view returns (uint256) {
-        // number of all observers
+        // Counters
         uint observers_count = _observers.length();
-        // Map to store contractor counters
-        if( observers_count == 0 )
-            return 0;
-        Map memory contractors_map = ArrayMap.empty();
-        // Count of observers voted for contract fail
-        uint failed_count = 0;
 
-        // Collecting contractor address -> voted count
-        for(uint i=0; i < observers_count; i += 1) {
-            uint256 voting = _observer_voting[_observers.at(i)];
-            if( voting == CONTRACT_FAILED ) {
-                failed_count += 1;
-                continue;
-            }
-            address voted = address(uint160(voting));
-            if( voted != address(0) ) {
-                uint cnt = 0;
-                bytes memory key = abi.encode(address(voted));
-                if( contractors_map.contains(key) ) {
-                    cnt = abi.decode(contractors_map.get(key), (uint));
-                }
-                contractors_map.set(key, abi.encode(cnt + 1));
-            }
+        if( observers_count > 0 && _observers_leader_count * 10000 / observers_count < _definition.observers_vote_percent ) {
+            revert NoWinnerObservers();
+        }
+        if( _total_contributors_count > 0 && _contributors_leader_count * 10000 / _total_contributors_count < _definition.contributors_vote_percent ) {
+            revert NoWinnerContributionsCount();
+        }
+        if( _total_contributors_fund > 0 && _contributors_fund_leader_amount * 10000 / _total_contributors_fund < _definition.contributors_vote_fund_percent ) {
+            revert NoWinnerContributionsFund();
         }
 
-        // Voting winner
-        address payable winner_observers;
-        // Winner's percent
-        uint winner_observers_percent;
-        (bytes[] memory winners, bytes[] memory counts) = contractors_map.entries();
-        for(uint i=0; i < winners.length; i += 1) {
-            uint voted_observers = abi.decode(counts[i], (uint));
-            uint voted_observers_percent = voted_observers * 10000 / observers_count;
-            if( voted_observers_percent >= _definition.observers_vote_percent ) {
-                if(
-                    winner_observers == payable(address(0)) ||
-                    winner_observers_percent < voted_observers_percent  // Will we ignore rare case when they are equal?
-                ) {
-                    winner_observers = payable(abi.decode(winners[i], (address)));
-                    winner_observers_percent = voted_observers_percent;
-                }
+        uint256 winner_local = 0;
+        if( observers_count > 0 ) {
+            if( _observers_leader == _contributors_leader ) {
+                winner_local = _observers_leader;
+            } else if( _observers_leader == _contributors_fund_leader ) {
+                winner_local = _observers_leader;
+            } else {
+                // TODO: can ve resolve it using some other way?
+                revert VotingConflict();
             }
+        } else if( _contributors_fund_leader == _contributors_leader ) {
+            winner_local = _contributors_leader;
+        } else {
+            // TODO: can ve resolve it using some other way?
+            revert VotingConflict();
         }
-        failed_count = failed_count * 10000 / observers_count;  // now it's a failed contribution
-        if( failed_count > winner_observers_percent && failed_count >= _definition.observers_vote_percent )
-            return CONTRACT_FAILED;
-        return uint256(uint160(address(winner_observers)));
+        return winner_local;
     }
 
-    // Returns a time differense when the contribution fulfills the cancelling timeout
-    // and can be really cancelled using the cancel request
+    // Returns a time differense when the contribution fulfills the canceling timeout
+    // and can be really canceled using the cancel request
     //
-    // Returns timeout left until cancelling can be finished.
+    // Returns timeout left until canceling can be finished.
     // When the timeout has expired, returns 0
     //
-    // If the contribution was not cancelled, returns contribution_unlock_timeout
+    // If the contribution was not canceled, returns contribution_unlock_timeout
     function contribution_can_be_canceled(address contributor) public view not_completed_only() returns (uint timeout) {
         if( !_contributors.contains(contributor) )
             revert WrongParameter();
-        uint cancelled_at = _contributor_cancelled_at[contributor];
-        if( cancelled_at == 0 ) {
+        uint canceled_at = _contributor_canceled_at[contributor];
+        if( canceled_at == 0 ) {
             return _definition.contribution_unlock_timeout;
         }
-        if( cancelled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
-            return cancelled_at + _definition.contribution_unlock_timeout - block.timestamp;
+        if( canceled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
+            return canceled_at + _definition.contribution_unlock_timeout - block.timestamp;
         }
         return 0;
     }
@@ -642,54 +545,126 @@ contract Offer is HasOwner {
     // or if the contract is failed, makes the payment back to the contributor's account
     // and removes the contribution from the list of contributors
     function contribution_cancel() external not_completed_only() contributor_only() sender_origin() {
-        if( state != OfferState.FAILED ) {
-            uint cancelled_at = _contributor_cancelled_at[tx.origin];
-            if( cancelled_at == 0 ) {
-                cancelled_at = _contributor_cancelled_at[tx.origin] = block.timestamp;
+        uint contributor_contribution = _contributor_contribution[tx.origin];
+        uint canceled_at = _contributor_canceled_at[tx.origin];
+        if( canceled_at == 0 ) {
+            // first-time cancelation call
+
+            // initiates a cancelation timeout
+            canceled_at = _contributor_canceled_at[tx.origin] = block.timestamp;
+
+            // annihilates voting data of this contributor
+            uint voted_ = _contributor_voting[tx.origin];
+            if( voted_ != 0 ) {
+                _contributor_votes_count[voted_] -= 1;
+                _contributor_votes_amount[voted_] -= contributor_contribution;
+                _total_contributor_votes_count -= 1;
+                _total_contributor_votes_amount -= contributor_contribution;
+                _cleanup_contractor(voted_);
+                _reset_leaders();
             }
-            if( cancelled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
+            _total_contributors_count -= 1;
+            _total_contributors_fund -= contributor_contribution;
+            _contributor_voting[tx.origin] = 0;
+            emit ContributionCancelation(payable(tx.origin));
+        }
+        if( state != OfferState.FAILED ) {
+            // non-failed contract forces waiting for the cancelation
+            if( canceled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
                 return;
             }
         }
-        uint contributor_contribution = _contributor_contribution[tx.origin];
         // All data should be zeroed to prevent data phantom and reentrance attack
         _contributors.remove(tx.origin);
         _contributor_contribution[tx.origin] = 0;
-        _contributor_voting[tx.origin] = 0;
-        _contributor_cancelled_at[tx.origin] = 0;
+        _contributor_canceled_at[tx.origin] = 0;
         payable(tx.origin).transfer(contributor_contribution);
         emit ContributionCanceled(payable(tx.origin));
     }
 
     // Votings
 
+    // Utilities to vote for
+    function _contributor_vote_for(address contributor_, uint voted_) internal {
+        uint old_voted = _contributor_voting[contributor_];
+        uint contribution = _contributor_contribution[contributor_];
+        if( old_voted != 0 ) {
+            _contributor_votes_count[old_voted] -= 1;
+            _contributor_votes_amount[old_voted] -= contribution;
+            _cleanup_contractor(old_voted);
+        }
+        _contributor_voting[contributor_] = voted_;
+        _contributor_votes_count[voted_] += 1;
+        _contributor_votes_amount[voted_] += contribution;
+        if( old_voted == 0 ) {
+            _total_contributor_votes_count += 1;
+            _total_contributor_votes_amount += contribution;
+        }
+        _contractors.add(voted_); // TODO: who is able to add contractors?
+        if( old_voted != 0 ) {
+            _reset_leaders();
+        } else {
+            _pretend_to_win_contributors(voted_);
+            _pretend_to_win_contributors_amount(voted_);
+        }
+    }
+
+    function _observer_vote_for(address observer_, uint voted_) internal {
+        uint old_voted = _observer_voting[observer_];
+        if( old_voted != 0 ) {
+            _observer_votes_count[old_voted] -= 1;
+            _cleanup_contractor(old_voted);
+        }
+        _observer_voting[observer_] = voted_;
+        _observer_votes_count[voted_] += 1;
+        if( old_voted == 0 ) {
+            _total_observer_votes_count += 1;
+        }
+        _contractors.add(voted_); // TODO: who is able to add contractors?
+        if( old_voted != 0 ) {
+            _reset_leaders();
+        } else {
+            _pretend_to_win_observers(voted_);
+        }
+    }
+
+    function _cleanup_contractor(uint voted_) internal {
+        if(
+            _contributor_votes_count[voted_] == 0 &&
+            _contributor_votes_amount[voted_] == 0 &&
+            _observer_votes_count[voted_] == 0
+        ) {
+            _contractors.remove(voted_);
+        }
+    }
+
     // Contributor voting for the contractor's address
     function contributor_vote(address payable voted_) external started_only() contributor_only()  voting_started() sender_origin() {
-        uint cancelled_at = _contributor_cancelled_at[address(tx.origin)];
-        if( cancelled_at != 0 ) {
+        uint canceled_at = _contributor_canceled_at[address(tx.origin)];
+        if( canceled_at != 0 ) {
             revert WrongState();
         }
-        _contributor_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
+        _contributor_vote_for(address(tx.origin), uint256(uint160(address(voted_))));
         emit ContributorVote(payable(tx.origin), voted_, false);
     }
     // Contributor voting for the offer failure
     function contributor_vote_failure() external started_only() contributor_only() voting_started() sender_origin() {
-        uint cancelled_at = _contributor_cancelled_at[address(tx.origin)];
-        if( cancelled_at != 0 ) {
+        uint canceled_at = _contributor_canceled_at[address(tx.origin)];
+        if( canceled_at != 0 ) {
             revert WrongState();
         }
-        _contributor_voting[address(tx.origin)] = CONTRACT_FAILED;
+        _contributor_vote_for(address(tx.origin), CONTRACT_FAILED);
         emit ContributorVote(payable(tx.origin), payable(address(0)), true);
     }
 
     // Observer voting for the contractor's address
     function observer_vote(address payable voted_) external started_only() observer_only() voting_started() sender_origin() {
-        _observer_voting[address(tx.origin)] = uint256(uint160(address(voted_)));
+        _observer_vote_for(address(tx.origin), uint256(uint160(address(voted_))));
         emit ObserverVote(payable(tx.origin), voted_, false);
     }
     // Observer voting for the offer failure
     function observer_vote_failure() external started_only() observer_only() voting_started() sender_origin() {
-        _observer_voting[address(tx.origin)] = CONTRACT_FAILED;
+        _observer_vote_for(address(tx.origin), CONTRACT_FAILED);
         emit ObserverVote(payable(tx.origin), payable(address(0)), true);
     }
     // Informational functions
