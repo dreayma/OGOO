@@ -2,6 +2,9 @@ const { expect, should } = require("chai");
 
 should();
 
+// TODO: test revoting for correct change leathers state
+// TODO: test CancelationInProgress
+
 function to$(wei) {
   var cents_per_ether = 300000n;
   var weis_per_ether = 1000000000000000000n;
@@ -213,7 +216,6 @@ describe("Contract Tests", function () {
       console.log('State before first vote', state);
       state.should.be.equal(1n);
       await (await contributor_access.contributor_vote(account_contractor.address)).wait();
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       state = await contractor_access.state();
       console.log('State after contributor vote', state)
       state.should.be.equal(1n);
@@ -221,10 +223,6 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
       await (await observer_access.observer_vote(account_contractor.address)).wait();
-      var start_balance_calculator = await account_outside.provider.getBalance(account_outside.address);
-      await (await outside_access.calculate_voting()).wait();
-      var end_balance_calculator = await account_outside.provider.getBalance(account_outside.address);
-      console.debug("Spent for the calculation:", start_balance_calculator - end_balance_calculator, to$(start_balance_calculator - end_balance_calculator));
       state = await contractor_access.state();
       console.log('State after observer vote', state);
       state.should.be.equal(2n);
@@ -437,8 +435,6 @@ describe("Contract Tests", function () {
       console.debug("Contributor has just voted");
       await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
       console.debug("Contributor2 has just voted");
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just recalculated");
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
@@ -624,16 +620,15 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      await(await contributor_access.contributor_vote(account_contractor.address)).wait();
-      console.debug("Contributor has just voted");
       await (await contributor2_access.contribution_cancel()).wait();
       console.debug("Contributor2 has just cancelled contribution");
       {
         var time_to_cancel = await contributor2_access.contribution_can_be_canceled(account_contributor2.address);
         console.log("Contributor2 time to cancel", time_to_cancel);
       }
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just recalculated");
+
+      await(await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("A single left contributor has just voted");
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
@@ -784,8 +779,6 @@ describe("Contract Tests", function () {
 
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
-      console.debug("Contributor has just voted");
       await (await contributor2_access.contribution_cancel()).wait();
       console.debug("Contributor2 has just cancelled contribution");
       while(42) {
@@ -802,8 +795,8 @@ describe("Contract Tests", function () {
         interm_balance_offer.should.be.equal(30000000000000001n);
       }
       console.debug("Contributor2 has just successfully cancelled contribution");
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just recalculated");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("A single left contributor has just voted");
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
@@ -970,7 +963,8 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      o.interface.parseError((await contributor_access.contributor_vote(account_contractor.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('ContributionFundLow');
+      console.debug("A single contributor voting should success, but doesn't change state");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
       {
         var state = await contractor_access.state();
         console.log('State should not be changed', state);
@@ -985,12 +979,9 @@ describe("Contract Tests", function () {
         var diff = start_balance_contributor2 - end_balance_contributor2;
         console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
-      console.debug("Contributors voting should success now");
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributor2 voting should success and finish the contract");
       await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
       console.debug("Contributors have just voted");
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just recalculated");
       {
         var state = await contractor_access.state();
         console.log('State after contributors vote', state)
@@ -1153,7 +1144,8 @@ describe("Contract Tests", function () {
       var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
       console.debug("Contractor account before contract success:", start_balance_contractor);
 
-      o.interface.parseError((await contributor_access.contributor_vote(account_contractor.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('ContributionsCountLow');
+      console.debug("A single contributor voting should success, but doesn't change state");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
       {
         var state = await contractor_access.state();
         console.log('State should not be changed', state);
@@ -1168,13 +1160,9 @@ describe("Contract Tests", function () {
         var diff = start_balance_contributor2 - end_balance_contributor2;
         console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
-      console.debug("Contributors voting should success now");
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      console.debug("Contributor2 voting should success and finish the contract now");
       await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
       console.debug("Contributors have just voted");
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just recalculated");
-
       {
         var state = await contractor_access.state();
         console.log('State after contributors vote', state)
@@ -1263,6 +1251,7 @@ describe("Contract Tests", function () {
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1319,9 +1308,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after creating contribution:", end_balance_offer);
 
       console.debug("Waiting for the voting start timeout");
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      await (await outside_access.calculate_voting()).wait();
-      console.debug("Voting has just been recalculated");
+      await new Promise(resolve => setTimeout(resolve, 15000));
+      console.debug("Try to vote by the contributor will lead to failure because of timeout");
+      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
       {
         var state = await outside_access.state();
         console.log('State after voting calculation should be failed', state)
@@ -1342,30 +1331,30 @@ describe("Contract Tests", function () {
       // check the events history
       {
           var events = await o.queryFilter(o.filters.OfferCreated());
-          events.length.should.be.equal(1);
+          events.length.should.be.equal(1, "OfferCreated");
       }
       {
           var events = await o.queryFilter(o.filters.OfferApproved());
-          events.length.should.be.equal(1);
+          events.length.should.be.equal(1, "OfferApproved");
       }
       {
           var events = await o.queryFilter(o.filters.ContributionCreated());
-          events.length.should.be.equal(1);
+          events.length.should.be.equal(1, "ContributionCreated");
           expect(events[0].args[0]).to.equal(account_contributor.address);
       }
       {
           var events = await o.queryFilter(o.filters.ContributionUpdated());
-          events.length.should.be.equal(1);
+          events.length.should.be.equal(1, "ContributionUpdated");
           expect(events[0].args[0]).to.equal(account_contributor.address);
           expect(events[0].args[1]).to.equal(10000000000000001n);
       }
       {
           var events = await o.queryFilter(o.filters.ContributorVote());
-          events.length.should.be.equal(0);
+          events.length.should.be.equal(1, "ContributorVote");
       }
       {
           var events = await o.queryFilter(o.filters.OfferFailed());
-          events.length.should.be.equal(1);
+          events.length.should.be.equal(1, "OfferFailed");
       }
       {
           var events = await o.queryFilter(o.filters.ContributionCanceled());
@@ -1489,12 +1478,10 @@ describe("Contract Tests", function () {
       console.log('State before first vote', state);
       state.should.be.equal(1n);
       await (await contributor_access.contributor_vote_failure()).wait();
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       state = await contractor_access.state();
       console.log('State after contributor vote', state)
       state.should.be.equal(1n);
       await (await observer_access.observer_vote_failure()).wait();
-      await (await contractor_access.calculate_voting()).wait();
       state = await contractor_access.state();
       console.log("State after observer's vote should be failed", state);
       state.should.be.equal(3n);
@@ -1659,13 +1646,12 @@ describe("Contract Tests", function () {
 
       await (await contributor_access.contributor_vote(account_contractor.address)).wait();
       console.debug("Contributor has just voted");
-      o.interface.parseError((await outside_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerContributionsCount');
       var approved_at = await outside_access.approved_at();
       var failure_at = new Date().getTime() / 1000 - Number(approved_at);
       console.debug("Waiting for the voting failure timeout:", failure_at);
       await new Promise(resolve => setTimeout(resolve, 1000 * failure_at));
-      await (await outside_access.calculate_voting()).wait();
-      console.debug("Voting has just been recalculated");
+      console.debug("Trying to vote should lead to failure because of timeout");
+      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
       {
         var state = await outside_access.state();
         console.log('State after voting calculation should be failed', state)
@@ -1781,15 +1767,11 @@ describe("Contract Tests", function () {
       console.debug("Contractor account before contract success:", start_balance_contractor);
       await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
       console.debug("The most valuable contributor has just voted");
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerContributionsCount');
-      console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(1n);
       await (await contributor1_access.contributor_vote(account_contractor.address)).wait();
       console.debug("The least valuable contributor has just voted");
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
@@ -1894,8 +1876,6 @@ describe("Contract Tests", function () {
       console.debug("Contractor account before contract success:", start_balance_contractor);
       await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
       console.debug("The most valuable contributor has just voted");
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
@@ -2005,22 +1985,16 @@ describe("Contract Tests", function () {
       console.debug("Contractor account before contract success:", start_balance_contractor);
       await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
       console.debug("The most valuable contributor has just voted");
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
-      console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(1n);
       await (await contributor1_access.observer_vote(account_contractor.address)).wait();
       console.debug("The observer has just voted");
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
-      console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
       console.log('State after observers vote', state)
       state.should.be.equal(1n);
       await (await contributor2_access.observer_vote(account_contractor.address)).wait();
       console.debug("The other observer has just voted");
-      await (await contractor_access.calculate_voting()).wait();
-      console.debug("Voting has just been recalculated");
       state = await contractor_access.state();
       console.log('State after another observers vote', state)
       state.should.be.equal(2n);
@@ -2132,7 +2106,6 @@ describe("Contract Tests", function () {
       await (await contributor1_access.contributor_vote(account_contributor1.address)).wait();
       await (await contributor2_access.contributor_vote(account_contributor1.address)).wait();
       console.debug("The least valuable contributors has just voted for contributor1");
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('NoWinnerObservers');
       state = await contractor_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(1n);
@@ -2140,7 +2113,6 @@ describe("Contract Tests", function () {
       await (await contractor_access.observer_vote(account_contractor.address)).wait();
       console.debug("The observer/contractor has just voted for himself");
 
-      o.interface.parseError((await contractor_access.calculate_voting().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('VotingConflict');
       state = await contractor_access.state();
       console.log('State after conflict observer vote should not be changed, voting conflict', state)
       state.should.be.equal(1n);

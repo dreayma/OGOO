@@ -173,19 +173,37 @@ contract Offer is HasOwner {
         );
     }
 
+    function is_voting_started_balance() internal view returns(bool) {
+        return address(this).balance >= _definition.voting_start_balance;
+    }
+
+    function is_voting_started_count() internal view returns(bool) {
+        return _contributors.length() >= _definition.voting_start_count;
+    }
+
+    function is_voting_started() internal view returns(bool) {
+        return is_voting_started_balance() && is_voting_started_count();
+    }
+
     // Errors to revert when the state is wrong to call
     error WrongState();                 // The function should not be called in this state of the contract
     error WrongParameter();             // The function should not be called with this parameter
     error TooLowContribution();         // Creating contribution with the balance less than provided is forbidden
     error CancelationInProgress();      // Contribute from the account with the cancelation in progress is forbidden
+    //TODO: Make visible for client
     error VotingConflict();             // When the observers voting conflichs with the both, contribution count and contribution amount votings
     error StartedOnly();                // When the operation has to be called only in the started state
     error PreparedOnly();               // When the operation has to be called only in the prepared state
     error RunningOnly();                // When the operation has to be called only in the running state
+    //TODO: Make visible for client
     error ContributionFundLow();        // The contribution fund is too low to start voting
+    //TODO: Make visible for client
     error ContributionsCountLow();      // The contributions count is too low to start voting
+    //TODO: Make visible for client
     error NoWinnerContributionsCount(); // The voted contributions count is too low to determine the winner
+    //TODO: Make visible for client
     error NoWinnerContributionsFund();  // The voted contribution fund is too low to determine the winner
+    //TODO: Make visible for client
     error NoWinnerObservers();          // The voted offers count is too low to determine the winner
 
     // Metastate check modifiers
@@ -214,9 +232,10 @@ contract Offer is HasOwner {
     }
 
     modifier voting_started() {
-        if( address(this).balance < _definition.voting_start_balance )
+        //TODO: Make visible for client
+        if( !is_voting_started_balance() )
             revert ContributionFundLow();
-        if( _contributors.length() < _definition.voting_start_count )
+        if( !is_voting_started_count() )
             revert ContributionsCountLow();
         _;
     }
@@ -381,6 +400,7 @@ contract Offer is HasOwner {
             } else {
                 _pretend_to_win_contributors_amount(voting_);
             }
+            _calculate_voting();
         }
         emit ContributionUpdated(payable(tx.origin), _contributor_contribution[tx.origin]);
     }
@@ -431,14 +451,11 @@ contract Offer is HasOwner {
         return _contributor_contribution[tx.origin];
     }
 
-    // Calculate Voting
-    //
-    // This complex call can be called by anybody to
-    // calculate offer's state. It counts votings and
-    // updates the contract state, if the offer definition
-    // parameters describing the contract success or failure
-    // are met.
-    function calculate_voting() external started_only() {
+    // Calculate Voting and change the state if necessary
+    function _calculate_voting() internal {
+        if( state != OfferState.APPROVED ) {
+            return;
+        }
         if( block.timestamp > approved_at + _definition.voting_fail_timeout ) {
             state = OfferState.FAILED;
             failed_at = block.timestamp;
@@ -462,6 +479,8 @@ contract Offer is HasOwner {
                 return;
             }
         }
+        if( !is_voting_started() )
+            return;
         uint256 winner_local = _calculate_winner();
 
         if( winner_local == CONTRACT_FAILED ) {
@@ -479,22 +498,24 @@ contract Offer is HasOwner {
             emit OfferCompleted(winner, amount);
         }
     }
+
+    // Returns a winner looking to the contract restrictions,
+    // or 0 in case of incomplete voting
     function _calculate_winner() internal view returns(uint256) {
         uint contractors_count = _contractors.length();
         if( contractors_count == 0 )
-            revert NoWinnerContributionsCount();
+            return 0;
 
-        // Counters
         uint observers_count = _observers.length();
 
         if( observers_count > 0 && _observers_leader_count * 10000 / observers_count < _definition.observers_vote_percent ) {
-            revert NoWinnerObservers();
+            return 0;
         }
         if( _total_contributors_count > 0 && _contributors_leader_count * 10000 / _total_contributors_count < _definition.contributors_vote_percent ) {
-            revert NoWinnerContributionsCount();
+            return 0;
         }
         if( _total_contributors_fund > 0 && _contributors_fund_leader_amount * 10000 / _total_contributors_fund < _definition.contributors_vote_fund_percent ) {
-            revert NoWinnerContributionsFund();
+            return 0;
         }
 
         uint256 winner_local = 0;
@@ -505,18 +526,18 @@ contract Offer is HasOwner {
                 winner_local = _observers_leader;
             } else {
                 // TODO: can ve resolve it using some other way?
-                revert VotingConflict();
+                return 0;
             }
         } else if( _contributors_fund_leader == _contributors_leader ) {
             winner_local = _contributors_leader;
         } else {
             // TODO: can ve resolve it using some other way?
-            revert VotingConflict();
+            return 0;
         }
         return winner_local;
     }
 
-    // Returns a time differense when the contribution fulfills the canceling timeout
+    // Returns a time difference when the contribution fulfills the canceling timeout
     // and can be really canceled using the cancel request
     //
     // Returns timeout left until canceling can be finished.
@@ -567,6 +588,7 @@ contract Offer is HasOwner {
             _total_contributors_fund -= contributor_contribution;
             _contributor_voting[tx.origin] = 0;
             emit ContributionCancelation(payable(tx.origin));
+            _calculate_voting();
         }
         if( state != OfferState.FAILED ) {
             // non-failed contract forces waiting for the cancelation
@@ -607,6 +629,7 @@ contract Offer is HasOwner {
             _pretend_to_win_contributors(voted_);
             _pretend_to_win_contributors_amount(voted_);
         }
+        _calculate_voting();
     }
 
     function _observer_vote_for(address observer_, uint voted_) internal {
@@ -626,6 +649,7 @@ contract Offer is HasOwner {
         } else {
             _pretend_to_win_observers(voted_);
         }
+        _calculate_voting();
     }
 
     function _cleanup_contractor(uint voted_) internal {
@@ -639,7 +663,7 @@ contract Offer is HasOwner {
     }
 
     // Contributor voting for the contractor's address
-    function contributor_vote(address payable voted_) external started_only() contributor_only()  voting_started() sender_origin() {
+    function contributor_vote(address payable voted_) external started_only() contributor_only() sender_origin() {
         uint canceled_at = _contributor_canceled_at[address(tx.origin)];
         if( canceled_at != 0 ) {
             revert WrongState();
@@ -648,7 +672,7 @@ contract Offer is HasOwner {
         emit ContributorVote(payable(tx.origin), voted_, false);
     }
     // Contributor voting for the offer failure
-    function contributor_vote_failure() external started_only() contributor_only() voting_started() sender_origin() {
+    function contributor_vote_failure() external started_only() contributor_only() sender_origin() {
         uint canceled_at = _contributor_canceled_at[address(tx.origin)];
         if( canceled_at != 0 ) {
             revert WrongState();
@@ -658,12 +682,12 @@ contract Offer is HasOwner {
     }
 
     // Observer voting for the contractor's address
-    function observer_vote(address payable voted_) external started_only() observer_only() voting_started() sender_origin() {
+    function observer_vote(address payable voted_) external started_only() observer_only() sender_origin() {
         _observer_vote_for(address(tx.origin), uint256(uint160(address(voted_))));
         emit ObserverVote(payable(tx.origin), voted_, false);
     }
     // Observer voting for the offer failure
-    function observer_vote_failure() external started_only() observer_only() voting_started() sender_origin() {
+    function observer_vote_failure() external started_only() observer_only() sender_origin() {
         _observer_vote_for(address(tx.origin), CONTRACT_FAILED);
         emit ObserverVote(payable(tx.origin), payable(address(0)), true);
     }
