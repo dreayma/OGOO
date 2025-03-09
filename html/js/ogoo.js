@@ -1,505 +1,773 @@
-const createMap = function() {
-    // Creates a Map using pairs of the arguments
-    var r = new Map();
-    for(var i=0; i < arguments.length - 1; i += 2) {
-        r.set(arguments[i], arguments[i + 1]);
-    }
-    return r;
-}
-
-const WeiSymbol = 'w';
-
-const etherUnits = [
-    WeiSymbol,
-    'K' + WeiSymbol,
-    'M' + WeiSymbol,
-    'G' + WeiSymbol,
-    'mk' + ethers.EtherSymbol,
-    'm' + ethers.EtherSymbol,
-    ethers.EtherSymbol,
-    'K' + ethers.EtherSymbol,
-    'M' + ethers.EtherSymbol,
-    'G' + ethers.EtherSymbol,
-    'T' + ethers.EtherSymbol,
-]
-
-const timeUnits = {
-    'sec': 1,
-    'min': 60,
-    'hours': 60*60,
-    'days': 60*60*24,
-    'weeks': 60*60*24*7,
-}
-
-const bigIntSplit = function(amount, digits=3) {
-    var len = amount.toString().length;
-    var len3 = Math.ceil(len / digits);
-    var ret = [];
-    var delim = 10n ** BigInt(digits);
-    for(var i=0; i < len3; i += 1) {
-        ret.push(amount % delim);
-        amount = amount / delim;
-    }
-    if(ret[ret.length - 1] == 0n) {
-        ret.pop();
-    }
-    return ret;
-}
-
-const bigIntUnsplit = function(split, digits=3) {
-    var ret = 0n;
-    var delim = 10n ** BigInt(digits);
-    for(var i=0; i < split.length; i++) {
-        ret += split[i] * (delim ** BigInt(i));
-    }
-    return ret;
-}
-
-const bigIntSplitRound = function(splitted, parts=null, digits=3) {
-    if(parts == 0)
-        return splitted;
-    var _splitted = Array.from(splitted);
-    if(parts == null) {
-        parts = _splitted.length - 1;
-    }
-    var delim = 10n ** BigInt(digits);
-    var i;
-
-    if(_splitted[parts - 1] >= delim / 2n)
-        _splitted[parts] += 1n;
-    for(i=0; i < parts && i < _splitted.length - 1; i += 1) {
-        _splitted[i] = 0n;
-    }
-    return _splitted;
-}
-
-const bigIntRound = function(amount, digits) {
-    return bigIntUnsplit(bigIntSplitRound(bigIntSplit(amount, 1), digits, 1), 1);
-}
-
-const etherFormatApprox = function(amount, parts=2) {
-    var ret = '';
-    var i;
-    var splitted = bigIntSplit(amount);
-    // fillup extra-teraethers
-    while(splitted.length > etherUnits.length) {
-        splitted[splitted.length - 2] += splitted[splitted.length - 1] * 1000n;
-        splitted.splice(-1);
-    }
-    // round-up lower parts
-    if(splitted.length > parts) {
-        splitted = bigIntSplitRound(splitted, splitted.length - parts);
-    }
-    // fillup return value
-    for(i = splitted.length - 1; i >= splitted.length - parts && i >= 0; i -= 1) {
-        if(splitted[i] > 0n) {
-            if(ret.length > 0) {
-                ret += ' ';
-            }
-            ret += splitted[i].toString() + etherUnits[i];
+$(async function() {
+    const createMap = function() {
+        // Creates a Map using pairs of the arguments
+        var r = new Map();
+        for(var i=0; i < arguments.length - 1; i += 2) {
+            r.set(arguments[i], arguments[i + 1]);
         }
+        return r;
     }
-    return ret;
-};
 
-const convertToWei = function(value, unit_index=0) {
-    var int, frac;
-    [sint, sfrac] = value.toString().split('.');
-    if(typeof(sfrac) == 'undefined')
-        sfrac = '';
-    var bint = BigInt(sint + sfrac);
+    const WeiSymbol = 'w';
 
-    if(sfrac.length > 0) {
-        if(sfrac.length > unit_index * 3) {
-            bint = (bigIntRound(bint, sfrac.length - unit_index * 3) / (10n ** BigInt(sfrac.length - unit_index * 3)));
+    const CONTRACT_FAILED = 1n << 255n;
+    
+    const etherUnits = [
+        WeiSymbol,
+        'K' + WeiSymbol,
+        'M' + WeiSymbol,
+        'G' + WeiSymbol,
+        'mk' + ethers.EtherSymbol,
+        'm' + ethers.EtherSymbol,
+        ethers.EtherSymbol,
+        'K' + ethers.EtherSymbol,
+        'M' + ethers.EtherSymbol,
+        'G' + ethers.EtherSymbol,
+        'T' + ethers.EtherSymbol,
+    ]
+
+    const timeUnits = {
+        'sec': 1,
+        'min': 60,
+        'hours': 60*60,
+        'days': 60*60*24,
+        'weeks': 60*60*24*7,
+    }
+
+    const bigIntSplit = function(amount, digits=3) {
+        var len = amount.toString().length;
+        var len3 = Math.ceil(len / digits);
+        var ret = [];
+        var delim = 10n ** BigInt(digits);
+        for(var i=0; i < len3; i += 1) {
+            ret.push(amount % delim);
+            amount = amount / delim;
+        }
+        if(ret[ret.length - 1] == 0n) {
+            ret.pop();
+        }
+        return ret;
+    }
+
+    const bigIntUnsplit = function(split, digits=3) {
+        var ret = 0n;
+        var delim = 10n ** BigInt(digits);
+        for(var i=0; i < split.length; i++) {
+            ret += split[i] * (delim ** BigInt(i));
+        }
+        return ret;
+    }
+
+    const bigIntSplitRound = function(splitted, parts=null, digits=3) {
+        if(parts == 0)
+            return splitted;
+        var _splitted = Array.from(splitted);
+        if(parts == null) {
+            parts = _splitted.length - 1;
+        }
+        var delim = 10n ** BigInt(digits);
+        var i;
+
+        _splitted.push(0n);
+        // rounding
+        if(_splitted[parts - 1] >= delim / 2n) {
+            _splitted[parts] += 1n;
+            for(i = parts + 1; i < _splitted.length; i++) {
+                if(_splitted[i-1] == delim) {
+                    _splitted[i] += 1n;
+                    _splitted[i-1] = 0n;
+                } else {
+                    break;
+                }
+            }
+        }
+        if(_splitted.slice(-1)[0] == 0n)
+            _splitted.pop();
+        for(i=0; i < parts && i < _splitted.length - 1; i += 1) {
+            _splitted[i] = 0n;
+        }
+        return _splitted;
+    }
+
+    const bigIntRound = function(amount, digits) {
+        return bigIntUnsplit(bigIntSplitRound(bigIntSplit(amount, 1), digits, 1), 1);
+    }
+
+    /*const*/ etherFormatApprox = function(amount, parts=2) {
+        var ret = '';
+        var i;
+        var splitted = bigIntSplit(amount);
+        // fillup extra-teraethers
+        while(splitted.length > etherUnits.length) {
+            splitted[splitted.length - 2] += splitted[splitted.length - 1] * 1000n;
+            splitted.splice(-1);
+        }
+        // round-up lower parts
+        if(splitted.length > parts) {
+            splitted = bigIntSplitRound(splitted, splitted.length - parts);
+        }
+        // fillup return value
+        for(i = splitted.length - 1; i >= splitted.length - parts && i >= 0; i -= 1) {
+            if(splitted[i] > 0n) {
+                if(ret.length > 0) {
+                    ret += ' ';
+                }
+                ret += splitted[i].toString() + etherUnits[i];
+            }
+        }
+        return ret;
+    };
+
+    const convertToWei = function(value, unit_index=0) {
+        var int, frac;
+        [sint, sfrac] = value.toString().split('.');
+        if(typeof(sfrac) == 'undefined')
+            sfrac = '';
+        var bint = BigInt(sint + sfrac);
+
+        if(sfrac.length > 0) {
+            if(sfrac.length > unit_index * 3) {
+                bint = (bigIntRound(bint, sfrac.length - unit_index * 3) / (10n ** BigInt(sfrac.length - unit_index * 3)));
+            } else {
+                bint = bint * (10n ** BigInt(unit_index * 3 - sfrac.length));
+            }
         } else {
             bint = bint * (10n ** BigInt(unit_index * 3 - sfrac.length));
         }
-    } else {
-        bint = bint * (10n ** BigInt(unit_index * 3 - sfrac.length));
-    }
-    return bint;
-};
+        return bint;
+    };
 
-const convertFromWei = function(value, unit_index=0) {
-    var swei = value.toString();
-    var sint;
-    var sfrac;
-    if(swei.length > unit_index * 3) {
-        sint = swei.substr(0, swei.length - unit_index * 3);
-        sfrac = swei.substr(swei.length - unit_index * 3, swei.length); 
-    } else {
-        sint = '0';
-        sfrac = '0'.repeat(unit_index * 3 - swei.length) + swei;
-    }
-    if( BigInt(sfrac) > 0n ) {
-        for(var i = sfrac.length-1; i >= 0; i -= 1) {
-            if(sfrac.substr(i, i+1) == '0')
-                sfrac = sfrac.substr(0, i);
-            else
-                break;
+    const convertFromWei = function(value, unit_index=0) {
+        var swei = value.toString();
+        var sint;
+        var sfrac;
+        if(swei.length > unit_index * 3) {
+            sint = swei.substr(0, swei.length - unit_index * 3);
+            sfrac = swei.substr(swei.length - unit_index * 3, swei.length); 
+        } else {
+            sint = '0';
+            sfrac = '0'.repeat(unit_index * 3 - swei.length) + swei;
         }
-        return sint + '.' + sfrac;
-    }
-    return sint;
-}
-
-const get_database = async function() {
-    return await new Promise(function(resolve, reject) {
-        var request = indexedDB.open('ogoo', 1);
-        request.onerror = (ex) => {
-            console.error('Error open ogoo database', ex);
-            bootstrap.Modal.getOrCreateInstance($('#no-database')[0], {
-                keyboard: false,
-            }).show();
-            if( ex.originalTarget && ex.originalTarget.error) {
-                reject(new Error('Database error', {cause: ex.originalTarget.error}));
-            } else {
-                reject(new Error(ex.toString()));
+        if( BigInt(sfrac) > 0n ) {
+            for(var i = sfrac.length-1; i >= 0; i -= 1) {
+                if(sfrac.substr(i, i+1) == '0')
+                    sfrac = sfrac.substr(0, i);
+                else
+                    break;
             }
+            return sint + '.' + sfrac;
         }
-        request.onupgradeneeded = (event) => {
-            console.debug('OGOO DB upgrade ' + event.oldVersion + ' -> ' + event.newVersion)
-            const db = event.target.result;
-            const offers_store = db.createObjectStore("offers", { keyPath: "id" });
-        }
-        request.onsuccess = (event) => {
-            console.debug('OGOO DB opened successfully')
-            const db = event.target.result;
-            resolve(db);
-        }
-    });
-};
+        return sint;
+    };
 
-const get_offers_list = async function() {
-    var offers_list = [];
-    var db = await get_database();
-    return await new Promise(function (resolve, reject) {
-        const objectStore = db.transaction("offers").objectStore("offers");
-        objectStore.openCursor().addEventListener("success", (e) => {
-            const cursor = e.target.result;
-            if (cursor) {
-                console.debug('OGOO DB read offers line', cursor.value)
-                offers_list.push(cursor.value.id);
-                cursor.continue();
-            } else {
-                resolve(offers_list);
+    const extract_revert_data = function(ex) {
+        var data = ex.data;
+        if( typeof(data) == 'undefined' ) {
+            return 'unknown';
+        }
+        if( typeof(data) != 'string') {
+            return extract_revert_data(data);
+        }
+        return data;
+    };
+
+    const extract_revert_error = function(ex) {
+        console.debug('Revert error', ex);
+        var data = extract_revert_data(ex);
+        if( data == 'unknown' )
+            return 'Unknown problem';
+        try {
+            data = (new ethers.ContractFactory(offer_abi.abi, offer_abi.bytecode)).interface.parseError(data);
+        } catch(ex) {
+            return 'Unexpected revert, data:' + data;
+        }
+        return `${data.name}(${data.args.join(', ')})`;
+    };
+
+    const get_database = async function() {
+        return await new Promise(function(resolve, reject) {
+            var request = indexedDB.open('ogoo', 1);
+            request.onerror = (ex) => {
+                console.error('Error open ogoo database', ex);
+                bootstrap.Modal.getOrCreateInstance($('#no-database')[0], {
+                    keyboard: false,
+                }).show();
+                if( ex.originalTarget && ex.originalTarget.error) {
+                    reject(new Error('Database error', {cause: ex.originalTarget.error}));
+                } else {
+                    reject(new Error(ex.toString()));
+                }
+            }
+            request.onupgradeneeded = (event) => {
+                console.debug('OGOO DB upgrade ' + event.oldVersion + ' -> ' + event.newVersion)
+                const db = event.target.result;
+                const offers_store = db.createObjectStore("offers", { keyPath: "id" });
+            }
+            request.onsuccess = (event) => {
+                console.debug('OGOO DB opened successfully')
+                const db = event.target.result;
+                resolve(db);
             }
         });
-    });
-};
+    };
 
-const add_offer_to_list = async function(id) {
-    var db = await get_database();
-    var current_account = get_current_account();
-    if( !current_account ) {
-        console.error('No current account selected');
-        throw new Error('No current account selected', {cause: 'NO_ACCCOUNT'});
-    }
-    var offer_access = new ethers.Contract(
-        id,
-        offer_abi.abi,
-        current_account
-    );
-    try {
-        var state = await offer_access.state();
-    } catch(ex) {
-        console.error('Error adding a new offer. Is it a proper Offer contract address?', id, ex);
-        throw ex;
-    }
-    return await new Promise(function(resolve, reject) {
-        const objectStore = db.transaction(["offers"], "readwrite").objectStore("offers");
-        const request = objectStore.add({id: id});
-        request.onerror = function(ex) {
-            console.error('Error inserting offer id into ogoo database', id, ex);
-             if( ex.originalTarget && ex.originalTarget.error) {
-                reject(new Error('Database error', {cause: ex.originalTarget.error}));
-            } else {
-                reject(new Error(ex.toString()));
-            }
-        };
-        request.onsuccess = function(event) {
-            console.debug('Offer added', id);
-            resolve(true);
-        };
-    });
-};
+    const get_offers_list = async function() {
+        var offers_list = [];
+        var db = await get_database();
+        return await new Promise(function (resolve, reject) {
+            const objectStore = db.transaction("offers").objectStore("offers");
+            objectStore.openCursor().addEventListener("success", (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    console.debug('OGOO DB read offers line', cursor.value)
+                    offers_list.push(cursor.value.id);
+                    cursor.continue();
+                } else {
+                    resolve(offers_list);
+                }
+            });
+        });
+    };
 
-const delete_offer_from_list = async function(id) {
-    var db = await get_database();
-    return await new Promise(function(resolve, reject) {
-        const objectStore = db.transaction(["offers"], "readwrite").objectStore("offers");
-        const request = objectStore.delete(id);
-        request.onerror = function(event) {
-            console.error('Error deleting offer id from ogoo database', id, event);
-            reject(event);
-        };
-        request.onsuccess = function(event) {
-            console.debug('Offer deleted', id);
-            resolve(true);
-        };
-    });
-};
-
-const bs_selectPane = function(selector) {
-    var pane$ = $(selector);
-    pane$.parent().find('.tab-pane').removeClass('active show');
-    pane$.addClass('active show');
-    $('[data-bs-toggle="tab"]').removeClass('active show');
-    $(`[data-bs-target="${selector}"][data-bs-toggle="tab"]`).addClass('active show');
-}
-
-const edit_offer = async function(address) {
-    var hash = document.location.hash;
-    var params = new URLSearchParams(hash.substring(1));
-    params.set('pane', 'edit-offer');
-    params.set('address', address);
-    document.location.hash = '#' + params.toString().replaceAll('+', ' ');
-}
-
-var offer_abi;  // loaded dynamically
-var OfferState = [ // enum OfferState
-    'INITIAL',
-    'APPROVED',
-    'COMPLETED',
-    'FAILED',
-];
-
-// TODO: resolve providers if many
-// window.addEventListener(
-//  "eip6963:announceProvider",
-//  (event) => {
-//      console.log("!!!!", event);
-//      ethereum = event.detail.provider;
-//      event.detail.info.uuid;
-//      event.detail.info.name;
-//      event.detail.info.rdns;
-//      event.detail.info.icon; // URL
-//});
-//window.dispatchEvent(new Event("eip6963:requestProvider"));
-
-var provider = new ethers.BrowserProvider(ethereum, 'any');
-
-// get all offers accordingly to the current account
-const get_offer_records_list = async function(current_account) {
-    if( !current_account )
-        return [];
-    return (await Promise.allSettled((await get_offers_list()).map(async id => {
-        var offer_record = {};
-        offer_record.id = id;
+    const add_offer_to_list = async function(id) {
+        var db = await get_database();
+        var current_account = await get_current_account_async();
+        if( !current_account ) {
+            console.error('No current account selected');
+            throw new Error('No current account selected', {cause: 'NO_ACCCOUNT'});
+        }
         var offer_access = new ethers.Contract(
-            offer_record.id,
+            id,
             offer_abi.abi,
             current_account
         );
         try {
-            [
-                offer_record.owner,
-                offer_record.is_contributor,
-                offer_record.is_observer,
-                offer_record.state,
-                offer_record.definition,
-                offer_record.contribution,
-                offer_record.amount,
-            ] = await Promise.all([
-                offer_access.owner(),
-                offer_access.is_origin_contributor(),
-                offer_access.is_origin_observer(),
-                offer_access.state(),
-                offer_access.definition(),
-                offer_access.contribution_get_for_origin(),
-                provider.getBalance(offer_record.id),
-            ]);
-            offer_record.definition = (offer_record.definition).toObject();
-            offer_record.state_name = OfferState[offer_record.state];
-            offer_record.is_owner = (offer_record.owner == current_account.address);
+            var state = await offer_access.state();
         } catch(ex) {
-            console.error('Error reading the Offer data. Is it a proper Offer contract address?', offer_record.id, ex);
+            console.error('Error adding a new offer. Is it a proper Offer contract address?', id, ex);
             throw ex;
         }
-        console.debug('Offer read:', offer_record);
-        return offer_record;
-    }))).filter(result => result.status == 'fulfilled').map(result => result.value);
-};
+        return await new Promise(function(resolve, reject) {
+            const objectStore = db.transaction(["offers"], "readwrite").objectStore("offers");
+            const request = objectStore.add({id: ethers.getAddress(id)});
+            request.onerror = function(ex) {
+                console.error('Error inserting offer id into ogoo database', id, ex);
+                if( ex.originalTarget && ex.originalTarget.error) {
+                    reject(new Error('Database error', {cause: ex.originalTarget.error}));
+                } else {
+                    reject(new Error(ex.toString(), {cause: ex.toString()}));
+                }
+            };
+            request.onsuccess = function(event) {
+                console.debug('Offer added', id);
+                resolve(true);
+            };
+        });
+    };
 
-const get_current_account = function() {
-    var selector = $('#accounts-list');
-    var offer_records = [];
-    if( selector.children().length > 0 )
-        return selector[0].selectedOptions[0].account;
-}
+    const delete_offer_from_list = async function(id) {
+        var db = await get_database();
+        return await new Promise(function(resolve, reject) {
+            const objectStore = db.transaction(["offers"], "readwrite").objectStore("offers");
+            const request = objectStore.delete(id);
+            request.onerror = function(event) {
+                console.error('Error deleting offer id from ogoo database', id, event);
+                reject(event);
+            };
+            request.onsuccess = function(event) {
+                console.debug('Offer deleted', id);
+                resolve(true);
+            };
+        });
+    };
 
-const get_current_account_async = async function() {
-    const delay = ms => new Promise(res => setTimeout(res, ms));
-    while(true) {
-        var ret = get_current_account();
-        if( ret )
-            return ret;
-        await delay(1000);
+    const bs_selectPane = function(selector) {
+        var pane$ = $(selector);
+        pane$.parent().find('.tab-pane').removeClass('active show');
+        pane$.addClass('active show');
+        $('[data-bs-toggle="tab"]').removeClass('active show');
+        $(`.nav-item a`).removeClass('active show');
+        $(`[data-bs-target="${selector}"][data-bs-toggle="tab"]`).addClass('active show');
+        $(`li.nav-item.dropdown:has([data-bs-target="${selector}"][data-bs-toggle="tab"]) a.dropdown-toggle`).addClass('active show');
+        document.title = pane$.attr('pagetitle');
     }
-}
 
-const fill_offer_lists = async function() {
-    var current_account = get_current_account();
-    var offer_records = await get_offer_records_list(current_account);
-    $('#all-offers-number').text(offer_records.length);
-    var contributions = 0;
-    var observed = 0;
-    var owned = 0;
-
-    var offer_list_tbody = $('#offers-list tbody');
-    offer_list_tbody.html('');
-    var contribution_list_tbody = $('#contributions-list tbody');
-    contribution_list_tbody.html('');
-    var observing_list_tbody = $('#observing-list tbody');
-    observing_list_tbody.html('');
-    var managed_list_tbody = $('#managed-offers-list tbody');
-    managed_list_tbody.html('');
-    for(var i in offer_records) {
-        var offer_record = offer_records[i];
-        var offer_list_row = $($('#offer-list-row').text());
-        offer_list_row.find('.offer-list-row-address').text(offer_record.id);
-        offer_list_row.find('.offer-list-row-name').text(offer_record.definition.caption);
-        var offer_list_row_icon_box = offer_list_row.find('.offer-list-row-icon-box');
-
-        if(offer_record.is_owner) {
-            owned += 1;
-            offer_list_row_icon_box.append($($('#icon-owner').text()));
-
-            var managed_list_row = $($('#managed-list-row').text());
-            managed_list_row.find('.managed-list-row-address').text(offer_record.id);
-            managed_list_row.find('.managed-list-row-name').text(offer_record.definition.caption);
-            var managed_list_row_icon_box = managed_list_row.find('.managed-list-row-icon-box');
-            managed_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
-            managed_list_tbody.append(managed_list_row);
-
-        }
-        if(offer_record.is_contributor) {
-            contributions += 1;
-            offer_list_row_icon_box.append($($('#icon-contributor').text()));
-
-            var contribution_list_row = $($('#contribution-list-row').text());
-            contribution_list_row.find('.contribution-list-row-address').text(offer_record.id);
-            contribution_list_row.find('.contribution-list-row-name').text(offer_record.definition.caption);
-            contribution_list_row.find('.contribution-list-row-contribution').text('≊' + etherFormatApprox(offer_record.contribution));
-            contribution_list_row.find('.contribution-list-row-contribution').attr('title',ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
-            var contribution_list_row_icon_box = contribution_list_row.find('.contribution-list-row-icon-box');
-            contribution_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
-            contribution_list_tbody.append(contribution_list_row);
-        }
-        if(offer_record.is_observer) {
-            observed += 1;
-            offer_list_row_icon_box.append($($('#icon-observer').text()));
-
-            var observing_list_row = $($('#observing-list-row').text());
-            observing_list_row.find('.observing-list-row-address').text(offer_record.id);
-            observing_list_row.find('.observing-list-row-name').text(offer_record.definition.caption);
-            var observing_list_row_icon_box = observing_list_row.find('.observing-list-row-icon-box');
-            observing_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
-            observing_list_tbody.append(observing_list_row);
-        }
-        offer_list_row_icon_box.append('&nbsp;');
-        offer_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
-        offer_list_tbody.append(offer_list_row);
+    const edit_offer = async function(address) {
+        var hash = document.location.hash;
+        var params = new URLSearchParams(hash.substring(1));
+        params.set('pane', 'edit-offer');
+        params.set('address', address);
+        document.location.hash = '#' + params.toString().replaceAll('+', ' ');
     }
-    $('#all-contributions-number').text(contributions);
-    $('#all-observed-number').text(observed);
-    $('#all-owned-number').text(owned);
-};
 
-const address_input_check = async function(id) {
-    var input = $('#' + id);
-    var form = input.parentsUntil('form').parent();
-    var addr = input.val();
-    if( !addr || !addr.length ) {
-        form.removeClass('was-validated');
-        return;
-    }
-    if( !form.hasClass('was-validated') ) {
-        form.addClass('was-validated');
-    }
-    if( !await ethers.isAddress(addr.toLowerCase()) ) {
-        input[0].setCustomValidity('Address invalid');
-    } else {
-        input[0].setCustomValidity('');
-    }
-}
+    var offer_abi;  // loaded dynamically
+    var OfferState = [ // enum OfferState
+        'INITIAL',
+        'APPROVED',
+        'COMPLETED',
+        'FAILED',
+    ];
 
-const durationHuman = function(seconds) {
-    if( !seconds )
-        return '0';
-    var v = luxon.Duration.fromObject({
-        seconds: Number(seconds)
-    }).shiftTo('seconds', 'minutes', 'hours', 'days', 'weeks');
-    var o = v.toObject();
-    var v = {};
-    for(var k in o) {
-        if(o[k])
-            v[k] = o[k];
-    }
-    return luxon.Duration.fromObject(v).toHuman();
-};
-
-const etherHuman = function(wei) {
-    var v = etherFormatApprox(wei, 20);
-    if( v.length == 0 )
-        v = '0';
-    return v;
-};
-
-const etherExactHuman = function(wei) {
-    // returns amount string and unit index
-    if( wei == 0n ) {
-        return ['0', 6];
-    }
-    v = bigIntSplit(wei);
-    for(var i=0; i < v.length; i++) {
-        if( v[i] != 0 ) {
-            return [bigIntUnsplit(v.slice(i)).toString(), i];
-        }
-    }
-    return ['error', 0];
-};
-
-$(async function() {
-    if( typeof(ethereum) == "undefined" ) {
+    if( typeof(ethereum) == 'undefined' ) {
         bootstrap.Modal.getOrCreateInstance($('#no-ethereum')[0], {
             keyboard: false,
         }).show();
         return;
     }
 
-    offer_abi = await $.ajax(url='/ogoo.sol/Offer.json');
+    /*const*/ get_observers = async function(offer_address, account) {
+        var access = new ethers.Contract(
+            offer_address,
+            offer_abi.abi,
+            account
+        );
+        var raw_events = {};
+        [raw_events.created, raw_events.removed] = await Promise.all([
+            access.queryFilter(access.filters.ObserverCreated()),
+            access.queryFilter(access.filters.ObserverRemoved()),
+        ]);
+        var events = [
+            ...raw_events.created,
+            ...raw_events.removed
+        ].sort((a, b) => {
+            if (a.blockNumber !== b.blockNumber) {
+                return a.blockNumber - b.blockNumber;
+            }
+            return a.transactionIndex - b.transactionIndex;
+        });
+        var ret = {}
+        events.map(function(event) {
+            var addr = event.args[0];
+            switch(event.eventName) {
+                case 'ObserverCreated':
+                    ret[addr] = (ret[addr] || 0) + 1;
+                    break;
+                case 'ObserverRemoved':
+                    ret[addr] = (ret[addr] || 0) - 1;
+                    break;
+            }
+            if(ret[addr] == 0) {
+                delete ret[addr];
+            }
+        });
+        return ret;
+    };
+
+    /*const*/ contributed_by = async function(offer_address, address, account) {
+        var access = new ethers.Contract(
+            offer_address,
+            offer_abi.abi,
+            account
+        );
+        var raw_events = {};
+        [raw_events.updated, raw_events.cancelation, raw_events.canceled] = await Promise.all([
+            access.queryFilter(access.filters.ContributionUpdated(address)),
+            access.queryFilter(access.filters.ContributionCancelation(address)),
+            access.queryFilter(access.filters.ContributionCanceled(address)),
+        ]);
+        var events = [
+            ...raw_events.updated,
+            ...raw_events.cancelation,
+            ...raw_events.canceled,
+        ].sort((a, b) => {
+            if (a.blockNumber !== b.blockNumber) {
+                return a.blockNumber - b.blockNumber;
+            }
+            return a.transactionIndex - b.transactionIndex;
+        });
+        var ret = {
+            amount: 0n,
+            cancelation: false,
+        };
+        events.map(function(event) {
+            switch(event.eventName) {
+                case 'ContributionCanceled':
+                    ret.amount = 0n;
+                    ret.cancelation = false;
+                    break;
+                case 'ContributionUpdated':
+                    ret.amount = event.args[1];
+                    break;
+                case 'ContributionCancelation':
+                    ret.cancelation = true;
+                    break;
+            }
+        });
+        return ret;
+    };
+
+    /*const*/ contributor_vote = async function(offer_address, address, account) {
+        var access = new ethers.Contract(
+            offer_address,
+            offer_abi.abi,
+            account
+        );
+        var raw_events = {};
+        [raw_events.voting] = await Promise.all([
+            access.queryFilter(access.filters.ContributorVote(address)),
+        ]);
+        var events = [
+            ...raw_events.voting,
+        ].sort((a, b) => {
+            if (a.blockNumber !== b.blockNumber) {
+                return a.blockNumber - b.blockNumber;
+            }
+            return a.transactionIndex - b.transactionIndex;
+        });
+        var ret = null;
+        events.map(function(event) {
+            switch(event.eventName) {
+                case 'ContributorVote':
+                    ret = {};
+                    ret.contractor = event.args[1];
+                    ret.failure = event.args[2];
+                    break;
+            }
+        });
+        return ret;
+    };
+
+    /*const*/ observer_vote = async function(offer_address, address, account) {
+        var access = new ethers.Contract(
+            offer_address,
+            offer_abi.abi,
+            account
+        );
+        var raw_events = {};
+        [raw_events.voting] = await Promise.all([
+            access.queryFilter(access.filters.ObserverVote(address)),
+        ]);
+        var events = [
+            ...raw_events.voting,
+        ].sort((a, b) => {
+            if (a.blockNumber !== b.blockNumber) {
+                return a.blockNumber - b.blockNumber;
+            }
+            return a.transactionIndex - b.transactionIndex;
+        });
+        var ret = null;
+        events.map(function(event) {
+            switch(event.eventName) {
+                case 'ObserverVote':
+                    ret = {};
+                    ret.contractor = event.args[1];
+                    ret.failure = event.args[2];
+                    break;
+            }
+        });
+        return ret;
+    };
+
+
+
+
+
+    // get all offers accordingly to the current account
+    const get_offer_records_list = async function(current_account) {
+        if( !current_account )
+            return [];
+        return (await Promise.allSettled((await get_offers_list()).map(async id => {
+            var offer_record = {};
+            offer_record.id = id;
+            var offer_access = new ethers.Contract(
+                offer_record.id,
+                offer_abi.abi,
+                current_account
+            );
+            try {
+                [
+                    offer_record.owner,
+                    offer_record.state,
+                    offer_record.definition,
+                    offer_record.amount,
+                    offer_record.observers,
+                    offer_record.contributed_by,
+                    offer_record.contributor_vote,
+                    offer_record.cancelation_timer,
+                    offer_record.observer_vote,
+                ] = await Promise.all([
+                    offer_access.owner(),
+                    offer_access.state(),
+                    offer_access.definition(),
+                    provider.getBalance(offer_record.id),
+                    get_observers(id, current_account),
+                    contributed_by(id, current_account.address, current_account),
+                    contributor_vote(id, current_account.address, current_account),                   
+                    offer_access.contribution_can_be_canceled(current_account.address),
+                    observer_vote(id, current_account.address, current_account),                   
+                ]);
+                offer_record.contribution = offer_record.contributed_by.amount;
+                offer_record.is_contributor = !!offer_record.contribution;
+                offer_record.cancelation = offer_record.contributed_by.cancelation;
+                offer_record.is_observer = offer_record.observers[current_account.address];
+                offer_record.definition = (offer_record.definition).toObject();
+                offer_record.state_name = OfferState[offer_record.state];
+                offer_record.is_owner = (offer_record.owner == current_account.address);
+            } catch(ex) {
+                console.error('Error reading the Offer data. Is it a proper Offer contract address?', offer_record.id, ex);
+                throw ex;
+            }
+            console.debug('Offer read:', offer_record);
+            return offer_record;
+        }))).filter(result => result.status == 'fulfilled').map(result => result.value);
+    };
+
+    const get_current_account_async = async function() {
+        var accounts = await provider.listAccounts();
+        return accounts[0];
+    }
+
+    const fill_offer_lists = async function() {
+        var current_account = await get_current_account_async();
+        var offer_records = await get_offer_records_list(current_account);
+        $('#all-offers-number').text(offer_records.length);
+        var contributions = 0;
+        var observed = 0;
+        var owned = 0;
+
+        var offer_list_tbody = $('#offers-list tbody');
+        offer_list_tbody.html('');
+        var contribution_list_tbody = $('#contributions-list tbody');
+        contribution_list_tbody.html('');
+        var observing_list_tbody = $('#observing-list tbody');
+        observing_list_tbody.html('');
+        var managed_list_tbody = $('#managed-offers-list tbody');
+        managed_list_tbody.html('');
+        offer_records.map(function(offer_record) {
+            var offer_list_row = $($('#offer-list-row').text());
+            offer_list_row.find('.offer-list-row-address').text(offer_record.id);
+            offer_list_row.find('.offer-list-row-name').text(offer_record.definition.caption);
+            var offer_list_row_icon_box = offer_list_row.find('.offer-list-row-icon-box');
+
+            if(offer_record.is_owner) {
+                owned += 1;
+                offer_list_row_icon_box.append($($('#icon-owner').text()));
+
+                var managed_list_row = $($('#managed-list-row').text());
+                managed_list_row.find('.managed-list-row-address').text(offer_record.id);
+                managed_list_row.find('.managed-list-row-name').text(offer_record.definition.caption);
+                if(offer_record.state != 0n) {
+                    managed_list_row.find('.offer-approve-button').addClass('disabled');
+                }
+                if(offer_record.state > 1n) {
+                    managed_list_row.find('.offer-add-contribution-button').addClass('disabled');
+                }
+                if(offer_record.cancelation) {
+                    managed_list_row.find('.offer-add-contribution-button').addClass('disabled');
+                }
+                var managed_list_row_icon_box = managed_list_row.find('.managed-list-row-icon-box');
+                managed_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
+                managed_list_tbody.append(managed_list_row);
+
+            }
+            if(offer_record.is_contributor) {
+                contributions += 1;
+                offer_list_row_icon_box.append($($('#icon-contributor').text()));
+
+                var contribution_list_row = $($('#contribution-list-row').text());
+                contribution_list_row.find('.contribution-list-row-address').text(offer_record.id);
+                contribution_list_row.find('.contribution-list-row-name').text(offer_record.definition.caption);
+                contribution_list_row.find('.contribution-list-row-contribution').text('≊' + etherFormatApprox(offer_record.contribution));
+                contribution_list_row.find('.contribution-list-row-contribution').attr('title',ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
+                if(offer_record.state > 1n) {
+                    contribution_list_row.find('.offer-add-contribution-button').addClass('disabled');
+                }
+                if(offer_record.state != 1n) {
+                    contribution_list_row.find('.contributor-vote-button').addClass('disabled');
+                }
+                if(offer_record.state == 2n) {
+                    contribution_list_row.find('.contribution-cancel-button').addClass('disabled');
+                }
+                if(offer_record.cancelation) {
+                    contribution_list_row.find('.offer-add-contribution-button').addClass('disabled');
+                    contribution_list_row.find('.contributor-vote-button').addClass('disabled');
+                    var i$ = contribution_list_row.find('.contribution-cancel-icon');
+                    i$.removeClass('fa-regular fa-circle-xmark');
+                    i$.addClass('fa-regular fa-clock');
+                    if(offer_record.cancelation_timer) {
+                        i$.addClass('text-danger');
+                    } else {
+                        i$.addClass('text-success');
+                    }
+                } else
+                if(offer_record.contributor_vote) {
+                    var cl = 'text-success';
+                    if(offer_record.contributor_vote.failure) {
+                        cl = 'text-danger';
+                    } else
+                    if(offer_record.contributor_vote.contractor == '0x' + '0'.repeat(40)) {
+                        cl = '';
+                    }
+                    if( cl ) {
+                        contribution_list_row.find('.contributor-vote-button i').addClass(cl);
+                    }
+                }
+                var contribution_list_row_icon_box = contribution_list_row.find('.contribution-list-row-icon-box');
+                contribution_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
+                contribution_list_tbody.append(contribution_list_row);
+            }
+            if(offer_record.is_observer) {
+                observed += 1;
+                offer_list_row_icon_box.append($($('#icon-observer').text()));
+
+                var observing_list_row = $($('#observing-list-row').text());
+                observing_list_row.find('.observing-list-row-address').text(offer_record.id);
+                observing_list_row.find('.observing-list-row-name').text(offer_record.definition.caption);
+                if(offer_record.state != 1n) {
+                    observing_list_row.find('.observer-vote-button').addClass('disabled');
+                }
+                if(offer_record.observer_vote) {
+                    var cl = 'text-success';
+                    if(offer_record.observer_vote.failure) {
+                        cl = 'text-danger';
+                    } else
+                    if(offer_record.observer_vote.contractor == '0x' + '0'.repeat(40)) {
+                        cl = '';
+                    }
+                    if( cl ) {
+                        observing_list_row.find('.observer-vote-button i').addClass(cl);
+                    }
+                }
+                var observing_list_row_icon_box = observing_list_row.find('.observing-list-row-icon-box');
+                observing_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
+                observing_list_tbody.append(observing_list_row);
+            }
+            offer_list_row_icon_box.append('&nbsp;');
+            offer_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
+            offer_list_tbody.append(offer_list_row);
+        });
+        $('#all-contributions-number').text(contributions);
+        $('#all-observed-number').text(observed);
+        $('#all-owned-number').text(owned);
+        {
+            var edit_offer$ = $('#edit-offer');
+            if( edit_offer$.find('form').length ) {
+                var address = $('#edit-offer').find('form')[0].address;
+                if( address ) {
+                    on_edit_offer(address);
+                }
+            }
+        }
+    };
+
+    address_input_check = async function(id) {
+        var input = $(id);
+        var form = input.parentsUntil('form').parent();
+        var addr = input.val();
+        if( !addr || !addr.length ) {
+            form.removeClass('was-validated');
+            return;
+        }
+        if( !form.hasClass('was-validated') ) {
+            form.addClass('was-validated');
+        }
+        if( !await ethers.isAddress(addr.toLowerCase()) ) {
+            input[0].setCustomValidity('Address invalid');
+        } else {
+            input[0].setCustomValidity('');
+        }
+    }
+
+    const durationHuman = function(seconds) {
+        if( !seconds )
+            return '0';
+        var v = luxon.Duration.fromObject({
+            seconds: Number(seconds)
+        }).shiftTo('seconds', 'minutes', 'hours', 'days', 'weeks');
+        var o = v.toObject();
+        var v = {};
+        for(var k in o) {
+            if(o[k])
+                v[k] = o[k];
+        }
+        return luxon.Duration.fromObject(v).toHuman();
+    };
+
+    const etherHuman = function(wei) {
+        var v = etherFormatApprox(wei, 20);
+        if( v.length == 0 )
+            v = '0';
+        return v;
+    };
+
+    const etherExactHuman = function(wei) {
+        // returns amount string and unit index
+        if( wei == 0n ) {
+            return ['0', 6];
+        }
+        v = bigIntSplit(wei);
+        for(var i=0; i < v.length; i++) {
+            if( v[i] != 0 ) {
+                return [bigIntUnsplit(v.slice(i)).toString(), i];
+            }
+        }
+        return ['error', 0];
+    };
+
+    const durationExactHuman = function(seconds) {
+        // returns timeout number and unit index
+        seconds = Number(seconds);
+        if( seconds == 0 )
+            return [0, 1];
+        var pairs = Object.keys(timeUnits).map((k)=>[k, timeUnits[k]]);
+        pairs = pairs.sort((p1, p2)=>p2[1] - p1[1]);
+        for(var i in pairs) {
+            if( seconds % pairs[i][1] == 0 )
+                return [seconds / pairs[i][1], pairs[i][1]];
+        }
+        return [seconds, 1];
+    }
+
+    // synchronize hash back to state
+    const onhashchange = async function() {
+        var params = new URLSearchParams(document.location.hash.substring(1));
+        var selector = `#${params.get('pane')}`;
+        if( $(selector).length > 0 ) {
+            bs_selectPane(selector);
+        }
+        if(selector == '#edit-offer' || selector == '#view-offer') {
+            var address = params.get('address');
+            if( address ) {
+                await on_edit_offer(address);
+            }
+        } else {
+            if( params.get('address') ) {
+                params.delete('address');
+                var new_hash = '#' + params.toString().replaceAll('+', ' ');
+                document.location.hash = new_hash;
+            }
+        }
+    };
+    $(window).on('hashchange', onhashchange);
+
+    offer_abi = await $.ajax(url='./ogoo.sol/Offer.json');
     var update_accounts = async function() {
         var accounts = await provider.listAccounts();
-        var accounts_list$ = $('#accounts-list');
-        var old_value = accounts_list$.val();
-        accounts_list$.empty();
         if( accounts.length == 0 ) {
             bootstrap.Modal.getOrCreateInstance($('#no-accounts')[0]).show();
         } else {
-            for(var i in accounts) {
-                var account = accounts[i];
-                var amount = await provider.getBalance(account.address);
-                var option = document.createElement('option');
-                var address = account.address;
-                option.innerHTML = address.substr(0,6)+'...' + address.substr(-4) + '≊' + etherFormatApprox(amount);
-                option.title = address + ': ' + ethers.formatEther(amount) + ethers.EtherSymbol;
-                option.value = address;
-                option.account = account;
-                accounts_list$.append(option);
-            }
-            if(accounts.find(x => x.address == old_value)) {
-                accounts_list$.val(old_value);
-            } else {
-                await fill_offer_lists();
-            }
+            var current_account = accounts[0];
+            var balance = await provider.getBalance(current_account.address);
+            $('.nav-current-account').text(current_account.address);
+            $('.nav-current-amount').text(ethers.formatEther(balance) + ethers.EtherSymbol);
+
+            await onhashchange();
+            await fill_offer_lists();
         }
     };
 
     // Copy the entire create-offer tab content to have a similar edit-offer tab
     $('#edit-offer').html($('#create-offer').html());
+    // Modify a display options for edit-offer tab
+    $('#edit-offer .input-observers-list').parentsUntil('.col').parent().removeClass('d-none');
 
+    // Copy the entire create-offer-submit dialog content to have a similar edit-offer-submit dialog
+    $('#edit-offer-submit').html($('#create-offer-submit').html());
+    $('#edit-offer-submit .offer-submit-header').html(
+        'Account <em class="current-account-id account-address"></em> [<em class="current-account-balance"></em>]' +
+        'is going to update the Offer contract <em class="offer-address"></em>'
+    );
+    $('#edit-offer-submit button[type="submit"]').text('Update Offer');
     $('form.needs-validation').on('submit', event => {
         // initiale validation on submit for all forms
         if (!event.target.checkValidity()) {
@@ -509,8 +777,6 @@ $(async function() {
         $(event.target).addClass('was-validated')
     });
 
-    
-    
     {
         // initiate units selectors for amounts
         var input_amount_unit$ = $('.input-amount-unit');
@@ -602,6 +868,7 @@ $(async function() {
         });
     }
     $(document).on('click', '.offer-share-button', async function(event) {
+        event.preventDefault();
         // All offer share buttons
         var share_dialog = $('#share-offer');
         var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
@@ -611,13 +878,19 @@ $(async function() {
         bootstrap.Modal.getOrCreateInstance(share_dialog[0]).show();
     });
     $(document).on('click', '.offer-remove-button', async function(event) {
+        event.preventDefault();
         var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
         await delete_offer_from_list(offer_address);
         await fill_offer_lists();
     });
-    $(document).on('change', '#accounts-list', async function(event) {
-        // value change of the current account field leads to rereading offer lists
-        await fill_offer_lists();
+    $(document).on('click', 'a:has(".offer-address")', async function(event) {
+        event.preventDefault();
+        var offer_address = $(event.currentTarget).find('.offer-address').text();
+        var hash = document.location.hash;
+        var params = new URLSearchParams(hash.substring(1));
+        params.set('pane', 'edit-offer');
+        params.set('address', offer_address);
+        document.location.hash = '#' + params.toString().replaceAll('+', ' ');
     });
 
     $('#connect-account-button').on('click', async function(event) {
@@ -636,6 +909,147 @@ $(async function() {
         $('#connect-account-button').prop('disabled', false);
     });
 
+    $(document).on('click', '.offer-approve-button', async function(event) {
+        event.preventDefault();
+        // Offer approval buttons
+        var dialogue$ = $('#approve-offer');
+        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var offer_title = $(event.currentTarget).parents('tr').find('.managed-list-row-name').text();
+        dialogue$.find('.offer-address').text(offer_address);
+        dialogue$.find('.offer-title').text(offer_title);
+        dialogue$.find('.approve-offer-warning').addClass('d-none');
+        dialogue$.find('button.pre-approve').removeClass('d-none');
+        dialogue$.find('button.approve').addClass('d-none disabled');
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('');
+        bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
+    });
+
+    {
+        var timer;
+        // Approval dialogue control
+        $('#approve-offer button.pre-approve').on('click', async function(event) {
+            event.preventDefault();
+            var dialogue$ = $('#approve-offer');
+            dialogue$.find('.approve-offer-warning').removeClass('d-none');
+            dialogue$.find('button.pre-approve').addClass('d-none');
+            dialogue$.find('button.approve').removeClass('d-none');
+            var timer = setTimeout(async function() {
+                if( dialogue$.find('button.approve').is(':visible') ) {
+                    dialogue$.find('button.approve').removeClass('disabled');
+                }
+                timer = undefined;
+            }, 3000);
+        });
+        $('#approve-offer form').on('submit', async function(event) {
+            event.preventDefault();
+            var dialogue$ = $('#approve-offer');
+            var address = dialogue$.find('.offer-address').text();
+            var current_account = await get_current_account_async();
+            var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+            modal_info$.removeClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.addClass('text-info');
+            modal_info$.text('Waiting for approve...');
+            dialogue$.find('button').prop('disabled', true);
+            try {
+                var contract = new ethers.Contract(address, offer_abi.abi, current_account);
+                var tx = await contract.approve();
+                modal_info$.text('Waiting for transaction...');
+                await tx.wait();
+                modal_info$.text('');
+                await update_accounts();
+                bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+                dialogue$.find('.approve-offer-warning').addClass('d-none');
+                dialogue$.find('button.pre-approve').removeClass('d-none');
+                dialogue$.find('button.approve').addClass('d-none disabled');
+            } catch(ex) {
+                var err = ex.shortMessage;
+                console.error('Error approving the contract:', ex);
+                if(ex.code == 'ACTION_REJECTED') {
+                    err = 'Approve rejected';
+                }
+                if(ex.code == 'CALL_EXCEPTION') {
+                    err = 'Operation rejected: ' + extract_revert_error(ex);
+                }
+                modal_info$.removeClass('text-info');
+                modal_info$.addClass('text-danger');
+                modal_info$.removeClass('text-warning');
+                modal_info$.text('Error: ' + err);
+            }
+            dialogue$.find('button').prop('disabled', false);
+        });
+        $('#approve-offer').on('hidden.bs.modal', async function(event) {
+            // additional operations when dismissed
+            var dialogue$ = $('#approve-offer');
+            dialogue$.find('.approve-offer-warning').addClass('d-none');
+            dialogue$.find('button.pre-approve').removeClass('d-none');
+            dialogue$.find('button.approve').addClass('d-none disabled');
+            if( timer ) {
+                clearTimeout(timer);
+                timer = undefined;
+            }
+        });
+    }
+
+    {
+        // Create contribution dialogue control
+        $('#create-contribution form').on('submit', async function(event) {
+            event.preventDefault();
+            var dialogue$ = $('#create-contribution');
+            var address = dialogue$.find('.input-address').val();
+            var amount = convertToWei(
+                dialogue$.find('.input-amount').val(),
+                Number(dialogue$.find('.input-amount ~ select').val())
+            );
+            var current_account = await get_current_account_async();
+            var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+            modal_info$.removeClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.addClass('text-info');
+            modal_info$.text('Waiting for contributing...');
+            dialogue$.find('button').prop('disabled', true);
+            try {
+                var tx = await current_account.sendTransaction({to:address, value: amount});
+                modal_info$.text('Waiting for transaction...');
+                await tx.wait();
+                modal_info$.text('');
+                await update_accounts();
+                bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+            } catch(ex) {
+                var err = ex.shortMessage;
+                console.error('Error contributing to the contract:', ex);
+                if(ex.code == 'ACTION_REJECTED') {
+                    err = 'Contribution rejected';
+                }
+                if(ex.code == 'CALL_EXCEPTION') {
+                    err = 'Operation rejected: ' + extract_revert_error(ex);
+                }
+                modal_info$.removeClass('text-info');
+                modal_info$.addClass('text-danger');
+                modal_info$.removeClass('text-warning');
+                modal_info$.text('Error: ' + err);
+            }
+            dialogue$.find('button').prop('disabled', false);
+        });
+    }
+
+    $(document).on('click', '.offer-add-contribution-button', function(event) {
+        // `Plus` sign on the contributions list line
+        event.preventDefault();
+        var offer_address = $(event.currentTarget).parentsUntil('tr').parent().find('.offer-address').text();
+        var dialogue$ = $('#create-contribution');
+        dialogue$.find('.input-address').val(offer_address);
+        bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
+    });
+
+    $('#create-contribution').on('hidden.bs.modal', function(event) {
+        var dialogue$ = $('#create-contribution');
+        dialogue$.find('.input-address').prop('readonly', false);
+    });
     {
         // main page card buttons
         $('#offers-card-offers-button').on('click', async function(event) {
@@ -658,31 +1072,17 @@ $(async function() {
             event.preventDefault();
             bs_selectPane('#create-offer');
         });
-    }
-    {
-        // wallet change state tracking
-        ethereum.on('connect', async function() {
-            console.debug("Wallet connect", arguments);
-            await update_accounts();
+        // Create New Offer on the Managed Offers list
+        $('.btn.create-new-offer').on('click', async function(event) {
+            event.preventDefault();
+            bs_selectPane('#create-offer');
         });
-        ethereum.on('disconnect', async function() {
-            console.debug("Wallet disconnect", arguments);
-            await update_accounts();
-        });
-        ethereum.on('accountsChanged', async function() {
-            console.debug("Wallet accounts list changed", arguments);
-            await update_accounts();
-        })
-        ethereum.on('chainChanged', async function() {
-            console.debug("Wallet chain connection changed", arguments);
-            await update_accounts();
-        })
     }
     $('#watch-offer').on('submit', async function(event) {
         // add offer dialogue submit
         event.preventDefault();
         try {
-            await add_offer_to_list($('#watch-offer-address').val());
+            await add_offer_to_list($('#watch-offer .ether-address-input').val());
         } catch(ex) {
             var err = ex.message;
             if(ex.code == 'BAD_DATA') {
@@ -703,54 +1103,54 @@ $(async function() {
     $('#create-offer form').on('submit', async function(event) {
         // create offer page submit
         event.preventDefault();
-        var $form = $(event.target);
+        var form$ = $(event.target);
         if( !event.target.checkValidity() )
             return false;
         var definition = {
-            caption: $form.find('.input-caption').val(),
+            caption: form$.find('.input-caption').val(),
             contribution_min_balance: convertToWei(
-                $form.find('.input-contribution-min-balance').val(),
-                Number($form.find('.input-contribution-min-balance ~ select').val())
+                form$.find('.input-contribution-min-balance').val(),
+                Number(form$.find('.input-contribution-min-balance ~ select').val())
             ),
             contribution_unlock_timeout: (
-                BigInt($form.find('.input-contribution-unlock-timeout').val() * 10) *
-                BigInt($form.find('.input-contribution-unlock-timeout ~ select').val()) / 10n
+                BigInt(form$.find('.input-contribution-unlock-timeout').val() * 10) *
+                BigInt(form$.find('.input-contribution-unlock-timeout ~ select').val()) / 10n
             ),
             observer_award: 0n,
             voting_start_balance: convertToWei(
-                $form.find('.input-voting-start-balance').val(),
-                Number($form.find('.input-voting-start-balance ~ select').val())
+                form$.find('.input-voting-start-balance').val(),
+                Number(form$.find('.input-voting-start-balance ~ select').val())
             ),
-            voting_start_count: BigInt($form.find('.input-voting-start-count').val()),
+            voting_start_count: BigInt(form$.find('.input-voting-start-count').val()),
             voting_start_timeout: (
-                BigInt($form.find('.input-voting-start-timeout').val() * 10) *
-                BigInt($form.find('.input-voting-start-timeout ~ select').val()) / 10n
+                BigInt(form$.find('.input-voting-start-timeout').val() * 10) *
+                BigInt(form$.find('.input-voting-start-timeout ~ select').val()) / 10n
             ),
             voting_fail_timeout: (
-                BigInt($form.find('.input-voting-fail-timeout').val() * 10) *
-                BigInt($form.find('.input-voting-fail-timeout ~ select').val()) / 10n
+                BigInt(form$.find('.input-voting-fail-timeout').val() * 10) *
+                BigInt(form$.find('.input-voting-fail-timeout ~ select').val()) / 10n
             ),
             observers_vote_percent: (
-                BigInt($form.find('.input-observers-vote-percent').val() * 100)
+                BigInt(form$.find('.input-observers-vote-percent').val() * 100)
             ),
             contributors_vote_percent: (
-                BigInt($form.find('.input-contributors-vote-percent').val() * 100)
+                BigInt(form$.find('.input-contributors-vote-percent').val() * 100)
             ),
             contributors_vote_fund_percent: (
-                BigInt($form.find('.input-contributors-vote-fund-percent').val() * 100)
+                BigInt(form$.find('.input-contributors-vote-fund-percent').val() * 100)
             ),
-            description: $form.find('.input-description').val(),
-            full_details: $form.find('.input-full-details').val(),
+            description: form$.find('.input-description').val(),
+            full_details: form$.find('.input-full-details').val(),
         };
         console.log('Create Offer Submit', definition);
         var dialogue$ = $('#create-offer-submit');
-        var current_account = get_current_account();
+        var current_account = await get_current_account_async();
         dialogue$.find('form')[0].definition = definition;
         dialogue$.find('form')[0].current_account = current_account;
         var balance = await provider.getBalance(current_account.address);
         var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show(); 
         dialogue$.find('.modal-header h1').text('Create a new Offer');
-        dialogue$.find('.current-account-id').text(current_account.address.substr(0, 6) + '...' + current_account.address.substr(-4));
+        dialogue$.find('.current-account-id').text(current_account.address);
         dialogue$.find('.current-account-balance').text(etherFormatApprox(balance));
 
         dialogue$.find('.input-caption').text(definition.caption);
@@ -770,6 +1170,11 @@ $(async function() {
         });
         dialogue$.find('.input-description').html(md.render(definition.description));
         dialogue$.find('.input-full-details').html(md.render(definition.full_details));
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('');
     });
     $('#create-offer-submit form').on('submit', async function(event) {
         // create offer dialogue submit
@@ -779,10 +1184,13 @@ $(async function() {
         var current_account = form$[0].current_account;
         var dialogue$ = form$.parentsUntil('.modal').parent();
         var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
         form$.find('button').prop('disabled', true);
         modal_info$.text('Waiting for deploy...');
+        var Offer = new ethers.ContractFactory(offer_abi.abi, offer_abi.bytecode, current_account);
         try {
-            var Offer = new ethers.ContractFactory(offer_abi.abi, offer_abi.bytecode, current_account);
             var offer = await Offer.deploy(definition);
             modal_info$.text('Waiting for transaction...');
             await offer.waitForDeployment();
@@ -791,6 +1199,7 @@ $(async function() {
             try {
                 await add_offer_to_list(offer.target);
             } catch(ex) {
+                console.error('Error adding the offer to the list:', ex);
                 var err = ex.message;
                 if(ex.code == 'BAD_DATA') {
                     err = 'No such offer. Is it a proper Offer address?';
@@ -801,19 +1210,193 @@ $(async function() {
                         err = ex.cause.message;
                     }
                 }
-                modal_info$.text('Error: '+ err.toString());
-                return;
+                modal_info$.removeClass('text-info');
+                modal_info$.removeClass('text-danger');
+                modal_info$.addClass('text-warning');
+                modal_info$.text('Error adding the offer to the list: '+ err.toString());
             }
-            await fill_offer_lists();
+            await update_accounts();
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
         } catch(ex) {
-            modal_info$.text('Error: ' + ex.toString());
+            var err = ex.shortMessage;
+            console.error('Error creating the contract:', ex);
+            if(ex.code == 'ACTION_REJECTED') {
+                err = 'Creation rejected';
+            }
+            if(ex.code == 'CALL_EXCEPTION') {
+                err = 'Operation rejected: ' + extract_revert_error(ex);
+            }
+            modal_info$.removeClass('text-info');
+            modal_info$.addClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.text('Error: ' + err);
         }
         form$.find('button').prop('disabled', false);
     });
+    $('#contributor-vote .failure').on('click', function(event) {
+        var disabled = event.currentTarget.ariaPressed == 'true';
+        var p = event.currentTarget.parentElement;
+        var p_p = p.parentElement;
+        var input$ = $(p_p).find('.ether-address-input');
+        var camera$ = $(p_p).find('.ether-address-input-button');
+        if( disabled ) {
+            input$.addClass('d-none');
+            input$.prop('required', false);
+            input$.val('');
+            camera$.addClass('d-none');
+            p_p.appendChild(input$[0]);
+            p_p.appendChild(camera$[0]);
+            event.currentTarget.style.width = '100%';
+        } else {
+            p.appendChild(input$[0]);
+            p.appendChild(event.currentTarget);
+            p.appendChild(camera$[0]);
+            event.currentTarget.style.width = '';
+            input$.prop('required', true);
+            input$.removeClass('d-none');
+            camera$.removeClass('d-none');
+        }
+    });
+    $('#contributor-vote form').on('submit', async function(event) {
+        event.preventDefault();
+        var dialogue$ = $('#contributor-vote');
+        var form$ = dialogue$.find('form');
+        var failure = dialogue$.find('.failure')[0].ariaPressed == 'true';
+        var contractor = dialogue$.find('.ether-address-input').val();
+        var offer_address = dialogue$.find('.offer-address').text();
+        var current_account = await get_current_account_async();
+        var offer_access = new ethers.Contract(
+            offer_address,
+            offer_abi.abi,
+            current_account
+        );
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        form$.find('button').prop('disabled', true);
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('Waiting for update...');
+        try {
+            modal_info$.text('Waiting for transaction...');
+            var tx;
+            if( failure ) {
+                tx = await offer_access.contributor_vote_failure();
+            } else {
+                tx = await offer_access.contributor_vote(contractor);
+            }
+            await tx.wait();
+            modal_info$.text('');
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+        } catch(ex) {
+            console.error('Error voting:', ex);
+            var err = ex.shortMessage || ex.message;
+            if(ex.code == 'ACTION_REJECTED') {
+                err = 'Voting rejected';
+            }
+            if(ex.code == 'CALL_EXCEPTION') {
+                err = 'Operation rejected: ' + extract_revert_error(ex);
+            }
+            modal_info$.addClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.removeClass('text-info');
+            modal_info$.text('Error: ' + err);
+        }
+        await update_accounts();
+        form$.find('button').prop('disabled', false);
+    });
+    $(document).on('click', '.contributor-vote-button', function(event) {
+        event.preventDefault();
+        var offer_title = $(event.currentTarget).parents('tr').find('.offer-title').text();
+        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var dialogue$ = $('#contributor-vote');
+        dialogue$.find('.offer-title').text(offer_title);
+        dialogue$.find('.offer-address').text(offer_address);
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
+    });
 
-    const on_edit_offer = async function() {
-        var params = new URLSearchParams(document.location.hash.substring(1));
-        var address = params.get('address');
+    $('#observer-vote .failure').on('click', function(event) {
+        var disabled = event.currentTarget.ariaPressed == 'true';
+        var p = event.currentTarget.parentElement;
+        var p_p = p.parentElement;
+        var input$ = $(p_p).find('.ether-address-input');
+        var camera$ = $(p_p).find('.ether-address-input-button');
+        if( disabled ) {
+            input$.addClass('d-none');
+            input$.prop('required', false);
+            input$.val('');
+            camera$.addClass('d-none');
+            p_p.appendChild(input$[0]);
+            p_p.appendChild(camera$[0]);
+            event.currentTarget.style.width = '100%';
+        } else {
+            p.appendChild(input$[0]);
+            p.appendChild(event.currentTarget);
+            p.appendChild(camera$[0]);
+            event.currentTarget.style.width = '';
+            input$.prop('required', true);
+            input$.removeClass('d-none');
+            camera$.removeClass('d-none');
+        }
+    });
+    $('#observer-vote form').on('submit', async function(event) {
+        event.preventDefault();
+        var dialogue$ = $('#observer-vote');
+        var form$ = dialogue$.find('form');
+        var failure = dialogue$.find('.failure')[0].ariaPressed == 'true';
+        var contractor = dialogue$.find('.ether-address-input').val();
+        var offer_address = dialogue$.find('.offer-address').text();
+        var current_account = await get_current_account_async();
+        var offer_access = new ethers.Contract(
+            offer_address,
+            offer_abi.abi,
+            current_account
+        );
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        form$.find('button').prop('disabled', true);
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('Waiting for update...');
+        try {
+            modal_info$.text('Waiting for transaction...');
+            var tx;
+            if( failure ) {
+                tx = await offer_access.observer_vote_failure();
+            } else {
+                tx = await offer_access.observer_vote(contractor);
+            }
+            await tx.wait();
+            modal_info$.text('');
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+        } catch(ex) {
+            console.error('Error voting:', ex);
+            var err = ex.shortMessage || ex.message;
+            if(ex.code == 'ACTION_REJECTED') {
+                err = 'Voting rejected';
+            }
+            if(ex.code == 'CALL_EXCEPTION') {
+                err = 'Operation rejected: ' + extract_revert_error(ex);
+            }
+            modal_info$.addClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.removeClass('text-info');
+            modal_info$.text('Error: ' + err);
+        }
+
+        await update_accounts();
+        form$.find('button').prop('disabled', false);
+    });
+    $(document).on('click', '.observer-vote-button', function(event) {
+        event.preventDefault();
+        var offer_title = $(event.currentTarget).parents('tr').find('.offer-title').text();
+        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var dialogue$ = $('#observer-vote');
+        dialogue$.find('.offer-title').text(offer_title);
+        dialogue$.find('.offer-address').text(offer_address);
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
+    });
+
+    const on_edit_offer = async function(address) {
         var current_account = await get_current_account_async();
         var offer_record = {
             id: address
@@ -828,20 +1411,21 @@ $(async function() {
             [
                 offer_record.owner,
                 offer_record.is_contributor,
-                offer_record.is_observer,
                 offer_record.state,
                 offer_record.definition,
                 offer_record.contribution,
                 offer_record.amount,
+                offer_record.observers,
             ] = await Promise.all([
                 offer_access.owner(),
                 offer_access.is_origin_contributor(),
-                offer_access.is_origin_observer(),
                 offer_access.state(),
                 offer_access.definition(),
                 offer_access.contribution_get_for_origin(),
                 provider.getBalance(offer_record.id),
+                get_observers(address, current_account),
             ]);
+            offer_record.is_observer = offer_record.observers[current_account.address];
             offer_record.definition = (offer_record.definition).toObject();
             offer_record.state_name = OfferState[offer_record.state];
             offer_record.is_owner = (offer_record.owner == current_account.address);
@@ -853,128 +1437,529 @@ $(async function() {
         console.debug('Offer read:', offer_record);
 
         var edit_offer$ = $('#edit-offer');
-        edit_offer$.find('input.input-caption').val(offer_record.definition.caption);
+        edit_offer$.find('form')[0].address = address;
+        
         {
+            edit_offer$.find('input.input-caption').val(offer_record.definition.caption);
             var v = etherExactHuman(offer_record.definition.contribution_min_balance);
             edit_offer$.find('input.input-contribution-min-balance').val(v[0]);
             edit_offer$.find('input.input-contribution-min-balance ~ .input-amount-unit').val(v[1]);
+            v = durationExactHuman(offer_record.definition.contribution_unlock_timeout);
+            edit_offer$.find('input.input-contribution-unlock-timeout').val(v[0]);
+            edit_offer$.find('input.input-contribution-unlock-timeout ~ .input-timeout-unit').val(v[1]);
+            v = etherExactHuman(offer_record.definition.voting_start_balance)
+            edit_offer$.find('input.input-voting-start-balance').val(v[0]);
+            edit_offer$.find('input.input-voting-start-balance ~ .input-amount-unit').val(v[1]);
+            edit_offer$.find('input.input-voting-start-count').val(offer_record.definition.voting_start_count);
+            v = durationExactHuman(offer_record.definition.voting_start_timeout);
+            edit_offer$.find('input.input-voting-start-timeout').val(v[0]);
+            edit_offer$.find('input.input-voting-start-timeout ~ .input-timeout-unit').val(v[1]);
+            v = durationExactHuman(offer_record.definition.voting_fail_timeout);
+            edit_offer$.find('input.input-voting-fail-timeout').val(v[0]);
+            edit_offer$.find('input.input-voting-fail-timeout ~ .input-timeout-unit').val(v[1]);
+
+            edit_offer$.find('input.input-observers-vote-percent').val(Number(offer_record.definition.observers_vote_percent) / 100.);
+            edit_offer$.find('input.input-contributors-vote-percent').val(Number(offer_record.definition.contributors_vote_percent) / 100.);
+            edit_offer$.find('input.input-contributors-vote-fund-percent').val(Number(offer_record.definition.contributors_vote_fund_percent) / 100.);
+
+            edit_offer$.find('textarea.input-description').val(offer_record.definition.description).trigger('input');
+            edit_offer$.find('textarea.input-full-details').val(offer_record.definition.full_details).trigger('input');
+            edit_offer$.find('.input-observers-list').find('.item').remove();
+            for(var k in offer_record.observers) {
+                var row$ = $($('#input-observers-list-item').text());
+                row$.find('.item-text').text(k);
+                edit_offer$.find('.input-observers-list').append(row$);
+            }
+
         }
 
-        if( offer_record.is_owner && offer_record.state == 1n ) {
-            edit_offer$.find('.tab-pane-header').text(`Edit Offer ${address}`);
+        if( offer_record.is_owner && offer_record.state < 1n ) {
+            edit_offer$.find('.tab-pane-header').html(`Edit Offer <em class="offer-address>">${address}</em>`);
             edit_offer$.find('form button[type="submit"]').text('Update Offer');
             edit_offer$.find('form .form-control').prop('readonly', false);
             edit_offer$.find('form .form-select').prop('readonly', false);
             edit_offer$.find('form button[type="submit"]').prop('disabled', false);
             edit_offer$.find('form button[type="submit"]').removeClass('invisible');
+            edit_offer$.find('.edit-only').removeClass('d-none');
         } else {
-            edit_offer$.find('.tab-pane-header').text(`View Offer ${address}`);
+            edit_offer$.find('.tab-pane-header').html(`View Offer <em class="offer-address>">${address}</em>`);
             edit_offer$.find('form button[type="submit"]').text('');
             edit_offer$.find('form .form-control').prop('readonly', true);
             edit_offer$.find('form .form-select').prop('readonly', true);
             edit_offer$.find('form button[type="submit"]').prop('disabled', true);
             edit_offer$.find('form button[type="submit"]').addClass('invisible');
+            edit_offer$.find('.edit-only').addClass('d-none');
         }
     };
+
+    $('#edit-offer .input-observers-list .list-add').on('click', async function(event) {
+        event.preventDefault();
+        var dialogue$ = $('#add-observer');
+        var form$ = $(event.currentTarget).parentsUntil('form').parent();
+        dialogue$.find('form')[0].current_account = await get_current_account_async();
+        dialogue$.find('form')[0].address = form$[0].address;
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
+    });
+
+    $('#add-observer form').on('submit', async function(event) {
+        event.preventDefault();
+        var dialogue$ = $('#add-observer');
+        var form$ = $(event.currentTarget);
+        var current_account = form$[0].current_account;
+        var address = form$[0].address;
+        var observer_address = form$.find('.ether-address-input').val();
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        form$.find('button').prop('disabled', true);
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('Waiting for update...');
+        try {
+            var contract = new ethers.Contract(address, offer_abi.abi, current_account);
+            var tx = await contract.observer_create(observer_address);
+            modal_info$.text('Waiting for transaction...');
+            await tx.wait();
+            modal_info$.text('');
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+        } catch(ex) {
+            console.error('Error adding an observer:', ex);
+            var err = ex.shortMessage || ex.message;
+            if(ex.code == 'BAD_DATA') {
+                err = 'No such offer. Is it a proper Offer address?';
+            }
+            if(ex.code == 'ACTION_REJECTED') {
+                err = 'Update rejected';
+            }
+            if(ex.code == 'CALL_EXCEPTION') {
+                err = 'Operation rejected: ' + extract_revert_error(ex);
+            }
+            modal_info$.addClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.removeClass('text-info');
+            modal_info$.text('Error: ' + err);
+        }
+        await update_accounts();
+        form$.find('button').prop('disabled', false);
+    });
+
+    $('#remove-observer form').on('submit', async function(event) {
+        event.preventDefault();
+        var dialogue$ = $('#remove-observer');
+        var form$ = $(event.currentTarget);
+        var current_account = form$[0].current_account;
+        var address = form$[0].address;
+        var observer_address = dialogue$.find('.observer-address').text();
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        form$.find('button').prop('disabled', true);
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('Waiting for update...');
+        try {
+            var contract = new ethers.Contract(address, offer_abi.abi, current_account);
+            var tx = await contract.observer_remove(observer_address);
+            modal_info$.text('Waiting for transaction...');
+            await tx.wait();
+            modal_info$.text('');
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+        } catch(ex) {
+            console.error('Error removing an observer:', ex);
+            var err = ex.shortMessage || ex.message;
+            if(ex.code == 'BAD_DATA') {
+                err = 'No such offer. Is it a proper Offer address?';
+            }
+            if(ex.code == 'ACTION_REJECTED') {
+                err = 'Update rejected';
+            }
+            if(ex.code == 'CALL_EXCEPTION') {
+                err = 'Operation rejected: ' + extract_revert_error(ex);
+            }
+            modal_info$.addClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.removeClass('text-info');
+            modal_info$.text('Error: ' + err);
+        }
+        await update_accounts();
+        form$.find('button').prop('disabled', false);
+    });
 
     $('#edit-offer form').on('submit', async function(event) {
         // edit offer page submit
         event.preventDefault();
-        console.log('>>> Edit Offer Submit');
+        var form$ = $(event.target);
+        if( !event.target.checkValidity() )
+            return false;
+        var definition = {
+            caption: form$.find('.input-caption').val(),
+            contribution_min_balance: convertToWei(
+                form$.find('.input-contribution-min-balance').val(),
+                Number(form$.find('.input-contribution-min-balance ~ select').val())
+            ),
+            contribution_unlock_timeout: (
+                BigInt(form$.find('.input-contribution-unlock-timeout').val() * 10) *
+                BigInt(form$.find('.input-contribution-unlock-timeout ~ select').val()) / 10n
+            ),
+            observer_award: 0n,
+            voting_start_balance: convertToWei(
+                form$.find('.input-voting-start-balance').val(),
+                Number(form$.find('.input-voting-start-balance ~ select').val())
+            ),
+            voting_start_count: BigInt(form$.find('.input-voting-start-count').val()),
+            voting_start_timeout: (
+                BigInt(form$.find('.input-voting-start-timeout').val() * 10) *
+                BigInt(form$.find('.input-voting-start-timeout ~ select').val()) / 10n
+            ),
+            voting_fail_timeout: (
+                BigInt(form$.find('.input-voting-fail-timeout').val() * 10) *
+                BigInt(form$.find('.input-voting-fail-timeout ~ select').val()) / 10n
+            ),
+            observers_vote_percent: (
+                BigInt(form$.find('.input-observers-vote-percent').val() * 100)
+            ),
+            contributors_vote_percent: (
+                BigInt(form$.find('.input-contributors-vote-percent').val() * 100)
+            ),
+            contributors_vote_fund_percent: (
+                BigInt(form$.find('.input-contributors-vote-fund-percent').val() * 100)
+            ),
+            description: form$.find('.input-description').val(),
+            full_details: form$.find('.input-full-details').val(),
+        };
+        console.log('Update Offer Submit', definition);
+        var dialogue$ = $('#edit-offer-submit');
+        var current_account = await get_current_account_async();
+        dialogue$.find('form')[0].definition = definition;
+        dialogue$.find('form')[0].current_account = current_account;
+        dialogue$.find('form')[0].address = form$[0].address;
+        var balance = await provider.getBalance(current_account.address);
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show(); 
+        dialogue$.find('.modal-header h1').text('Update Offer ');
+        dialogue$.find('.current-account-id').text(current_account.address);
+        dialogue$.find('.current-account-balance').text(etherFormatApprox(balance));
+        dialogue$.find('.offer-address').text(form$[0].address);
+
+        dialogue$.find('.input-caption').text(definition.caption);
+        dialogue$.find('.input-contribution-min-balance').text(etherHuman(definition.contribution_min_balance));
+        dialogue$.find('.input-contribution-unlock-timeout').text(durationHuman(definition.contribution_unlock_timeout));
+        dialogue$.find('.input-voting-start-balance').text(etherHuman(definition.voting_start_balance));
+        dialogue$.find('.input-voting-start-count').text(definition.voting_start_count);
+        dialogue$.find('.input-voting-start-timeout').text(durationHuman(definition.voting_start_timeout));
+        dialogue$.find('.input-voting-fail-timeout').text(durationHuman(definition.voting_fail_timeout));
+        dialogue$.find('.input-observers-vote-percent').text(Number(definition.observers_vote_percent) / 100 + '%');
+        dialogue$.find('.input-contributors-vote-percent').text(Number(definition.contributors_vote_percent) / 100 + '%');
+        dialogue$.find('.input-contributors-vote-fund-percent').text(Number(definition.contributors_vote_fund_percent) / 100 + '%');
+        var md = new remarkable.Remarkable('full', {
+            html: true,
+            breaks: true,
+            typographer:  true,
+        });
+        dialogue$.find('.input-description').html(md.render(definition.description));
+        dialogue$.find('.input-full-details').html(md.render(definition.full_details));
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('');
+    });
+
+    $(document).on('click', '.input-observers-list .list-remove', async function(event) {
+        var item$ = $(event.currentTarget).parentsUntil('.item').parent();
+        if( item$.length == 0 )
+            item$ = $(event.currentTarget).parent();
+        var observer_address = item$.find('.item-text').text();
+        var dialogue$ = $('#remove-observer');
+        var form$ = $(event.currentTarget).parentsUntil('form').parent();
+        dialogue$.find('form')[0].current_account = await get_current_account_async();
+        dialogue$.find('form')[0].address = form$[0].address;
+        dialogue$.find('form')[0].observer_address = observer_address;
+        dialogue$.find('.observer-address').text(observer_address);
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
     });
     
-    {
-        // add offer dialogue scanner initializing
-        var scanner;
-        (new MutationObserver(async function(event) {
-            if( !scanner ) {
-                if( !await QrScanner.hasCamera() ) {
-                    $('#watch-offer video').addClass('d-none');
-                    $('#watch-offer .video-absent').text('Camera not found, use text input instead');
-                } else {
-                    $('#watch-offer .video-absent').text('');
-                    var v = $('#watch-offer video');
-                    v.removeClass('d-none');
-                    scanner = new QrScanner(v[0], async function(result) {
-                        $('#watch-offer-address').val(result.data);
-                        await address_input_check('watch-offer-address');
-                        if( scanner.started ) {
-                            scanner.started = false;
-                            await scanner.stop();
-                        }
-                        v.addClass('d-none');
-                    }, {
-                        highlightScanRegion:true,
-                        highlightCodeOutline: true,
-                        returnDetailedScanResult: true
-                    });
-                    scanner.started = false;
-                }
+    $('#edit-offer-submit form').on('submit', async function(event) {
+        // edit offer dialog submit
+        event.preventDefault();
+        var form$ = $(event.target);
+        var definition = form$[0].definition;
+        var current_account = form$[0].current_account;
+        var address = form$[0].address;
+        var dialogue$ = form$.parentsUntil('.modal').parent();
+        var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+        form$.find('button').prop('disabled', true);
+        modal_info$.removeClass('text-danger');
+        modal_info$.removeClass('text-warning');
+        modal_info$.addClass('text-info');
+        modal_info$.text('Waiting for update...');
+        try {
+            var contract = new ethers.Contract(address, offer_abi.abi, current_account);
+            var tx = await contract.definition_update(definition);
+            modal_info$.text('Waiting for transaction...');
+            await tx.wait();
+            modal_info$.text('');
+            console.log('Offer updated:', address, definition);
+            await fill_offer_lists();
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+        } catch(ex) {
+            console.error('Error updating the offer:', ex);
+            var err = ex.shortMessage || ex.message;
+            if(ex.code == 'BAD_DATA') {
+                err = 'No such offer. Is it a proper Offer address?';
             }
-            if( $('#watch-offer').hasClass('show') ) {
-                $('#watch-offer .dialog-error').text('');
-                await address_input_check('watch-offer-address');
-                if( scanner && !scanner.started ) {
-                    try {
-                        scanner.started = true;
-                        await scanner.start();
-                    } catch(ex) {
-                        $('#watch-offer video').addClass('d-none');
-                        console.error('Scanner can not start', ex);
-                        scanner.destroy();
-                        scanner = null;
-                        $('#watch-offer .video-absent').text('Scanner can not start:' + ex);
-                    }
-                }
+            if(ex.code == 'ACTION_REJECTED') {
+                err = 'Update rejected';
+            }
+            if(ex.code == 'CALL_EXCEPTION') {
+                err = 'Operation rejected: ' + extract_revert_error(ex);
+            }
+            modal_info$.addClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.removeClass('text-info');
+            modal_info$.text('Error: ' + err);
+        }
+        await update_accounts();
+        form$.find('button').prop('disabled', false);
+    });
+
+    scanner_init = function(dialogue_selector, button_selector, input_selector) {
+        // The function will init a scanner for any input `input_selector`
+        // and a button `button_selector` near to the input, in the
+        // same subtree.
+        // Pressing the button opens a dialogue `dialogue_selector` which
+        // has a `video` element to initialize the scanner
+
+        var dialogue$ = $(dialogue_selector);
+
+        dialogue$.on('visible', async function(event) {
+            if( !$(event.target).is(dialogue_selector) ) {
+                return;
+            }
+            dialogue$.find('video').addClass('d-none');
+            if( dialogue$.find('.video-absent').length == 0 ) {
+                dialogue$.find('video').parent().append('<p class="video-absent bg-warning"></p>');
+            }
+            // try to init camera, show error if it's not found
+            if( !await QrScanner.hasCamera() ) {
+                dialogue$.find('.video-absent').text('Camera not found, use text input instead');
+                dialogue$.find('.video-absent').removeClass('d-none');
             } else {
-                if( scanner && scanner.started ) {
-                    scanner.started = false;
-                    await scanner.stop();
+                dialogue$.find('.video-absent').addClass('d-none');
+                dialogue$.find('.video-absent').text('');
+                dialogue$.find('video').removeClass('d-none');
+                dialogue$[0].scanner = new QrScanner(dialogue$.find('video')[0], async function(result) {
+                    dialogue$[0].input$.val(result.data);
+                    await address_input_check(dialogue$[0].input$);
+                    await dialogue$[0].scanner.stop();
+                    dialogue$[0].scanner.destroy()
+                    delete dialogue$[0].scanner;
+                    dialogue$.find('video').addClass('d-none');
+                    bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
+                }, {
+                    highlightScanRegion:true,
+                    highlightCodeOutline: true,
+                    returnDetailedScanResult: true
+                });
+                try {
+                    await dialogue$[0].scanner.start();
+                } catch(ex) {
+                    console.error('Scanner can not be started', ex);
+                    dialogue$.find('.video-absent').text('Scanner can not be started, use text input instead');
+                    dialogue$.find('.video-absent').removeClass('d-none');
+                    dialogue$.find('video').addClass('d-none');
                 }
             }
-        })).observe($('#watch-offer')[0], {
-            subtree:false,
-            attributeFilter:['class']
         });
+        dialogue$.on('invisible', async function(event) {
+            if( !$(event.target).is(dialogue_selector) ) {
+                // prevent bubble upped events
+                return;
+            }
+            // try to stop camera, if present
+            if( typeof(dialogue$[0].scanner) != 'undefined' ) {
+                try {
+                    await dialogue$[0].scanner.stop();
+                } catch(ex) {
+                    logger.warning('Error ignored', ex);
+                }
+            }
+        });
+        $(document).on('click', button_selector, function(event) {
+            // find an input
+            event.preventDefault();
+            var parent$ = $(event.currentTarget).parent();
+            if( !parent$.has(input_selector).length )
+                parent$ = $(event.currentTarget).parentsUntil(`:has(${input_selector})`).parent();
+            if( !parent$.length ) {
+                console.error(`Common parent for ${input_selector} not found`);
+                return;
+            }
+            var input$ = parent$.find(input_selector);
+            if( !input$.length ) {
+                console.error(`${input_selector} not found`);
+                return;
+            }
+            dialogue$[0].input$ = input$;
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
+        });
+        QrScanner.hasCamera().then((has)=>{
+            if( !has ) {
+                // No camera - the button is disabled
+                $(button_selector).prop('disabled', true);
+            }
+        })
     }
+
+    scanner_init('#ether-address-input', '.ether-address-input-button', '.ether-address-input');
 
     {
         // selected pane to hash synchronization
         var panes$ = $('.tab-pane');
         for(var ip=0; ip < panes$.length; ip++) {
-            (new MutationObserver(function(events) {
-                for(var event of events) {
-                    var pane$ = $(event.target);
-                    var oldClasses = new Map(event.oldValue.split(' ').map(x=>[x, x]));
-                    if(pane$.hasClass('active') && !('active' in oldClasses)) {
-                        var hash = document.location.hash;
-                        var params = new URLSearchParams(hash.substring(1));
-                        params.set('pane', pane$.attr('id'));
-                        var new_hash = '#' + params.toString().replaceAll('+', ' ');
-                        if( hash != new_hash ) {
-                            document.location.hash = new_hash;
-                        }
+            $(panes$[ip]).on('visible', async function(event) {
+                var pane$ = $(event.target);
+                if( pane$.is('.tab-pane') ) {
+                    var hash = document.location.hash;
+                    var params = new URLSearchParams(hash.substring(1));
+                    params.set('pane', pane$.attr('id'));
+                    var new_hash = '#' + params.toString().replaceAll('+', ' ');
+                    if( hash != new_hash ) {
+                        document.location.hash = new_hash;
                     }
                 }
-            })).observe(panes$[ip], {
-                subtree:false,
-                attributeFilter:['class'],
-                attributeOldValue:true,
             });
         }
-        const onhashchange = async function() {
-            var params = new URLSearchParams(document.location.hash.substring(1));
-            var selector = `#${params.get('pane')}`;
-            if( $(selector).length > 0 ) {
-                bs_selectPane(selector);
-            }
-            if(selector == '#edit-offer') {
-                await on_edit_offer();
-            }
-        };
-        $(window).on('hashchange', onhashchange);
-        onhashchange();
+    }
+    {
+        var hash = document.location.hash;
+        var params = new URLSearchParams(hash.substring(1));
+        if( params.get('pane') ) {
+            onhashchange();
+        } else {
+            params.set('pane', 'application-page');
+            var new_hash = '#' + params.toString().replaceAll('+', ' ');
+            document.location.hash = new_hash;
+        }
+    }
+    {
+        // initialize visibility mutation events
+        new MutationObserver(async function(events) {
+            events.map(async function(event) {
+                if( typeof(event.target._visible) == 'undefined' ) {
+                    event.target._visible = null;
+                }
+                if( $(event.target).is(':visible') == true ) {
+                    if( event.target._visible != true ) {
+                        event.target._visible = true;
+                        $(event.target).trigger({
+                            type: 'visible',
+                            originalEvent: event,
+                        });
+                    }
+                } else {
+                    if( event.target._visible != false ) {
+                        event.target._visible = false;
+                        $(event.target).trigger({
+                            type: 'invisible',
+                            originalEvent: event,
+                        });
+                    }
+                }
+            });
+        }).observe(document,{subtree: true, attributeFilter:['class', 'style']});
     }
 
-    await update_accounts();
+    const on_change_wallet = async function(option$) {
+        var form$ = $('form[role="wallets"]');
+        var button$ = form$.find('[data-bs-toggle="dropdown"]');
+        ethereum = option$[0].ethereum;
+        provider = new ethers.BrowserProvider(ethereum, 'any');
+        button$[0].current = option$[0].rdns;
+        button$.html(`<img src="${option$[0].icon}"> ${option$[0].name}`);
+        form$.find('a.dropdown-item').removeClass('active');
+        option$.find('a').addClass('active');
+        await update_accounts();
+    };
+
+    var wallets = {};
+
+    window.addEventListener(
+        "eip6963:announceProvider",
+        async (event) => {
+            console.debug('Wallet announce', event);
+            //ethereum = event.detail.provider;
+            //event.detail.info.uuid;
+            //event.detail.info.name;
+            //event.detail.info.rdns;
+            //event.detail.info.icon; // URL
+            var provider = new ethers.BrowserProvider(event.detail.provider, 'any');
+            var accounts = await provider.listAccounts();
+            var account_address =   '-- no current account --';
+            var account_balance_s = '------ no balance ------';
+            if( accounts.length > 0 ) {
+                account_address = accounts[0].address;
+                var balance = await provider.getBalance(account_address);
+                account_balance_s = ethers.formatEther(balance) + ethers.EtherSymbol;
+            }
+            var form$ = $('form[role="wallets"]');
+            var option$ = $(`
+                <li rdns="${event.detail.info.rdns}">
+                    <a class="dropdown-item" href="#" title="${account_address}">
+                        <img src="${event.detail.info.icon}"></img> ${event.detail.info.name}
+                        <p class="text-little">
+                        <em>${account_balance_s}</em>
+                        </p>
+                    </a>
+                </li>
+            `);
+
+            option$[0].uuid = event.detail.info.uuid;
+            option$[0].icon = event.detail.info.icon;
+            option$[0].name = event.detail.info.name;
+            option$[0].rdns = event.detail.info.rdns;
+            option$[0].ethereum = event.detail.provider;
+            option$[0].account_address = account_address;
+            option$[0].account_balance_s = account_balance_s;
+            form$.find('.dropdown-menu').append(option$);
+            var button$ = form$.find('[data-bs-toggle="dropdown"]');
+            if( !button$[0].current || event.detail.info.rdns == button$[0].current ) {
+                await on_change_wallet(option$);
+            }
+            if(!wallets[event.detail.info.rdns]) {
+                wallets[event.detail.info.rdns] = {
+                    ...event.detail.info,
+                    ethereum: event.detail.provider,
+                }
+                // wallet change state tracking - setup only once
+                event.detail.provider.on('connect', async function() {
+                    console.debug("Wallet connect", arguments);
+                    await update_accounts();
+                });
+                event.detail.provider.on('disconnect', async function() {
+                    console.debug("Wallet disconnect", arguments);
+                    await update_accounts();
+                });
+                event.detail.provider.on('accountsChanged', async function() {
+                    console.debug("Wallet accounts list changed", arguments);
+                    await refill_wallets();
+                    await update_accounts();
+                });
+                event.detail.provider.on('chainChanged', async function() {
+                    console.debug("Wallet chain connection changed", arguments);
+                    await refill_wallets();
+                    await update_accounts();
+                });
+            }
+        }
+    );
+    const refill_wallets = async function() {
+        var form$ = $('form[role="wallets"]');
+        form$.find('.dropdown-menu').html('');
+        console.debug('Request providers');
+        window.dispatchEvent(new Event("eip6963:requestProvider"));
+    };
+    refill_wallets();
+    $(document).on('click', 'form[role="wallets"] a.dropdown-item', async function(event) {
+        event.preventDefault();
+        var option$ = $(event.currentTarget).parent();
+        await on_change_wallet(option$);
+    });
 });

@@ -2,13 +2,24 @@ const { expect, should } = require("chai");
 
 should();
 
-// TODO: test revoting for correct change leathers state
+// TODO: test revoting for correct change leaders state
 // TODO: test CancelationInProgress
 
 function to$(wei) {
   var cents_per_ether = 300000n;
   var weis_per_ether = 1000000000000000000n;
   return hre.ethers.toNumber((wei * cents_per_ether) / weis_per_ether ) / 100.;
+}
+
+function extractData(ex) {
+  var data = ex.data;
+  if( typeof(data) == 'undefined' ) {
+    return 'unknown';
+  }
+  if( typeof(data) != 'string') {
+    return extractData(data);
+  }
+  return data;
 }
 
 describe("Contract Tests", function () {
@@ -35,6 +46,10 @@ describe("Contract Tests", function () {
     }
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var account_observer = accounts[1]; // the account will be a signer to check an access from the observer
+    var account_contributor = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var beginning_balance = await account_owner.provider.getBalance(account_owner.address);
     console.debug("Owner account at the beginning:", beginning_balance);
     var Offer = await ethers.getContractFactory("Offer", account_owner);
@@ -64,6 +79,7 @@ describe("Contract Tests", function () {
     var offer = await Offer.deploy(test_definition);
     console.info("Waiting for deployment...");
     var v = await offer.waitForDeployment();
+    await new Promise(resolve => setTimeout(resolve, 1000));
     account_owner.provider.off(create_offer_filter, create_offer_handler);
     expect(offer_created_log).to.not.be.a('undefined');
     console.info("Contract deployed to address:", offer.target);
@@ -71,12 +87,6 @@ describe("Contract Tests", function () {
     var diff = start_balance - end_balance;
     console.debug("Owner account after deployment:", end_balance, "Diff WEI:", diff, "Amount $:", to$(diff));
     console.info("Contract owner is:", await offer.owner());
-
-    var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
-    var account_observer = accounts[1]; // the account will be a signer to check an access from the observer
-    var account_contributor = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
-    var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
 
     // Gettings access from the owner
     var o = new ethers.Contract(
@@ -190,7 +200,7 @@ describe("Contract Tests", function () {
 
       console.log('Going to approve the contract...');
       // try to approve by the outside account should lead to revert
-      o.interface.parseError((await outside_access.approve().should.eventually.rejectedWith('reverted')).data).name.should.be.equal('OwnerOnly');
+      o.interface.parseError(extractData(await outside_access.approve().should.eventually.rejectedWith('reverted'))).name.should.be.equal('OwnerOnly');
       // approve and check the runtime event generation
       {
           var offer_approved_event;
@@ -203,13 +213,14 @@ describe("Contract Tests", function () {
           });
           // Approve the contract to make it unmutable
           await (await o.approve()).wait();
+          await new Promise(resolve => setTimeout(resolve, 1000));
           expect(offer_approved_event).to.not.be.a('undefined');
           expect(offer_approved_event_outside).to.not.be.a('undefined');
       }
       console.log('...the contract approved');
       // Trying to modify observers list should be failed
-      o.interface.parseError((await o.observer_create(account_outside.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('PreparedOnly');
-      o.interface.parseError((await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('PreparedOnly');
+      o.interface.parseError(extractData(await o.observer_create(account_outside.address).should.eventually.rejectedWith('reverted'))).name.should.be.equal('PreparedOnly');
+      o.interface.parseError(extractData(await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted'))).name.should.be.equal('PreparedOnly');
 
       // voting process
       var state = await contractor_access.state();
@@ -420,8 +431,8 @@ describe("Contract Tests", function () {
       await (await o.approve()).wait();
 
       // Trying to modify observers list should be failed
-      o.interface.parseError((await o.observer_create(account_outside.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('PreparedOnly');
-      o.interface.parseError((await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted')).data).name.should.be.equal('PreparedOnly');
+      o.interface.parseError(extractData(await o.observer_create(account_outside.address).should.eventually.rejectedWith('reverted'))).name.should.be.equal('PreparedOnly');
+      o.interface.parseError(extractData(await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted'))).name.should.be.equal('PreparedOnly');
 
       // voting process
       var state = await contractor_access.state();
@@ -653,7 +664,7 @@ describe("Contract Tests", function () {
         "caption": "Test",
         "description": "Test Description",
         "full_details": "Test Details",
-        "contribution_unlock_timeout": 10n,
+        "contribution_unlock_timeout": 30n,
         "observer_award": 0n,
         "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
@@ -782,6 +793,8 @@ describe("Contract Tests", function () {
       await (await contributor2_access.contribution_cancel()).wait();
       console.debug("Contributor2 has just cancelled contribution");
       while(42) {
+        // generate a block to increase the time without mining - necessary for hardhat node
+        await (await account_contributor2.sendTransaction({to:account_owner, value:100n})).wait();
         var time_to_cancel = await contributor2_access.contribution_can_be_canceled(account_contributor2.address);
         if( !time_to_cancel )
           break;
@@ -1647,7 +1660,7 @@ describe("Contract Tests", function () {
       await (await contributor_access.contributor_vote(account_contractor.address)).wait();
       console.debug("Contributor has just voted");
       var approved_at = await outside_access.approved_at();
-      var failure_at = new Date().getTime() / 1000 - Number(approved_at);
+      var failure_at = Number(test_definition.voting_fail_timeout) - (Number((await hre.ethers.provider.getBlock('latest')).timestamp) - Number(approved_at)) + 1;
       console.debug("Waiting for the voting failure timeout:", failure_at);
       await new Promise(resolve => setTimeout(resolve, 1000 * failure_at));
       console.debug("Trying to vote should lead to failure because of timeout");
@@ -1894,8 +1907,8 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
-  it("Test the observers vote contribution", async function () {
-    console.log("Test the observers vote contribution");
+  it("Test the observers vote", async function () {
+    console.log("Test the observers vote");
     var test_definition = {
         "caption": "Test",
         "description": "Test Description",
@@ -2119,6 +2132,156 @@ describe("Contract Tests", function () {
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
+      }
+      throw e;
+    }
+  });
+  it("Test multiple votings and revoting", async function () {
+    console.log("Test multiple votings and revoting");
+    var test_definition = {
+        "caption": "Test",
+        "description": "Test Description",
+        "full_details": "Test Details",
+        "contribution_unlock_timeout": 1n,
+        "observer_award": 0n,
+        "contribution_min_balance": 10000000000000000n,
+        "voting_start_balance": 0n,
+        "voting_start_count": 0n,
+        "voting_start_timeout": 3600n,
+        "voting_fail_timeout": 3600n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
+    };
+    var accounts = await hre.ethers.getSigners();
+    var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var Offer = await ethers.getContractFactory("Offer", account_owner);
+    var offer = await Offer.deploy(test_definition);
+    console.info("Waiting for deployment...");
+    await offer.waitForDeployment();
+    var owner = await offer.owner();
+    console.info("Contract deployed to address:", offer.target);
+    console.info("Contract owner is:", owner);
+    expect(owner).to.equal(account_owner.address);
+    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    // Gettings access from the owner
+    var o = new ethers.Contract(offer.target, contract_abi.abi, account_owner);
+
+    // Getting access from contributors
+    var contributors = accounts.slice(1, 11).map((a)=> new ethers.Contract(offer.target, contract_abi.abi, a));
+    var contractors = accounts.slice(11, 16).map((a)=> new ethers.Contract(offer.target, contract_abi.abi, a));
+    var observers = accounts.slice(16, 20).map((a)=> new ethers.Contract(offer.target, contract_abi.abi, a));
+
+    try {
+
+      observers.map((b) => {
+          b.is_origin_observer().should.eventually.be.equal(false);
+      });
+
+      contributors.map((c) => {
+        c.is_origin_contributor().should.eventually.be.equal(false);
+      });
+
+      console.info('Create observers...', observers.length);
+
+      await observers.reduce(async (memo, b) => {
+        await memo;
+        console.info('Creating observer', b.runner.address);
+        return await (await o.observer_create(b.runner.address)).wait();
+      }, 0);
+
+      console.info('Approve the contract');
+      await (await o.approve()).wait();
+
+      var c_amount = 10000000000000000n;
+      console.info('Contribute the contract');
+      await Promise.all(contributors.map(async (c, i) => {
+          return await (await c.runner.sendTransaction({to:o.target, value: c_amount + BigInt(i)})).wait();
+      }));
+
+      // Initial state before voting
+      var state = await o.state();
+      console.info('State before first vote', state);
+      state.should.be.equal(1n);
+      var start_offer_balance = await account_owner.provider.getBalance(offer.target);
+      console.info('Balance before first vote', start_offer_balance, '[', to$(start_offer_balance), '=', to$(c_amount), ' * 10 ]');
+      start_offer_balance.should.be.equal(c_amount * 10n + BigInt(9 * 10 / 2));
+      var start_balance_contractor = await account_owner.provider.getBalance(contractors[0].runner.address);
+      console.debug("Leader contractor account before contract success:", start_balance_contractor);
+      var observer_balances = await Promise.all(observers.map( async (b)=>{
+        return b.start_balance = await b.runner.provider.getBalance(b.runner.address);
+      }))
+      var contributor_balances = await Promise.all(contributors.map( async (c)=>{
+        return c.start_balance = await c.runner.provider.getBalance(c.runner.address);
+      }))
+
+      observers.map((b) => {
+          b.is_origin_observer().should.eventually.be.equal(true);
+      });
+
+      contributors.map((c) => {
+        c.is_origin_contributor().should.eventually.be.equal(true);
+      });
+      console.log('Bad observers voting');
+      await observers.reduce(async (memo, b) => {
+          var i;
+          [i, memo] = await memo;
+          console.log('Observer', b.runner.address, 'votes for', contractors[i].runner.address);
+          return [i+1, await (await b.observer_vote(contractors[i].runner.address)).wait()];
+      }, [0, 0]);
+      o.state().should.eventually.be.equal(1n);
+
+      console.log('Bad contributors voting');
+      await contributors.reduce(async (memo, c) => {
+          var i;
+          [i, memo] = await memo;
+          console.log('Contributor', c.runner.address, 'votes for', contractors[i % contractors.length].runner.address);
+          return [i+1, await (await c.contributor_vote(contractors[i % contractors.length].runner.address)).wait()];
+      }, [0, 0]);
+      o.state().should.eventually.be.equal(1n);
+
+      console.log('Fine observers revoting for the leader contractor', contractors[0].runner.address);
+      await observers.reduce(async (memo, b) => {
+          await memo;
+          console.log('Observer', b.runner.address, 'votes for', contractors[0].runner.address);
+          return await (await b.observer_vote(contractors[0].runner.address)).wait();
+      }, 0);
+
+      o.state().should.eventually.be.equal(1n);
+
+      console.log('Fine contributors revoting for the leader contractor', contractors[0].runner.address);
+      await contributors.reduce(async (memo, c) => {
+          await memo;
+          console.log('Contributor', c.runner.address, 'votes for', contractors[0].runner.address);
+          return await (await c.contributor_vote(contractors[0].runner.address)).wait();
+      }, 0);
+
+      o.state().should.eventually.be.equal(2n);
+      var final_balance_offer = await account_owner.provider.getBalance(offer.target);
+      console.debug("Offer account after contract completion", final_balance_offer);
+      final_balance_offer.should.be.equal(0n);
+
+      var end_balance_contractor = await account_owner.provider.getBalance(contractors[0].runner.address);
+      console.debug("Leader contractor account after contract success:", end_balance_contractor);
+      console.debug("Leader contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      console.debug("Voting cost:");
+
+      await observers.reduce(async (memo, b) => {
+          await memo;
+          var diff = b.start_balance - await account_owner.provider.getBalance(b.runner.address);
+          console.log('Observer', b.runner.address, diff, to$(diff));
+      }, 0);
+
+      await contributors.reduce(async (memo, c) => {
+          await memo;
+          var diff = c.start_balance - await account_owner.provider.getBalance(c.runner.address);
+          console.log('Contributor', c.runner.address, diff, to$(diff));
+      }, 0);
+
+    } catch(e) {
+      if( e.data ) {
+        console.error("Unexpected revert", o.interface.parseError(extractData(e)));
       }
       throw e;
     }
