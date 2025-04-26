@@ -83,9 +83,30 @@ module.exports = {
         enabled: true,
         runs: 200,
       },
+      modelChecker: {
+        targets: [
+            "assert",
+            "underflow",
+            "overflow",
+            "divByZero",
+            "constantCondition",
+            "popEmptyArray",
+            "outOfBounds",
+            "balance"
+        ]
+      },
+      outputSelection: {
+        "*": {
+            "*": [
+              "metadata",
+              "evm.bytecode",
+              "evm.bytecode.sourceMap"
+            ]
+        }
+      }
     },
   },
-  defaultNetwork: "local",
+  defaultNetwork: "hardhat",
 //  networks: {
 //      hardhat: {},
 //      sepolia: {

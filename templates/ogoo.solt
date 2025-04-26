@@ -8,7 +8,89 @@
 
 pragma solidity ^0.8.20;
 
-import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+<%- include("solt/std.solt") -%>
+<%- include_with("solt/set.solt", {
+    SET_LIBRARY: "address_set",
+    SET_KEYTYPE: "address"
+}) -%>
+
+<%- include_with("solt/set.solt", {
+    SET_LIBRARY: "uint_set",
+    SET_KEYTYPE: "uint"
+}) -%>
+
+<%- include_with("solt/index_direct.solt", {
+    DIRECT_LIBRARY: "uint_direct",
+    DIRECT_KEYTYPE: "uint"
+}) -%>
+
+<%
+assert = function(condition) {
+    if( typeof(RELEASE) == 'undefined' ) {
+        return 'assert(' + condition + ');';
+    }
+}
+-%>
+
+library leaders {
+    // Consistently store leaders order
+    using uint_set for uint_set.Set;
+    using uint_direct for uint_direct.Index;
+
+    struct Storage {
+        // order of point counts existent
+        uint_direct.Index points_index;
+        // storage of points mapped to leader sets with equal point counts
+        mapping(uint => uint_set.Set) leaders_storage;
+        // storage of leaders mapped to current point counts
+        mapping(uint => uint) points_storage;
+    }
+    function change_points(
+        Storage storage self,
+        uint leader, int points) internal
+    {
+        uint points_before = self.points_storage[leader];
+        if(points_before > 0) {
+            // remove the leader from the index
+            <%- assert('self.points_index.contains(points_before)') %>
+            uint_set.Set storage leaders_before = self.leaders_storage[points_before];
+            <%- assert('leaders_before.contains(leader)') %>
+            leaders_before.remove(leader);
+            if(leaders_before.length() == 0) {
+                delete self.leaders_storage[points_before];
+                self.points_index.remove(points_before);
+            }
+        }
+        if(points >= 0) {
+            self.points_storage[leader] = points_before + uint(points);
+        } else {
+            self.points_storage[leader] = points_before - uint(-points);
+        }
+        uint points_after = self.points_storage[leader];
+        // add the leader to the index
+        if(points_after > 0) {
+            uint_set.Set storage leaders_after = self.leaders_storage[points_after];
+            <%- assert('!leaders_after.contains(leader)') %>
+            leaders_after.add(leader);
+            self.points_index.add(points_after);
+        } else {
+            delete self.points_storage[leader];
+        }
+    }
+    function points_of(Storage storage self, uint leader) internal view returns(uint) {
+        return self.points_storage[leader];
+    }
+    function leaders_having(Storage storage self, uint points) internal view returns(uint[] storage) {
+        return self.leaders_storage[points].values;
+    }
+    function topmost_points(Storage storage self) internal view returns(uint) {
+        return self.points_index.last();
+    }
+    function topmost_leaders(Storage storage self) internal view returns(uint[] storage) {
+        return leaders_having(self, topmost_points(self));
+    }
+}
+
 import "hardhat/console.sol";
 
 abstract contract HasOwner {
@@ -126,30 +208,32 @@ contract Offer is HasOwner {
         return _definition;
     }
 
+    using address_set for address_set.Set;
+    using uint_set for uint_set.Set;
+    using uint_direct for uint_direct.Index;
+    using leaders for leaders.Storage;
+
     // Dynamic contract state
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableSet for EnumerableSet.UintSet;
-    EnumerableSet.AddressSet private _contributors;                 // contributors set
+    address_set.Set          private _contributors;                 // contributors set
     mapping(address => uint) private _contributor_voting;           // contributor account -> voting for address or failure
     mapping(address => uint) private _contributor_contribution;     // contribution amount for the contributor
     mapping(address => uint) private _contributor_canceled_at;      // contribution cancelation timeout start
-    EnumerableSet.AddressSet private _observers;                    // observers set
+    address_set.Set          private _observers;                    // observers set
     mapping(address => uint) private _observer_voting;              // observer account -> voting for arress or failure
-    EnumerableSet.UintSet    private _contractors;                  // proposed contractors (or CONTRACT_FAILED) set
+    uint_set.Set             private _contractors;                  // proposed contractors (or CONTRACT_FAILED) set
     mapping(uint => uint)    private _observer_votes_count;         // count of observer votes for the contractor
     mapping(uint => uint)    private _contributor_votes_count;      // count of contributor votes for the contractor
     mapping(uint => uint)    private _contributor_votes_amount;     // summary amount of contributor votes for the contractor
+
+    leaders.Storage private _observers_leaders;                     // leaders by observers voting
+    leaders.Storage private _contributors_leaders;                  // leaders by contributors voting count
+    leaders.Storage private _contributors_fund_leaders;             // leaders by contributors voting amount
+
     uint private _total_observer_votes_count;                       // total count of observer votes
     uint private _total_contributor_votes_count;                    // total count of contributor votes except canceled
     uint private _total_contributor_votes_amount;                   // total amount of contributor votes except canceled
     uint private _total_contributors_count;                         // total count of contributors except canceled
     uint private _total_contributors_fund;                          // total fund of contributors except canceled
-    uint private _observers_leader_count;                           // count of observer votes for the leader
-    uint private _observers_leader;                                 // observer votes leader
-    uint private _contributors_leader_count;                        // count of contributor votes for the leader
-    uint private _contributors_leader;                              // contributor votes leader
-    uint private _contributors_fund_leader_amount;                  // amount of contributor votes fund for the leader
-    uint private _contributors_fund_leader;                         // contributor fund votes leader
 
     // The contract running state
     OfferState public state = OfferState.INITIAL;                 // Current state of the contract
@@ -395,60 +479,10 @@ contract Offer is HasOwner {
             // and to other cummulative variables.
             _contributor_votes_amount[voting_] += msg.value;
             _total_contributor_votes_amount += msg.value;
-            if( voting_ == _contributors_fund_leader ) {
-                _contributors_fund_leader_amount += msg.value;
-            } else {
-                _pretend_to_win_contributors_amount(voting_);
-            }
-            if( voting_ == _contributors_leader ) {
-                _contributors_leader_count += 1;
-            } else {
-                _pretend_to_win_contributors(voting_);
-            }
+            _contributors_fund_leaders.change_points(voting_, int(msg.value));
             _calculate_voting();
         }
         emit ContributionUpdated(payable(tx.origin), _contributor_contribution[tx.origin]);
-    }
-
-    function _pretend_to_win_observers(uint voting_) internal {
-        // check whether the voting_ should now win for the observers count
-        if( _observer_votes_count[voting_] > _observers_leader_count ) {
-            _observers_leader_count = _observer_votes_count[voting_];
-            _observers_leader = voting_;
-        }
-    }
-
-    function _pretend_to_win_contributors(uint voting_) internal {
-        // check whether the voting_ should now win for the contributors count
-        if( _contributor_votes_count[voting_] > _contributors_leader_count ) {
-            _contributors_leader_count = _contributor_votes_count[voting_];
-            _contributors_leader = voting_;
-        }
-    }
-
-    function _pretend_to_win_contributors_amount(uint voting_) internal {
-        // check whether the voting_ should now win for the contributors fund amount
-        if( _contributor_votes_amount[voting_] > _contributors_fund_leader_amount ) {
-            _contributors_fund_leader_amount = _contributor_votes_amount[voting_];
-            _contributors_fund_leader = voting_;
-        }
-    }
-
-    function _reset_leaders() internal {
-        // check all contractors again and find leaders
-        uint contractors_count = _contractors.length();
-        _observers_leader_count = _contributors_leader_count = _contributors_fund_leader_amount =
-        _observers_leader = _contributors_leader = _contributors_fund_leader = 0;
-        if( contractors_count == 0 ) {
-            return;
-        }
-
-        for(uint i = 0; i < contractors_count; i += 1) {
-            uint contractor = _contractors.at(i);
-            _pretend_to_win_observers(contractor);
-            _pretend_to_win_contributors(contractor);
-            _pretend_to_win_contributors_amount(contractor);
-        }
     }
 
     // Returns contribution amount for the caller (tx.origin == msg.sender)
@@ -468,17 +502,32 @@ contract Offer is HasOwner {
             return;
         }
 
-        console.log(">>> total_observer_votes_count:",_total_observer_votes_count);
-        console.log(">>> total_contributor_votes_count:",_total_contributor_votes_count);
-        console.log(">>> total_contributor_votes_amount:",_total_contributor_votes_amount);
-        console.log(">>> total_contributors_count:",_total_contributors_count);
-        console.log(">>> total_contributors_fund:",_total_contributors_fund);
-        console.log(">>> observers_leader_count:",_observers_leader_count);
-        console.log(">>> observers_leader:",_observers_leader);
-        console.log(">>> contributors_leader_count:",_contributors_leader_count);
-        console.log(">>> contributors_leader:",_contributors_leader);
-        console.log(">>> contributors_fund_leader_amount:",_contributors_fund_leader_amount);
-        console.log(">>> contributors_fund_leader:",_contributors_fund_leader);
+//         console.log(">>> total_observer_votes_count:",_total_observer_votes_count);
+//         console.log(">>> total_contributor_votes_count:",_total_contributor_votes_count);
+//         console.log(">>> total_contributor_votes_amount:",_total_contributor_votes_amount);
+//         console.log(">>> total_contributors_count:",_total_contributors_count);
+//         console.log(">>> total_contributors_fund:",_total_contributors_fund);
+//         console.log(">>> observers_leaders.topmost_points:",_observers_leaders.topmost_points());
+//         if(_observers_leaders.topmost_points() > 0) {
+//             uint[] storage topmost_leaders = _observers_leaders.topmost_leaders();
+//             for(uint i=0; i < topmost_leaders.length; i++) {
+//                 console.log(">>> observers_leaders.topmost_leaders:",topmost_leaders[i]);
+//             }
+//         }
+//         console.log(">>> contributors_leaders.topmost_points:",_contributors_leaders.topmost_points());
+//         if(_contributors_leaders.topmost_points() > 0) {
+//             uint[] storage topmost_leaders = _contributors_leaders.topmost_leaders();
+//             for(uint i=0; i < topmost_leaders.length; i++) {
+//                 console.log(">>> contributors_leaders.topmost_leaders:",topmost_leaders[i]);
+//             }
+//         }
+//         console.log(">>> contributors_fund_leaders.topmost_points:",_contributors_fund_leaders.topmost_points());
+//         if(_contributors_fund_leaders.topmost_points() > 0) {
+//             uint[] storage topmost_leaders = _contributors_fund_leaders.topmost_leaders();
+//             for(uint i=0; i < topmost_leaders.length; i++) {
+//                 console.log(">>> contributors_fund_leaders.topmost_leaders:",topmost_leaders[i]);
+//             }
+//         }
 
         if( block.timestamp > approved_at + _definition.voting_start_timeout ) {
             uint contributions_count = _contributors.length();
@@ -525,28 +574,41 @@ contract Offer is HasOwner {
 
         uint observers_count = _observers.length();
 
-        if( observers_count > 0 && _observers_leader_count * 10000 / observers_count < _definition.observers_vote_percent ) {
+        uint observers_leader_count = _observers_leaders.topmost_points();
+        if( observers_count > 0 && observers_leader_count * 10000 / observers_count < _definition.observers_vote_percent ) {
             return 0;
         }
-        if( _total_contributors_count > 0 && _contributors_leader_count * 10000 / _total_contributors_count < _definition.contributors_vote_percent ) {
+        uint contributors_leader_count = _contributors_leaders.topmost_points();
+        if( _total_contributors_count > 0 && contributors_leader_count * 10000 / _total_contributors_count < _definition.contributors_vote_percent ) {
             return 0;
         }
-        if( _total_contributors_fund > 0 && _contributors_fund_leader_amount * 10000 / _total_contributors_fund < _definition.contributors_vote_fund_percent ) {
+        uint contributors_fund_leader_amount = _contributors_fund_leaders.topmost_points();
+        if( _total_contributors_fund > 0 && contributors_fund_leader_amount * 10000 / _total_contributors_fund < _definition.contributors_vote_fund_percent ) {
             return 0;
         }
 
+        uint[] storage observers_leaders = _observers_leaders.topmost_leaders();
+        uint[] storage contributors_leaders = _contributors_leaders.topmost_leaders();
+        uint[] storage contributors_fund_leaders = _contributors_fund_leaders.topmost_leaders();
+        if(observers_leaders.length > 1 || contributors_leaders.length > 1 || contributors_fund_leaders.length > 1)
+            return 0; // should be one leader only
+
         uint256 winner_local = 0;
+        uint256 observers_leader = observers_leaders.length > 0 ? observers_leaders[0] : 0;
+        uint256 contributors_leader = contributors_leaders.length > 0 ? contributors_leaders[0] : 0;
+        uint256 contributors_fund_leader = contributors_fund_leaders.length > 0 ? contributors_fund_leaders[0] : 0;
+
         if( observers_count > 0 ) {
-            if( _observers_leader == _contributors_leader ) {
-                winner_local = _observers_leader;
-            } else if( _observers_leader == _contributors_fund_leader ) {
-                winner_local = _observers_leader;
+            if( observers_leader == contributors_leader ) {
+                winner_local = observers_leader;
+            } else if( observers_leader == contributors_fund_leader ) {
+                winner_local = observers_leader;
             } else {
                 // TODO: can ve resolve it using some other way?
                 return 0;
             }
-        } else if( _contributors_fund_leader == _contributors_leader ) {
-            winner_local = _contributors_leader;
+        } else if( contributors_fund_leader == contributors_leader ) {
+            winner_local = contributors_leader;
         } else {
             // TODO: can ve resolve it using some other way?
             return 0;
@@ -613,12 +675,13 @@ contract Offer is HasOwner {
                 _contributor_votes_amount[voice] -= contributor_contribution;
                 _total_contributor_votes_count -= 1;
                 _total_contributor_votes_amount -= contributor_contribution;
+                _contributors_leaders.change_points(voice, -1);
+                _contributors_fund_leaders.change_points(voice, -int(contributor_contribution));
                 _cleanup_contractor(voice);
-                _reset_leaders();
             }
             _total_contributors_count -= 1;
             _total_contributors_fund -= contributor_contribution;
-            _contributor_voting[tx.origin] = 0;
+            delete _contributor_voting[tx.origin];
             emit ContributionCancelation(payable(tx.origin));
             _calculate_voting();
         }
@@ -630,8 +693,8 @@ contract Offer is HasOwner {
         }
         // All data should be zeroed to prevent data phantom and reentrance attack
         _contributors.remove(tx.origin);
-        _contributor_contribution[tx.origin] = 0;
-        _contributor_canceled_at[tx.origin] = 0;
+        delete _contributor_contribution[tx.origin];
+        delete _contributor_canceled_at[tx.origin];
         payable(tx.origin).transfer(contributor_contribution);
         emit ContributionCanceled(payable(tx.origin));
     }
@@ -646,6 +709,8 @@ contract Offer is HasOwner {
             _contributor_votes_count[old_voted] -= 1;
             _contributor_votes_amount[old_voted] -= contribution;
             _cleanup_contractor(old_voted);
+            _contributors_leaders.change_points(old_voted, -1);
+            _contributors_fund_leaders.change_points(old_voted, -int(contribution));
         }
         _contributor_voting[contributor_] = voice;
         if( voice != 0 ) {
@@ -656,14 +721,8 @@ contract Offer is HasOwner {
                 _total_contributor_votes_amount += contribution;
             }
             _contractors.add(voice); // TODO: who is able to add contractors?
-        }
-        if( old_voted != 0 ) {
-            _reset_leaders();
-        } else {
-            if( voice != 0 ) {
-                _pretend_to_win_contributors(voice);
-                _pretend_to_win_contributors_amount(voice);
-            }
+            _contributors_leaders.change_points(voice, 1);
+            _contributors_fund_leaders.change_points(voice, int(contribution));
         }
         _calculate_voting();
     }
@@ -673,6 +732,7 @@ contract Offer is HasOwner {
         if( old_voted != 0 ) {
             _observer_votes_count[old_voted] -= 1;
             _cleanup_contractor(old_voted);
+            _observers_leaders.change_points(old_voted, -1);
         }
         _observer_voting[observer_] = voice;
         if( voice != 0 ) {
@@ -681,13 +741,7 @@ contract Offer is HasOwner {
                 _total_observer_votes_count += 1;
             }
             _contractors.add(voice); // TODO: who is able to add contractors?
-        }
-        if( old_voted != 0 ) {
-            _reset_leaders();
-        } else {
-            if( voice != 0 ) {
-                _pretend_to_win_observers(voice);
-            }
+            _observers_leaders.change_points(voice, 1);
         }
         _calculate_voting();
     }
