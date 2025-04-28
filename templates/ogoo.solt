@@ -32,9 +32,12 @@ assert = function(condition) {
 }
 -%>
 
+// import "hardhat/console.sol";
+
 library leaders {
     // Consistently store leaders order
     using uint_set for uint_set.Set;
+    using address_set for address_set.Set;
     using uint_direct for uint_direct.Index;
 
     struct Storage {
@@ -44,6 +47,28 @@ library leaders {
         mapping(uint => uint_set.Set) leaders_storage;
         // storage of leaders mapped to current point counts
         mapping(uint => uint) points_storage;
+        // storage of voters mapped to votings
+        mapping(address => uint) votings;
+        // total voters points collected
+        uint total_points;
+    }
+
+    function vote_for(
+        Storage storage self,
+        address voter, uint leader, uint points
+    ) internal {
+        uint old_voting = current_voting(self, voter);
+        if( old_voting != 0 ) {
+            // unvote first anyway if old voting
+            change_points(self, old_voting, -int(points));
+            self.votings[voter] = 0;
+            delete self.votings[voter];
+        }
+        if(leader != 0) {
+            // new vote if a new vote happened
+            self.votings[voter] = leader;
+            change_points(self, leader, int(points));
+        }
     }
     function change_points(
         Storage storage self,
@@ -63,8 +88,10 @@ library leaders {
         }
         if(points >= 0) {
             self.points_storage[leader] = points_before + uint(points);
+            self.total_points += uint(points);
         } else {
             self.points_storage[leader] = points_before - uint(-points);
+            self.total_points -= uint(-points);
         }
         uint points_after = self.points_storage[leader];
         // add the leader to the index
@@ -89,41 +116,8 @@ library leaders {
     function topmost_leaders(Storage storage self) internal view returns(uint[] storage) {
         return leaders_having(self, topmost_points(self));
     }
-}
-
-import "hardhat/console.sol";
-
-abstract contract HasOwner {
-    // If a contract is HasOwner, it automatically creates a payable public attribute `owner`
-    // equal to the transaction origin, i.e. initiator of the call sequence leading to
-    // the contract instance creation
-
-    error OwnerOnly(); // Only owner allowed to evaluate this operation
-    error ProxyForbidden(); // Happens if the ts.origin != msg.sender
-
-    // The attribute relates to the contract owner
-    address payable public owner;
-
-    constructor() {
-        // The constructor autofills the owner by the transaction origin
-        owner = payable(tx.origin);
-    }
-
-    // The modifier checks whether the contract owner initiated the call sequence and is
-    // a message sender the same owner
-    modifier owner_only() {
-        // Whether the transaction origin is the owner
-        if( tx.origin != address(owner) )
-            revert OwnerOnly();
-        if( msg.sender != address(owner) )
-            revert OwnerOnly();
-        _;
-    }
-    modifier sender_origin() {
-        // checks whether the call is directed from the origin immediately
-        if( tx.origin != msg.sender )
-            revert ProxyForbidden();
-        _;
+    function current_voting(Storage storage self, address voter) internal view returns(uint) {
+        return self.votings[voter];
     }
 }
 
@@ -167,7 +161,7 @@ enum OfferState {
 
 uint constant CONTRACT_FAILED = 1 << 255;
 
-contract Offer is HasOwner {
+contract Offer {
     // The open offer proposes the people's contract to be completed by any contractor.
     // The contract is paid by the offer contributors community.
     //
@@ -201,6 +195,10 @@ contract Offer is HasOwner {
     // still can be paid to the contractor, if the voting has been successfully finished within
     // the contribution cancelation period.
 
+    // The attribute relates to the contract owner
+    address payable public owner;
+
+    // The contact parameters
     OfferDefinition private _definition;
 
     // OfferDefinition of the contract, immutable after the contract is approved
@@ -209,29 +207,18 @@ contract Offer is HasOwner {
     }
 
     using address_set for address_set.Set;
-    using uint_set for uint_set.Set;
-    using uint_direct for uint_direct.Index;
     using leaders for leaders.Storage;
 
     // Dynamic contract state
     address_set.Set          private _contributors;                 // contributors set
-    mapping(address => uint) private _contributor_voting;           // contributor account -> voting for address or failure
     mapping(address => uint) private _contributor_contribution;     // contribution amount for the contributor
     mapping(address => uint) private _contributor_canceled_at;      // contribution cancelation timeout start
     address_set.Set          private _observers;                    // observers set
-    mapping(address => uint) private _observer_voting;              // observer account -> voting for arress or failure
-    uint_set.Set             private _contractors;                  // proposed contractors (or CONTRACT_FAILED) set
-    mapping(uint => uint)    private _observer_votes_count;         // count of observer votes for the contractor
-    mapping(uint => uint)    private _contributor_votes_count;      // count of contributor votes for the contractor
-    mapping(uint => uint)    private _contributor_votes_amount;     // summary amount of contributor votes for the contractor
 
     leaders.Storage private _observers_leaders;                     // leaders by observers voting
     leaders.Storage private _contributors_leaders;                  // leaders by contributors voting count
     leaders.Storage private _contributors_fund_leaders;             // leaders by contributors voting amount
 
-    uint private _total_observer_votes_count;                       // total count of observer votes
-    uint private _total_contributor_votes_count;                    // total count of contributor votes except canceled
-    uint private _total_contributor_votes_amount;                   // total amount of contributor votes except canceled
     uint private _total_contributors_count;                         // total count of contributors except canceled
     uint private _total_contributors_fund;                          // total fund of contributors except canceled
 
@@ -249,6 +236,30 @@ contract Offer is HasOwner {
 
     // The winner who received the money
     address payable public winner;
+
+    // Errors to revert when the state is wrong to call
+    error OwnerOnly();                  // Only owner allowed to evaluate this operation
+    error ProxyForbidden();             // Happens if the ts.origin != msg.sender
+    error WrongState();                 // The function should not be called in this state of the contract
+    error WrongParameter();             // The function should not be called with this parameter
+    error TooLowContribution();         // Creating contribution with the balance less than provided is forbidden
+    error CancelationInProgress();      // Contribute from the account with the cancelation in progress is forbidden
+    //TODO: Make visible for client
+    error VotingConflict();             // When the observers voting conflichs with the both, contribution count and contribution amount votings
+    error StartedOnly();                // When the operation has to be called only in the started state
+    error PreparedOnly();               // When the operation has to be called only in the prepared state
+    error RunningOnly();                // When the operation has to be called only in the running state
+    //TODO: Make visible for client
+    error ContributionFundLow();        // The contribution fund is too low to start voting
+    //TODO: Make visible for client
+    error ContributionsCountLow();      // The contributions count is too low to start voting
+    //TODO: Make visible for client
+    error NoWinnerContributionsCount(); // The contributions count is too low to determine the winner
+    //TODO: Make visible for client
+    error NoWinnerContributionsFund();  // The contribution fund is too low to determine the winner
+    //TODO: Make visible for client
+    error NoWinnerObservers();          // The observers count is too low to determine the winner
+
 
     function is_finished() internal view returns (bool) {
         // The contract is finished when completed or failed
@@ -270,28 +281,23 @@ contract Offer is HasOwner {
         return is_voting_started_balance() && is_voting_started_count();
     }
 
-    // Errors to revert when the state is wrong to call
-    error WrongState();                 // The function should not be called in this state of the contract
-    error WrongParameter();             // The function should not be called with this parameter
-    error TooLowContribution();         // Creating contribution with the balance less than provided is forbidden
-    error CancelationInProgress();      // Contribute from the account with the cancelation in progress is forbidden
-    //TODO: Make visible for client
-    error VotingConflict();             // When the observers voting conflichs with the both, contribution count and contribution amount votings
-    error StartedOnly();                // When the operation has to be called only in the started state
-    error PreparedOnly();               // When the operation has to be called only in the prepared state
-    error RunningOnly();                // When the operation has to be called only in the running state
-    //TODO: Make visible for client
-    error ContributionFundLow();        // The contribution fund is too low to start voting
-    //TODO: Make visible for client
-    error ContributionsCountLow();      // The contributions count is too low to start voting
-    //TODO: Make visible for client
-    error NoWinnerContributionsCount(); // The contributions count is too low to determine the winner
-    //TODO: Make visible for client
-    error NoWinnerContributionsFund();  // The contribution fund is too low to determine the winner
-    //TODO: Make visible for client
-    error NoWinnerObservers();          // The observers count is too low to determine the winner
-
     // Metastate check modifiers
+
+    modifier owner_only() {
+        // Whether the transaction origin is the owner
+        if( tx.origin != address(owner) )
+            revert OwnerOnly();
+        if( msg.sender != address(owner) )
+            revert OwnerOnly();
+        _;
+    }
+    modifier sender_origin() {
+        // checks whether the call is directed from the origin immediately
+        if( tx.origin != msg.sender )
+            revert ProxyForbidden();
+        _;
+    }
+
     modifier started_only() {
         if( is_finished() )
             revert StartedOnly();
@@ -380,6 +386,7 @@ contract Offer is HasOwner {
 
     // Constructor
     constructor(OfferDefinition memory offer_definition) sender_origin() {
+        owner = payable(tx.origin);
         _definition = offer_definition;
         state = OfferState.INITIAL;
         emit OfferCreated();
@@ -472,13 +479,11 @@ contract Offer is HasOwner {
         }
         _contributor_contribution[tx.origin] += msg.value;
         _total_contributors_fund += msg.value;
-        uint voting_ = _contributor_voting[tx.origin];
+        uint voting_ = _contributors_fund_leaders.current_voting(tx.origin);
         if( voting_ != 0 ) {
             // when the contributor votes, the amount should be
-            // added to the _contributor_votes_amount for the contractor,
+            // added to the leatherbord for the contractor,
             // and to other cummulative variables.
-            _contributor_votes_amount[voting_] += msg.value;
-            _total_contributor_votes_amount += msg.value;
             _contributors_fund_leaders.change_points(voting_, int(msg.value));
             _calculate_voting();
         }
@@ -501,33 +506,6 @@ contract Offer is HasOwner {
             emit OfferFailed();
             return;
         }
-
-//         console.log(">>> total_observer_votes_count:",_total_observer_votes_count);
-//         console.log(">>> total_contributor_votes_count:",_total_contributor_votes_count);
-//         console.log(">>> total_contributor_votes_amount:",_total_contributor_votes_amount);
-//         console.log(">>> total_contributors_count:",_total_contributors_count);
-//         console.log(">>> total_contributors_fund:",_total_contributors_fund);
-//         console.log(">>> observers_leaders.topmost_points:",_observers_leaders.topmost_points());
-//         if(_observers_leaders.topmost_points() > 0) {
-//             uint[] storage topmost_leaders = _observers_leaders.topmost_leaders();
-//             for(uint i=0; i < topmost_leaders.length; i++) {
-//                 console.log(">>> observers_leaders.topmost_leaders:",topmost_leaders[i]);
-//             }
-//         }
-//         console.log(">>> contributors_leaders.topmost_points:",_contributors_leaders.topmost_points());
-//         if(_contributors_leaders.topmost_points() > 0) {
-//             uint[] storage topmost_leaders = _contributors_leaders.topmost_leaders();
-//             for(uint i=0; i < topmost_leaders.length; i++) {
-//                 console.log(">>> contributors_leaders.topmost_leaders:",topmost_leaders[i]);
-//             }
-//         }
-//         console.log(">>> contributors_fund_leaders.topmost_points:",_contributors_fund_leaders.topmost_points());
-//         if(_contributors_fund_leaders.topmost_points() > 0) {
-//             uint[] storage topmost_leaders = _contributors_fund_leaders.topmost_leaders();
-//             for(uint i=0; i < topmost_leaders.length; i++) {
-//                 console.log(">>> contributors_fund_leaders.topmost_leaders:",topmost_leaders[i]);
-//             }
-//         }
 
         if( block.timestamp > approved_at + _definition.voting_start_timeout ) {
             uint contributions_count = _contributors.length();
@@ -568,22 +546,18 @@ contract Offer is HasOwner {
     // Returns a winner looking to the contract restrictions,
     // or 0 in case of incomplete voting
     function _calculate_winner() internal view returns(uint256) {
-        uint contractors_count = _contractors.length();
-        if( contractors_count == 0 )
-            return 0;
-
         uint observers_count = _observers.length();
 
         uint observers_leader_count = _observers_leaders.topmost_points();
-        if( observers_count > 0 && observers_leader_count * 10000 / observers_count < _definition.observers_vote_percent ) {
+        if(observers_count > 0 && observers_leader_count * 10000 / observers_count < _definition.observers_vote_percent ) {
             return 0;
         }
         uint contributors_leader_count = _contributors_leaders.topmost_points();
-        if( _total_contributors_count > 0 && contributors_leader_count * 10000 / _total_contributors_count < _definition.contributors_vote_percent ) {
+        if(_total_contributors_count > 0 && contributors_leader_count * 10000 / _total_contributors_count < _definition.contributors_vote_percent ) {
             return 0;
         }
         uint contributors_fund_leader_amount = _contributors_fund_leaders.topmost_points();
-        if( _total_contributors_fund > 0 && contributors_fund_leader_amount * 10000 / _total_contributors_fund < _definition.contributors_vote_fund_percent ) {
+        if(_total_contributors_fund > 0 && contributors_fund_leader_amount * 10000 / _total_contributors_fund < _definition.contributors_vote_fund_percent ) {
             return 0;
         }
 
@@ -669,19 +643,13 @@ contract Offer is HasOwner {
             canceled_at = _contributor_canceled_at[tx.origin] = block.timestamp;
 
             // annihilates voting data of this contributor
-            uint voice = _contributor_voting[tx.origin];
-            if( voice != 0 ) {
-                _contributor_votes_count[voice] -= 1;
-                _contributor_votes_amount[voice] -= contributor_contribution;
-                _total_contributor_votes_count -= 1;
-                _total_contributor_votes_amount -= contributor_contribution;
-                _contributors_leaders.change_points(voice, -1);
-                _contributors_fund_leaders.change_points(voice, -int(contributor_contribution));
-                _cleanup_contractor(voice);
-            }
+
+            // voting for 0 removes voting and decreases total points,
+            // if voting is present
+            _contributors_leaders.vote_for(tx.origin, 0, 1);
+            _contributors_fund_leaders.vote_for(tx.origin, 0, contributor_contribution);
             _total_contributors_count -= 1;
             _total_contributors_fund -= contributor_contribution;
-            delete _contributor_voting[tx.origin];
             emit ContributionCancelation(payable(tx.origin));
             _calculate_voting();
         }
@@ -695,6 +663,7 @@ contract Offer is HasOwner {
         _contributors.remove(tx.origin);
         delete _contributor_contribution[tx.origin];
         delete _contributor_canceled_at[tx.origin];
+        // now send the fund back
         payable(tx.origin).transfer(contributor_contribution);
         emit ContributionCanceled(payable(tx.origin));
     }
@@ -703,57 +672,15 @@ contract Offer is HasOwner {
 
     // Utilities to vote for
     function _contributor_vote_for(address contributor_, uint voice) internal {
-        uint old_voted = _contributor_voting[contributor_];
         uint contribution = _contributor_contribution[contributor_];
-        if( old_voted != 0 ) {
-            _contributor_votes_count[old_voted] -= 1;
-            _contributor_votes_amount[old_voted] -= contribution;
-            _cleanup_contractor(old_voted);
-            _contributors_leaders.change_points(old_voted, -1);
-            _contributors_fund_leaders.change_points(old_voted, -int(contribution));
-        }
-        _contributor_voting[contributor_] = voice;
-        if( voice != 0 ) {
-            _contributor_votes_count[voice] += 1;
-            _contributor_votes_amount[voice] += contribution;
-            if( old_voted == 0 ) {
-                _total_contributor_votes_count += 1;
-                _total_contributor_votes_amount += contribution;
-            }
-            _contractors.add(voice); // TODO: who is able to add contractors?
-            _contributors_leaders.change_points(voice, 1);
-            _contributors_fund_leaders.change_points(voice, int(contribution));
-        }
+        _contributors_leaders.vote_for(contributor_, voice, 1);
+        _contributors_fund_leaders.vote_for(contributor_, voice, contribution);
         _calculate_voting();
     }
 
     function _observer_vote_for(address observer_, uint voice) internal {
-        uint old_voted = _observer_voting[observer_];
-        if( old_voted != 0 ) {
-            _observer_votes_count[old_voted] -= 1;
-            _cleanup_contractor(old_voted);
-            _observers_leaders.change_points(old_voted, -1);
-        }
-        _observer_voting[observer_] = voice;
-        if( voice != 0 ) {
-            _observer_votes_count[voice] += 1;
-            if( old_voted == 0 ) {
-                _total_observer_votes_count += 1;
-            }
-            _contractors.add(voice); // TODO: who is able to add contractors?
-            _observers_leaders.change_points(voice, 1);
-        }
+        _observers_leaders.vote_for(observer_, voice, 1);
         _calculate_voting();
-    }
-
-    function _cleanup_contractor(uint voice) internal {
-        if(
-            _contributor_votes_count[voice] == 0 &&
-            _contributor_votes_amount[voice] == 0 &&
-            _observer_votes_count[voice] == 0
-        ) {
-            _contractors.remove(voice);
-        }
     }
 
     // Contributor voting for the contractor's address
