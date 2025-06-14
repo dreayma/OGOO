@@ -30,7 +30,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -312,7 +311,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -507,7 +505,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 120n,
-        "observer_award": 0n,
         "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -665,7 +662,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 30n,
-        "observer_award": 0n,
         "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -874,7 +870,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 10n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 20000000000000000n,
         "voting_start_count": 0n,
@@ -1057,7 +1052,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 10n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 2n,
@@ -1237,7 +1231,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 2n,
@@ -1389,7 +1382,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 30000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -1557,7 +1549,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -1701,7 +1692,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -1810,7 +1800,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -1914,7 +1903,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -2033,7 +2021,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -2143,7 +2130,6 @@ describe("Contract Tests", function () {
         "description": "Test Description",
         "full_details": "Test Details",
         "contribution_unlock_timeout": 1n,
-        "observer_award": 0n,
         "contribution_min_balance": 10000000000000000n,
         "voting_start_balance": 0n,
         "voting_start_count": 0n,
@@ -2175,14 +2161,6 @@ describe("Contract Tests", function () {
 
     try {
 
-      observers.map((b) => {
-          b.is_origin_observer().should.eventually.be.equal(false);
-      });
-
-      contributors.map((c) => {
-        c.is_origin_contributor().should.eventually.be.equal(false);
-      });
-
       console.info('Create observers...', observers.length);
 
       await observers.reduce(async (memo, b) => {
@@ -2200,6 +2178,7 @@ describe("Contract Tests", function () {
           return await (await c.runner.sendTransaction({to:o.target, value: c_amount + BigInt(i)})).wait();
       }));
 
+      await o.validate();
       // Initial state before voting
       var state = await o.state();
       console.info('State before first vote', state);
@@ -2219,34 +2198,42 @@ describe("Contract Tests", function () {
       observers.map((b) => {
           b.is_origin_observer().should.eventually.be.equal(true);
       });
+      await o.validate();
 
       contributors.map((c) => {
         c.is_origin_contributor().should.eventually.be.equal(true);
       });
+      await o.validate();
       console.log('Bad observers voting');
       await observers.reduce(async (memo, b) => {
           var i;
           [i, memo] = await memo;
           console.log('Observer', b.runner.address, 'votes for', contractors[i].runner.address);
+          await o.validate();
           return [i+1, await (await b.observer_vote(contractors[i].runner.address)).wait()];
       }, [0, 0]);
       o.state().should.eventually.be.equal(1n);
+      await o.validate();
 
       console.log('Bad contributors voting');
       await contributors.reduce(async (memo, c) => {
           var i;
           [i, memo] = await memo;
           console.log('Contributor', c.runner.address, 'votes for', contractors[i % contractors.length].runner.address);
+          await o.validate();
           return [i+1, await (await c.contributor_vote(contractors[i % contractors.length].runner.address)).wait()];
       }, [0, 0]);
       o.state().should.eventually.be.equal(1n);
+      await o.validate();
 
       console.log('Fine observers revoting for the leader contractor', contractors[0].runner.address);
       await observers.reduce(async (memo, b) => {
           await memo;
           console.log('Observer', b.runner.address, 'votes for', contractors[0].runner.address);
+          await o.validate();
           return await (await b.observer_vote(contractors[0].runner.address)).wait();
       }, 0);
+      await o.validate();
 
       o.state().should.eventually.be.equal(1n);
 
@@ -2254,8 +2241,10 @@ describe("Contract Tests", function () {
       await contributors.reduce(async (memo, c) => {
           await memo;
           console.log('Contributor', c.runner.address, 'votes for', contractors[0].runner.address);
+          await o.validate();
           return await (await c.contributor_vote(contractors[0].runner.address)).wait();
       }, 0);
+      await o.validate();
 
       o.state().should.eventually.be.equal(2n);
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);

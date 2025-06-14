@@ -119,6 +119,20 @@ library leaders {
     function current_voting(Storage storage self, address voter) internal view returns(uint) {
         return self.votings[voter];
     }
+    function validate(Storage storage self) internal view returns(bool) {
+        uint total;
+        for(uint i=self.points_index.first(); i != 0; i=self.points_index.next(i)) {
+            uint256[] storage l = self.leaders_storage[i].values;
+            <%- assert('l.length > 0') %>
+            for(uint j=0; j < l.length; j++) {
+                uint256 leader=l[j];
+                <%- assert('self.points_storage[leader] == i') %>
+                total += i;
+            }
+        }
+        <%- assert('total == self.total_points') %>
+        return true;
+    }
 }
 
 struct OfferDefinition {
@@ -135,7 +149,6 @@ struct OfferDefinition {
     string description;                     // Longer multiline unformal text description of the offer supporting `.md` format
     string full_details;                    // All legal details of the contract to print as a document, supporting `.md` format, may be compressed
     uint contribution_unlock_timeout;       // Timeout to unlock an individual contribution to return to the contributor
-    uint observer_award;                    // Award amount (if present) for each observer (TODO:)
 
     uint contribution_min_balance;          // Minimal contribution balance to make the contribution
 
@@ -162,13 +175,13 @@ enum OfferState {
 uint constant CONTRACT_FAILED = 1 << 255;
 
 contract Offer {
-    // The open offer proposes the people's contract to be completed by any contractor.
+    // The open offer proposes the people's contract to be completed by any contender.
     // The contract is paid by the offer contributors community.
     //
-    // The offer contributors vote for the particular contractor when the contract conditions
+    // The offer contributors vote for the particular contender when the contract conditions
     // are met, or for the contract failure, if the conrtract can not be completed for any reason.
     //
-    // The offer can have some number of observers who also vote for the contractor
+    // The offer can have some number of observers who also vote for the contender
     // or the contract failure. If observers are present, their voting should match
     // with the contributors' voting to have the contract completed successfully
     //
@@ -183,7 +196,7 @@ contract Offer {
     //
     // Contributors and observers control the contract state voting for changes.
     //
-    // If the contract is completed, all collected amount is moved to the winner contractor immediately
+    // If the contract is completed, all collected amount is moved to the winner contender immediately
     //
     // Failed contract unlocks all contributions and their owners can return funds back immediately.
     //
@@ -192,7 +205,7 @@ contract Offer {
     // The contributor may request canceling it's contribution, and gets control to the contribution
     // after the declared canceling timeout. Then it can cancel the contribution and return funds back.
     // The contribution requested, but not canceled yet, doesn't participate in the contract voting, but
-    // still can be paid to the contractor, if the voting has been successfully finished within
+    // still can be paid to the contender, if the voting has been successfully finished within
     // the contribution cancelation period.
 
     // The attribute relates to the contract owner
@@ -228,7 +241,7 @@ contract Offer {
     // When the offer has been approved
     uint public approved_at;
 
-    // When the offer has been completedcontributions
+    // When the offer has been completed
     uint public completed_at;
 
     // When the offer has been failed
@@ -376,10 +389,10 @@ contract Offer {
     event OfferCompleted (address payable winner, uint amount);
 
     // the event emitted when the contributor votes
-    event ContributorVote(address payable indexed contributor, address payable contractor, bool failure);
+    event ContributorVote(address payable indexed contributor, address payable contender, bool failure);
 
     // the event emitted when the observer votes
-    event ObserverVote(address payable indexed observer, address payable contractor, bool failure);
+    event ObserverVote(address payable indexed observer, address payable contender, bool failure);
 
     // the event emitted by different update methods when the offer has failed
     event OfferFailed ();
@@ -406,12 +419,11 @@ contract Offer {
     // while the contract has not been started.
     // The `observer_account` is an observers' address who is allowed to
     // vote as an observer.
-    function observer_create(address payable observer_account) external prepared_only() owner_only() returns (address payable) {
+    function observer_create(address payable observer_account) external prepared_only() owner_only() {
         if( !_observers.contains(address(observer_account)) ) {
             _observers.add(address(observer_account));
             emit ObserverCreated(observer_account);
         }
-        return observer_account;
     }
 
     // Remove the observer
@@ -482,17 +494,12 @@ contract Offer {
         uint voting_ = _contributors_fund_leaders.current_voting(tx.origin);
         if( voting_ != 0 ) {
             // when the contributor votes, the amount should be
-            // added to the leatherbord for the contractor,
+            // added to the leatherbord for the contender,
             // and to other cummulative variables.
             _contributors_fund_leaders.change_points(voting_, int(msg.value));
             _calculate_voting();
         }
         emit ContributionUpdated(payable(tx.origin), _contributor_contribution[tx.origin]);
-    }
-
-    // Returns contribution amount for the caller (tx.origin == msg.sender)
-    function contribution_get_for_origin() external view sender_origin() returns(uint) {
-        return _contributor_contribution[tx.origin];
     }
 
     // Calculate Voting and change the state if necessary
@@ -590,30 +597,6 @@ contract Offer {
         return winner_local;
     }
 
-    // Returns a time difference between the current time and
-    // the time when the contribution fulfills the canceling timeout
-    // and so the cancelation can be really finished
-    // using the secondary cancel request
-    //
-    // When the timeout has expired, returns 0
-    //
-    // If the contribution has not been canceled, or even has not been made,
-    // returns contribution_unlock_timeout
-    //
-    // The function doesn't take the state of the Offer in account
-    function contribution_can_be_canceled(address contributor) public view returns (uint timeout) {
-        if( !_contributors.contains(contributor) )
-            return _definition.contribution_unlock_timeout;
-        uint canceled_at = _contributor_canceled_at[contributor];
-        if( canceled_at == 0 ) {
-            return _definition.contribution_unlock_timeout;
-        }
-        if( canceled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
-            return canceled_at + _definition.contribution_unlock_timeout - block.timestamp;
-        }
-        return 0;
-    }
-    
     // The only way to cancel the contribution
     //
     // If it is called when the Offer status is FAILED, cancels the contribution immediately.
@@ -683,7 +666,7 @@ contract Offer {
         _calculate_voting();
     }
 
-    // Contributor voting for the contractor's address
+    // Contributor voting for the contender's address
     function contributor_vote(address payable voice) external started_only() contributor_only() sender_origin() {
         uint canceled_at = _contributor_canceled_at[address(tx.origin)];
         if( canceled_at != 0 ) {
@@ -702,7 +685,7 @@ contract Offer {
         emit ContributorVote(payable(tx.origin), payable(address(0)), true);
     }
 
-    // Observer voting for the contractor's address
+    // Observer voting for the contender's address
     function observer_vote(address payable voice) external started_only() observer_only() {
         _observer_vote_for(address(msg.sender), uint256(uint160(address(voice))));
         emit ObserverVote(payable(msg.sender), voice, false);
@@ -714,6 +697,35 @@ contract Offer {
     }
     // Informational functions
 
+    // Returns contribution amount for the caller (tx.origin == msg.sender)
+    function contribution_get_for_origin() external view sender_origin() returns(uint) {
+        return _contributor_contribution[tx.origin];
+    }
+
+    // Returns a time difference between the current time and
+    // the time when the contribution fulfills the canceling timeout
+    // and so the cancelation can be really finished
+    // using the secondary cancel request
+    //
+    // When the timeout has expired, returns 0
+    //
+    // If the contribution has not been canceled, or even has not been made,
+    // returns contribution_unlock_timeout
+    //
+    // The function doesn't take the state of the Offer in account
+    function contribution_can_be_canceled(address contributor) public view returns (uint timeout) {
+        if( !_contributors.contains(contributor) )
+            return _definition.contribution_unlock_timeout;
+        uint canceled_at = _contributor_canceled_at[contributor];
+        if( canceled_at == 0 ) {
+            return _definition.contribution_unlock_timeout;
+        }
+        if( canceled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
+            return canceled_at + _definition.contribution_unlock_timeout - block.timestamp;
+        }
+        return 0;
+    }
+
     // Checks whether the message sender is an observer
     // TODO: remove?
     function is_origin_observer() external view returns(bool yes) {
@@ -723,5 +735,16 @@ contract Offer {
     // TODO: remove?
     function is_origin_contributor() external view returns(bool yes) {
         return _contributors.contains(tx.origin);
+    }
+    function validate() external view returns(bool) {
+        _observers_leaders.validate();
+        _contributors_leaders.validate();
+        _contributors_fund_leaders.validate();
+        for(uint i=0; i < _contributors.length(); i++) {
+            address contributor = _contributors.at(i);
+            uint count_voting = _contributors_leaders.votings[contributor];
+            uint fund_voting = _contributors_fund_leaders.votings[contributor];
+            <%- assert('count_voting == fund_voting') %>
+        }
     }
 }

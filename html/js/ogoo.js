@@ -1116,7 +1116,6 @@ $(async function() {
                 BigInt(form$.find('.input-contribution-unlock-timeout').val() * 10) *
                 BigInt(form$.find('.input-contribution-unlock-timeout ~ select').val()) / 10n
             ),
-            observer_award: 0n,
             voting_start_balance: convertToWei(
                 form$.find('.input-voting-start-balance').val(),
                 Number(form$.find('.input-voting-start-balance ~ select').val())
@@ -1599,7 +1598,6 @@ $(async function() {
                 BigInt(form$.find('.input-contribution-unlock-timeout').val() * 10) *
                 BigInt(form$.find('.input-contribution-unlock-timeout ~ select').val()) / 10n
             ),
-            observer_award: 0n,
             voting_start_balance: convertToWei(
                 form$.find('.input-voting-start-balance').val(),
                 Number(form$.find('.input-voting-start-balance ~ select').val())
