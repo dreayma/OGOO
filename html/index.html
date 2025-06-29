@@ -177,6 +177,44 @@ p,h1,h2,h3,h4:has(.account-address) {
     </div>
 </div>
 
+<!--- About Application --->
+<div class="modal fade" id="about-application" tabindex="-1" aria-labelledby="noAccounts" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+                <div class="modal-header text-bg-info">
+                    <h1 class="modal-title fs-5">About OGOO Application</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <p>Open Group Open Offer (<b>OGOO</b>) is a fully <em>open-source</em> <em>blockchain-based</em> <em>decentralized</em> and <em>free-to-use</em> platform for creating <b>impact funds</b> governed by the community.</p>
+                  <p><a href="https://github.com/nnseva/OGOO" target="_blank">Source Code</a></p>
+                  <p><a href="https://github.com/nnseva/OGOO/blob/pre-publish/README.md" target="_blank">Documentation</a></p>
+                  <p>User Interface Libraries:</p>
+                  <ul>
+                    <li><a href="https://getbootstrap.com/" target="_blank">Bootstrap 5</a></li>
+                    <li><a href="https://jquery.com/" target="_blank">jQuery</a></li>
+                    <li><a href="https://docs.ethers.io/v5/" target="_blank">ethers.js</a></li>
+                    <li><a href="https://github.com/jonschlinkert/remarkable" target="_blank">Remarkable</a></li>
+                    <li><a href="https://icons.getbootstrap.com/" target="_blank">Bootstrap Icons</a></li>
+                    <li><a href="https://fontawesome.com/" target="_blank">Font Awesome</a></li>
+                    <li><a href="https://moment.github.io/luxon/" target="_blank">Luxon</a></li>
+                    <li><a href="https://github.com/jeromeetienne/jquery-qrcode" target="_blank">jQuery QR Code</a></li>
+                    <li><a href="https://github.com/nimiq/qr-scanner" target="_blank">QR Code Scanner</a></li>
+                  </ul>
+                  <p>Smart Contract Development:</p>
+                  <ul>
+                    <li><a href="https://soliditylang.org/" target="_blank">Solidity</a></li>
+                    <li><a href="https://github.com/nnseva/solt" target="_blank">Solt</a></li>
+                    <li><a href="https://hardhat.org/" target="_blank">Hardhat</a></li>
+                  </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+        </div>
+    </div>
+</div>
+
 <!--- Share Offer Modal -->
 <div class="modal fade" id="share-offer" tabindex="-1" aria-labelledby="watchOffer" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -554,6 +592,13 @@ p,h1,h2,h3,h4:has(.account-address) {
             <li><a class="dropdown-item" role="tab" id="create-offer-tab" data-bs-toggle="tab" data-bs-target="#create-offer" aria-controls="create-offer" href="#">Create Managed Offer</a>
           </ul>
         </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="helpdropdown" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-question"></i>&nbsp;Help</a>
+          <ul class="dropdown-menu" aria-labelledby="helpdropdown">
+            <li><a class="dropdown-item" role="dialog" id="about-application-dialog" data-bs-toggle="modal" data-bs-target="#about-application" aria-controls="about-application" href="#">About</a></li>
+            <li><a class="dropdown-item" role="link" id="documentation-link" href="https://github.com/nnseva/OGOO/blob/pre-publish/README.md" target="_blank" aria-controls="documentation">Documentation</a></li>
+            <li><a class="dropdown-item" role="link" id="source-code-link" href="https://github.com/nnseva/OGOO" target="_blank" aria-controls="source-code">Source Code</a></li>
+          </ul>
       </ul>
       <form class="d-flex wallets-list" role="wallets">
         <div class="dropdown">

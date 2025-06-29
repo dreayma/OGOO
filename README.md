@@ -53,7 +53,9 @@ npx hardhat compile
 ### Running the Web GUI
 The **OGOO Web GUI** operates in **static mode**. After completing the pre-build steps, open `'html/index.html'` in any browser using a static HTTP server.
 
-The development team plans to deploy the GUI online in the future.
+You can use the **OGOO Web GUI** instance deployed at [ogoo.io](https://ogoo.io).
+
+> **Note:** The list of deployed contracts is stored locally in your browser. All contract data resides on the blockchain. Make sure to save the addresses of your contracts to avoid losing access to them.
 
 ### Smart Contract Deployment
 The [OGOO Contract](OGOOContract.md) can be deployed on any **Ethereum-compatible network**.
@@ -64,10 +66,22 @@ The **OGOO Web GUI** includes an option to deploy a contract instance. However, 
 
 ## 📦 Dependencies
 
-All dependencies are listed in the [package.json](package.json) file. Key dependencies include:
+All [OGOO Contract](OGOOContract.md) development dependencies are listed in the [package.json](package.json) file. Key dependencies include:
 
 - [Hardhat](https://github.com/NomicFoundation/hardhat) – An Ethereum development framework.
 - [SOLT](https://github.com/nnseva/solt) – A Solidity preprocessing and templating tool.
+
+The **OGOO Web GUI** uses the following CDN-based libraries:
+
+- [Bootstrap 5](https://getbootstrap.com/)
+- [jQuery](https://jquery.com/)
+- [ethers.js](https://docs.ethers.io/v5/)
+- [Remarkable](https://github.com/jonschlinkert/remarkable)
+- [Bootstrap Icons](https://icons.getbootstrap.com/)
+- [Font Awesome](https://fontawesome.com/)
+- [Luxon](https://moment.github.io/luxon/)
+- [jQuery QR Code](https://github.com/jeromeetienne/jquery-qrcode)
+- [QR Code Scanner](https://github.com/nimiq/qr-scanner)
 
 ## 🛠️ Contributions
 
