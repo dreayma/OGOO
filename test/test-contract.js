@@ -27,7 +27,7 @@ const as_vote = function(voting) {
     // returns a structured vote object from combined voting value
     var failure = voting == CONTRACT_FAILED;
     return {
-        contractor: ethers.getAddress(ethers.toBeHex(failure ? 0n: voting, 20)),
+        contender: ethers.getAddress(ethers.toBeHex(failure ? 0n: voting, 20)),
         failure: failure,
     }
 }
@@ -57,7 +57,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_observer = accounts[1]; // the account will be a signer to check an access from the observer
     var account_contributor = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var beginning_balance = await account_owner.provider.getBalance(account_owner.address);
     console.debug("Owner account at the beginning:", beginning_balance);
@@ -118,11 +118,11 @@ describe("Contract Tests", function () {
       account_contributor, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
 
     // Getting access from the outside
@@ -232,27 +232,27 @@ describe("Contract Tests", function () {
       o.interface.parseError(extractData(await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted'))).name.should.be.equal('PreparedOnly');
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
-      state = await contractor_access.state();
+      await (await contributor_access.contributor_vote(account_contender.address)).wait();
+      state = await contender_access.state();
       console.log('State after contributor vote', state)
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await observer_access.observer_vote(account_contractor.address)).wait();
-      state = await contractor_access.state();
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
+      await (await observer_access.observer_vote(account_contender.address)).wait();
+      state = await contender_access.state();
       console.log('State after observer vote', state);
       state.should.be.equal(2n);
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
 
       // check the events history
       {
@@ -295,17 +295,17 @@ describe("Contract Tests", function () {
       {
           var events = await o.queryFilter(o.filters.ContributorVote());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contender.address,false])
       }
       {
           var events = await o.queryFilter(o.filters.ObserverVote());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_observer.address,account_contractor.address,false])
+          expect(events[0].args).to.deep.equal([account_observer.address,account_contender.address,false])
       }
       {
           var events = await o.queryFilter(o.filters.OfferCompleted());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_contractor.address,40000000000000002n])
+          expect(events[0].args).to.deep.equal([account_contender.address,40000000000000002n])
       }
     } catch(e) {
       if( e.data ) {
@@ -348,7 +348,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -371,11 +371,11 @@ describe("Contract Tests", function () {
       account_contributor2, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
 
     // Getting access from the outside
@@ -443,18 +443,18 @@ describe("Contract Tests", function () {
       o.interface.parseError(extractData(await o.observer_remove(account_outside.address).should.eventually.rejectedWith('reverted'))).name.should.be.equal('PreparedOnly');
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
 
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor_access.contributor_vote(account_contender.address)).wait();
       console.debug("Contributor has just voted");
-      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor2_access.contributor_vote(account_contender.address)).wait();
       console.debug("Contributor2 has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
@@ -462,9 +462,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
 
       // check the events history
       {
@@ -492,13 +492,13 @@ describe("Contract Tests", function () {
       {
           var events = await o.queryFilter(o.filters.ContributorVote());
           events.length.should.be.equal(2);
-          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
-          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contractor.address,false])
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contender.address,false])
+          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contender.address,false])
       }
       {
           var events = await o.queryFilter(o.filters.OfferCompleted());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_contractor.address,60000000000000002n])
+          expect(events[0].args).to.deep.equal([account_contender.address,60000000000000002n])
       }
 
     } catch(e) {
@@ -542,7 +542,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -565,11 +565,11 @@ describe("Contract Tests", function () {
       account_contributor2, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
 
     // Getting access from the outside
@@ -631,12 +631,12 @@ describe("Contract Tests", function () {
       await (await o.approve()).wait();
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
 
       await (await contributor2_access.contribution_cancel()).wait();
       console.debug("Contributor2 has just cancelled contribution");
@@ -645,9 +645,9 @@ describe("Contract Tests", function () {
         console.log("Contributor2 time to cancel", time_to_cancel);
       }
 
-      await(await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await(await contributor_access.contributor_vote(account_contender.address)).wait();
       console.debug("A single left contributor has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
@@ -655,9 +655,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -699,7 +699,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -722,11 +722,11 @@ describe("Contract Tests", function () {
       account_contributor2, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
 
     // Getting access from the outside
@@ -790,12 +790,12 @@ describe("Contract Tests", function () {
       await (await o.approve()).wait();
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
       await (await contributor2_access.contribution_cancel()).wait();
       console.debug("Contributor2 has just cancelled contribution");
       while(42) {
@@ -814,9 +814,9 @@ describe("Contract Tests", function () {
         interm_balance_offer.should.be.equal(30000000000000001n);
       }
       console.debug("Contributor2 has just successfully cancelled contribution");
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor_access.contributor_vote(account_contender.address)).wait();
       console.debug("A single left contributor has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
@@ -824,9 +824,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
 
       // check the events history
       {
@@ -854,7 +854,7 @@ describe("Contract Tests", function () {
       {
           var events = await o.queryFilter(o.filters.ContributorVote());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contender.address,false])
       }
       {
           var events = await o.queryFilter(o.filters.ContributionCanceled());
@@ -864,7 +864,7 @@ describe("Contract Tests", function () {
       {
           var events = await o.queryFilter(o.filters.OfferCompleted());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_contractor.address,30000000000000001n])
+          expect(events[0].args).to.deep.equal([account_contender.address,30000000000000001n])
       }
     } catch(e) {
       if( e.data ) {
@@ -907,7 +907,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -930,11 +930,11 @@ describe("Contract Tests", function () {
       account_contributor2, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
 
     // Getting access from the outside
@@ -974,17 +974,17 @@ describe("Contract Tests", function () {
       await (await o.approve()).wait();
 
       {
-        var state = await contractor_access.state();
+        var state = await contender_access.state();
         console.log('State before first vote', state);
         state.should.be.equal(1n);
       }
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
 
       console.debug("A single contributor voting should success, but doesn't change state");
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor_access.contributor_vote(account_contender.address)).wait();
       {
-        var state = await contractor_access.state();
+        var state = await contender_access.state();
         console.log('State should not be changed', state);
         state.should.be.equal(1n);
       }
@@ -998,10 +998,10 @@ describe("Contract Tests", function () {
         console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
       console.debug("Contributor2 voting should success and finish the contract");
-      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor2_access.contributor_vote(account_contender.address)).wait();
       console.debug("Contributors have just voted");
       {
-        var state = await contractor_access.state();
+        var state = await contender_access.state();
         console.log('State after contributors vote', state)
         state.should.be.equal(2n);
       }
@@ -1009,9 +1009,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
 
       // check the events history
       {
@@ -1039,13 +1039,13 @@ describe("Contract Tests", function () {
       {
           var events = await o.queryFilter(o.filters.ContributorVote());
           events.length.should.be.equal(2);
-          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
-          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contractor.address,false])
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contender.address,false])
+          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contender.address,false])
       }
       {
           var events = await o.queryFilter(o.filters.OfferCompleted());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_contractor.address,40000000000000002n])
+          expect(events[0].args).to.deep.equal([account_contender.address,40000000000000002n])
       }
 
     } catch(e) {
@@ -1089,7 +1089,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1112,11 +1112,11 @@ describe("Contract Tests", function () {
       account_contributor2, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
 
     // Getting access from the outside
@@ -1154,17 +1154,17 @@ describe("Contract Tests", function () {
       await (await o.approve()).wait();
 
       {
-        var state = await contractor_access.state();
+        var state = await contender_access.state();
         console.log('State before first vote', state);
         state.should.be.equal(1n);
       }
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
 
       console.debug("A single contributor voting should success, but doesn't change state");
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor_access.contributor_vote(account_contender.address)).wait();
       {
-        var state = await contractor_access.state();
+        var state = await contender_access.state();
         console.log('State should not be changed', state);
         state.should.be.equal(1n);
       }
@@ -1178,10 +1178,10 @@ describe("Contract Tests", function () {
         console.debug("Contributor2 account after creating contribution:", end_balance_contributor2, "Diff WEI:", diff, "Amount $:", to$(diff));
       }
       console.debug("Contributor2 voting should success and finish the contract now");
-      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor2_access.contributor_vote(account_contender.address)).wait();
       console.debug("Contributors have just voted");
       {
-        var state = await contractor_access.state();
+        var state = await contender_access.state();
         console.log('State after contributors vote', state)
         state.should.be.equal(2n);
       }
@@ -1189,9 +1189,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
 
       // check the events history
       {
@@ -1219,13 +1219,13 @@ describe("Contract Tests", function () {
       {
           var events = await o.queryFilter(o.filters.ContributorVote());
           events.length.should.be.equal(2);
-          expect(events[0].args).to.deep.equal([account_contributor.address,account_contractor.address,false])
-          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contractor.address,false])
+          expect(events[0].args).to.deep.equal([account_contributor.address,account_contender.address,false])
+          expect(events[1].args).to.deep.equal([account_contributor2.address,account_contender.address,false])
       }
       {
           var events = await o.queryFilter(o.filters.OfferCompleted());
           events.length.should.be.equal(1);
-          expect(events[0].args).to.deep.equal([account_contractor.address,40000000000000002n])
+          expect(events[0].args).to.deep.equal([account_contender.address,40000000000000002n])
       }
     } catch(e) {
       if( e.data ) {
@@ -1267,7 +1267,7 @@ describe("Contract Tests", function () {
 
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1326,7 +1326,7 @@ describe("Contract Tests", function () {
       console.debug("Waiting for the voting start timeout");
       await new Promise(resolve => setTimeout(resolve, 15000));
       console.debug("Try to vote by the contributor will lead to failure because of timeout");
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor_access.contributor_vote(account_contender.address)).wait();
       {
         var state = await outside_access.state();
         console.log('State after voting calculation should be failed', state)
@@ -1418,7 +1418,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_observer = accounts[1]; // the account will be a signer to check an access from the observer
     var account_contributor = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1443,11 +1443,11 @@ describe("Contract Tests", function () {
       account_contributor, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
 
     // Getting access from the outside
@@ -1489,15 +1489,15 @@ describe("Contract Tests", function () {
       await (await o.approve()).wait();
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
       await (await contributor_access.contributor_vote_failure()).wait();
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributor vote', state)
       state.should.be.equal(1n);
       await (await observer_access.observer_vote_failure()).wait();
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log("State after observer's vote should be failed", state);
       state.should.be.equal(3n);
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
@@ -1586,7 +1586,7 @@ describe("Contract Tests", function () {
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var account_contributor = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[3]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[3]; // the account will be a signer to check an access from the contender
     var account_outside = accounts[4]; // the account will be a signer to check an access from the outside
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
@@ -1658,14 +1658,14 @@ describe("Contract Tests", function () {
       end_balance_offer = await account_owner.provider.getBalance(offer.target);
       console.debug("Offer account after creating contribution:", end_balance_offer);
 
-      await (await contributor_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor_access.contributor_vote(account_contender.address)).wait();
       console.debug("Contributor has just voted");
       var approved_at = await outside_access.approved_at();
       var failure_at = Number(test_definition.voting_fail_timeout) - (Number((await hre.ethers.provider.getBlock('latest')).timestamp) - Number(approved_at)) + 1;
       console.debug("Waiting for the voting failure timeout:", failure_at);
       await new Promise(resolve => setTimeout(resolve, 1000 * failure_at));
       console.debug("Trying to vote should lead to failure because of timeout");
-      await (await contributor2_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor2_access.contributor_vote(account_contender.address)).wait();
       {
         var state = await outside_access.state();
         console.log('State after voting calculation should be failed', state)
@@ -1726,7 +1726,7 @@ describe("Contract Tests", function () {
     var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[4]; // the account will be a signer to check an access from the contender
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
     // Gettings access from the owner
@@ -1753,11 +1753,11 @@ describe("Contract Tests", function () {
       account_contributor3, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
     try {
       // Approve the contract to make it unmutable
@@ -1772,20 +1772,20 @@ describe("Contract Tests", function () {
       (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
+      await (await contributor3_access.contributor_vote(account_contender.address)).wait();
       console.debug("The most valuable contributor has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(1n);
-      await (await contributor1_access.contributor_vote(account_contractor.address)).wait();
+      await (await contributor1_access.contributor_vote(account_contender.address)).wait();
       console.debug("The least valuable contributor has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
@@ -1793,9 +1793,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -1834,7 +1834,7 @@ describe("Contract Tests", function () {
     var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[4]; // the account will be a signer to check an access from the contender
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
     // Gettings access from the owner
@@ -1861,11 +1861,11 @@ describe("Contract Tests", function () {
       account_contributor3, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
     try {
       // Approve the contract to make it unmutable
@@ -1880,15 +1880,15 @@ describe("Contract Tests", function () {
       (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
+      await (await contributor3_access.contributor_vote(account_contender.address)).wait();
       console.debug("The most valuable contributor has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(2n);
 
@@ -1896,9 +1896,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -1937,7 +1937,7 @@ describe("Contract Tests", function () {
     var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[4]; // the account will be a signer to check an access from the contender
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
     // Gettings access from the owner
@@ -1964,11 +1964,11 @@ describe("Contract Tests", function () {
       account_contributor3, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
     try {
       // Contributors also will be observers
@@ -1988,25 +1988,25 @@ describe("Contract Tests", function () {
       (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
-      await (await contributor3_access.contributor_vote(account_contractor.address)).wait();
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
+      await (await contributor3_access.contributor_vote(account_contender.address)).wait();
       console.debug("The most valuable contributor has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(1n);
-      await (await contributor1_access.observer_vote(account_contractor.address)).wait();
+      await (await contributor1_access.observer_vote(account_contender.address)).wait();
       console.debug("The observer has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after observers vote', state)
       state.should.be.equal(1n);
-      await (await contributor2_access.observer_vote(account_contractor.address)).wait();
+      await (await contributor2_access.observer_vote(account_contender.address)).wait();
       console.debug("The other observer has just voted");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after another observers vote', state)
       state.should.be.equal(2n);
 
@@ -2014,9 +2014,9 @@ describe("Contract Tests", function () {
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
 
-      var end_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account after contract success:", end_balance_contractor);
-      console.debug("Contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(e.data));
@@ -2055,7 +2055,7 @@ describe("Contract Tests", function () {
     var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
     var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
     var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
-    var account_contractor = accounts[4]; // the account will be a signer to check an access from the contractor
+    var account_contender = accounts[4]; // the account will be a signer to check an access from the contender
     var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
 
     // Gettings access from the owner
@@ -2082,15 +2082,15 @@ describe("Contract Tests", function () {
       account_contributor3, // Contributor account trying access to the contract
     )
 
-    // Getting access from the contractor
-    var contractor_access = new ethers.Contract(
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
       offer.target,
       contract_abi.abi,
-      account_contractor, // Contractor account trying access to the contract
+      account_contender, // Contender account trying access to the contract
     )
     try {
-      // Let's the contractor is observer
-      await (await o.observer_create(account_contractor.address)).wait();
+      // Let's the contender is observer
+      await (await o.observer_create(account_contender.address)).wait();
 
       // Approve the contract to make it unmutable
       await (await o.approve()).wait();
@@ -2104,26 +2104,26 @@ describe("Contract Tests", function () {
       (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
-      var state = await contractor_access.state();
+      var state = await contender_access.state();
       console.log('State before first vote', state);
       state.should.be.equal(1n);
 
-      var start_balance_contractor = await account_contractor.provider.getBalance(account_contractor.address);
-      console.debug("Contractor account before contract success:", start_balance_contractor);
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
 
       await (await contributor3_access.contributor_vote(account_contributor3.address)).wait();
       console.debug("The most valuable contributor has just voted for himself");
       await (await contributor1_access.contributor_vote(account_contributor1.address)).wait();
       await (await contributor2_access.contributor_vote(account_contributor1.address)).wait();
       console.debug("The least valuable contributors has just voted for contributor1");
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after contributors vote', state)
       state.should.be.equal(1n);
 
-      await (await contractor_access.observer_vote(account_contractor.address)).wait();
-      console.debug("The observer/contractor has just voted for himself");
+      await (await contender_access.observer_vote(account_contender.address)).wait();
+      console.debug("The observer/contender has just voted for himself");
 
-      state = await contractor_access.state();
+      state = await contender_access.state();
       console.log('State after conflict observer vote should not be changed, voting conflict', state)
       state.should.be.equal(1n);
     } catch(e) {
@@ -2166,7 +2166,7 @@ describe("Contract Tests", function () {
 
     // Getting access from contributors
     var contributors = accounts.slice(1, 11).map((a)=> new ethers.Contract(offer.target, contract_abi.abi, a));
-    var contractors = accounts.slice(11, 16).map((a)=> new ethers.Contract(offer.target, contract_abi.abi, a));
+    var contenders = accounts.slice(11, 16).map((a)=> new ethers.Contract(offer.target, contract_abi.abi, a));
     var observers = accounts.slice(16, 20).map((a)=> new ethers.Contract(offer.target, contract_abi.abi, a));
 
     try {
@@ -2227,8 +2227,8 @@ describe("Contract Tests", function () {
       var start_offer_balance = await account_owner.provider.getBalance(offer.target);
       console.info('Balance before first vote', start_offer_balance, '[', to$(start_offer_balance), '=', to$(c_amount), ' * 10 ]');
       start_offer_balance.should.be.equal(c_amount * 10n + BigInt(9 * 10 / 2));
-      var start_balance_contractor = await account_owner.provider.getBalance(contractors[0].runner.address);
-      console.debug("Leader contractor account before contract success:", start_balance_contractor);
+      var start_balance_contender = await account_owner.provider.getBalance(contenders[0].runner.address);
+      console.debug("Leader contender account before contract success:", start_balance_contender);
       var observer_balances = await Promise.all(observers.map( async (b)=>{
         return b.start_balance = await b.runner.provider.getBalance(b.runner.address);
       }))
@@ -2249,9 +2249,9 @@ describe("Contract Tests", function () {
       await observers.reduce(async (memo, b) => {
           var i;
           [i, memo] = await memo;
-          console.log('Observer', b.runner.address, 'votes for', contractors[i].runner.address);
+          console.log('Observer', b.runner.address, 'votes for', contenders[i].runner.address);
           await o.validate();
-          return [i+1, await (await b.observer_vote(contractors[i].runner.address)).wait()];
+          return [i+1, await (await b.observer_vote(contenders[i].runner.address)).wait()];
       }, [0, 0]);
       o.state().should.eventually.be.equal(1n);
       await o.validate();
@@ -2270,28 +2270,28 @@ describe("Contract Tests", function () {
         statistics.sorted_contributors_leaders.length.should.be.equal(0);
         statistics.sorted_contributors_fund_leaders.length.should.be.equal(0);
 
-        var contractors_set = {};
-        contractors.forEach((c) => {
-          contractors_set[c.runner.address] = true;
+        var contenders_set = {};
+        contenders.forEach((c) => {
+          contenders_set[c.runner.address] = true;
         });
-        delete contractors_set[contractors[4].runner.address]; // The last contractor was not voted
+        delete contenders_set[contenders[4].runner.address]; // The last contender was not voted
         var observer_leaders_set = {};
         statistics.sorted_observers_leaders.toArray().forEach((c) => {
-          observer_leaders_set[as_vote(c[0]).contractor] = true;
+          observer_leaders_set[as_vote(c[0]).contender] = true;
         });
         console.debug("Observer leaders result", statistics.sorted_observers_leaders);
         console.debug("Observer leaders set", observer_leaders_set);
-        console.debug("Contractors set", contractors_set);
-        observer_leaders_set.should.be.deep.equal(contractors_set);
+        console.debug("Contenders set", contenders_set);
+        observer_leaders_set.should.be.deep.equal(contenders_set);
       }
 
       console.log('Bad contributors voting');
       await contributors.reduce(async (memo, c) => {
           var i;
           [i, memo] = await memo;
-          console.log('Contributor', c.runner.address, 'votes for', contractors[i % contractors.length].runner.address);
+          console.log('Contributor', c.runner.address, 'votes for', contenders[i % contenders.length].runner.address);
           await o.validate();
-          return [i+1, await (await c.contributor_vote(contractors[i % contractors.length].runner.address)).wait()];
+          return [i+1, await (await c.contributor_vote(contenders[i % contenders.length].runner.address)).wait()];
       }, [0, 0]);
       o.state().should.eventually.be.equal(1n);
       await o.validate();
@@ -2309,28 +2309,28 @@ describe("Contract Tests", function () {
         statistics.sorted_observers_leaders.length.should.be.equal(4);
         statistics.sorted_contributors_leaders.length.should.be.equal(5);
 
-        var contractors_set = {};
-        contractors.forEach((c) => {
-          contractors_set[c.runner.address] = true;
+        var contenders_set = {};
+        contenders.forEach((c) => {
+          contenders_set[c.runner.address] = true;
         });
         var contributor_leaders_set = {};
         statistics.sorted_contributors_leaders.forEach((c) => {
-          contributor_leaders_set[as_vote(c[0]).contractor] = true;
+          contributor_leaders_set[as_vote(c[0]).contender] = true;
         });
-        contributor_leaders_set.should.be.deep.equal(contractors_set);
+        contributor_leaders_set.should.be.deep.equal(contenders_set);
         var contributor_fund_leaders_set = {};
         statistics.sorted_contributors_fund_leaders.forEach((c) => {
-          contributor_fund_leaders_set[as_vote(c[0]).contractor] = true;
+          contributor_fund_leaders_set[as_vote(c[0]).contender] = true;
         });
-        contributor_fund_leaders_set.should.be.deep.equal(contractors_set);
+        contributor_fund_leaders_set.should.be.deep.equal(contenders_set);
       }
 
-      console.log('Fine observers revoting for the leader contractor', contractors[0].runner.address);
+      console.log('Fine observers revoting for the leader contender', contenders[0].runner.address);
       await observers.reduce(async (memo, b) => {
           await memo;
-          console.log('Observer', b.runner.address, 'votes for', contractors[0].runner.address);
+          console.log('Observer', b.runner.address, 'votes for', contenders[0].runner.address);
           await o.validate();
-          return await (await b.observer_vote(contractors[0].runner.address)).wait();
+          return await (await b.observer_vote(contenders[0].runner.address)).wait();
       }, 0);
       await o.validate();
       o.state().should.eventually.be.equal(1n);
@@ -2346,17 +2346,17 @@ describe("Contract Tests", function () {
         statistics.voted_contributors_fund_percent.should.be.equal(10000n);
 
         statistics.sorted_observers_leaders.length.should.be.equal(1);
-        as_vote(statistics.sorted_observers_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+        as_vote(statistics.sorted_observers_leaders[0][0]).contender.should.be.equal(contenders[0].runner.address);
         statistics.sorted_contributors_leaders.length.should.be.equal(5);
         statistics.sorted_contributors_fund_leaders.length.should.be.equal(5);
       }
 
-      console.log('Fine contributors revoting for the leader contractor', contractors[0].runner.address);
+      console.log('Fine contributors revoting for the leader contender', contenders[0].runner.address);
       await contributors.reduce(async (memo, c) => {
           await memo;
-          console.log('Contributor', c.runner.address, 'votes for', contractors[0].runner.address);
+          console.log('Contributor', c.runner.address, 'votes for', contenders[0].runner.address);
           await o.validate();
-          return await (await c.contributor_vote(contractors[0].runner.address)).wait();
+          return await (await c.contributor_vote(contenders[0].runner.address)).wait();
       }, 0);
       await o.validate();
 
@@ -2372,15 +2372,15 @@ describe("Contract Tests", function () {
         statistics.voted_contributors_percent.should.be.equal(10000n);
         statistics.voted_contributors_fund_percent.should.be.equal(10000n);
         statistics.sorted_observers_leaders.length.should.be.equal(1);
-        as_vote(statistics.sorted_observers_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+        as_vote(statistics.sorted_observers_leaders[0][0]).contender.should.be.equal(contenders[0].runner.address);
         statistics.sorted_contributors_leaders.length.should.be.equal(1);
-        as_vote(statistics.sorted_contributors_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+        as_vote(statistics.sorted_contributors_leaders[0][0]).contender.should.be.equal(contenders[0].runner.address);
         statistics.sorted_contributors_fund_leaders.length.should.be.equal(1);
-        as_vote(statistics.sorted_contributors_fund_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+        as_vote(statistics.sorted_contributors_fund_leaders[0][0]).contender.should.be.equal(contenders[0].runner.address);
       }
-      var end_balance_contractor = await account_owner.provider.getBalance(contractors[0].runner.address);
-      console.debug("Leader contractor account after contract success:", end_balance_contractor);
-      console.debug("Leader contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));
+      var end_balance_contender = await account_owner.provider.getBalance(contenders[0].runner.address);
+      console.debug("Leader contender account after contract success:", end_balance_contender);
+      console.debug("Leader contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
       console.debug("Voting cost:");
 
       await observers.reduce(async (memo, b) => {

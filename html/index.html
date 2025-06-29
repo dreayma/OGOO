@@ -238,7 +238,7 @@ p,h1,h2,h3,h4:has(.account-address) {
                         <p>Vote as a contributor for the Offer <em class="offer-title"></em> [<em class="offer-address"></em>]</p>
                       </div>
                       <div class="input-group">
-                        <input type="text" class="form-control ether-address-input" placeholder="Contractor address" required oninput="address_input_check('#contributor-vote .ether-address-input')">
+                        <input type="text" class="form-control ether-address-input" placeholder="Contender address" required oninput="address_input_check('#contributor-vote .ether-address-input')">
                         <button type="button" class="btn btn-outline-danger failure" data-bs-toggle="button"><i class="fa-solid fa-ban" title="Failure"></i></button>
                         <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" title="Camera"></i></button>
                       </div>
@@ -269,7 +269,7 @@ p,h1,h2,h3,h4:has(.account-address) {
                         <p>Vote as an observer for the Offer <em class="offer-title"></em> [<em class="offer-address"></em>]</p>
                       </div>
                       <div class="input-group">
-                        <input type="text" class="form-control ether-address-input" placeholder="Contractor address" required oninput="address_input_check('#observer-vote .ether-address-input')">
+                        <input type="text" class="form-control ether-address-input" placeholder="Contender address" required oninput="address_input_check('#observer-vote .ether-address-input')">
                         <button type="button" class="btn btn-outline-danger failure" data-bs-toggle="button"><i class="fa-solid fa-ban" title="Failure"></i></button>
                         <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" title="Camera"></i></button>
                       </div>
@@ -353,7 +353,7 @@ p,h1,h2,h3,h4:has(.account-address) {
                     <p><b>WARNING!</b></p>
                     <p>Once you approve the Offer, you will <i>no longer</i> be able to <i>edit</i> it, and you will <i>lose all control</i> over it. The Offer will be autonomously managed solely by its own algorithms.</p>
                     <p>From the moment of approval, the Offer will be open for collecting contributions and conducting voting until it is either successfully completed or ends unsuccessfully.</p>
-                    <p>When the Offer is successfully completed, all funds contributed by participants will be <i>automatically</i> transferred to the contractor who wins the vote, according to the parameters set for this Offer.</p>
+                    <p>When the Offer is successfully completed, all funds contributed by participants will be <i>automatically</i> transferred to the contender who wins the vote, according to the parameters set for this Offer.</p>
                     <p><i>Approval cannot be undone</i>. This is your <i>last chance</i> to cancel the operation if you are unsure that everything is in order.</p>
                   </div>
                 </div>
@@ -587,7 +587,7 @@ p,h1,h2,h3,h4:has(.account-address) {
               <li>All Offers</li>
               <li>See the status</li>
               <li>Add funds</li>
-              <li>Vote for contractor</li>
+              <li>Vote for contender</li>
             </ul>
             <button type="button" class="w-100 btn btn-lg btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#watch-offer" id="offers-card-add-offer-button">Add Offer</button>
           </div>
@@ -603,7 +603,7 @@ p,h1,h2,h3,h4:has(.account-address) {
             <ul class="list-unstyled mt-3 mb-4">
               <li>Funded Offers</li>
               <li>See the status</li>
-              <li>Vote for contractor</li>
+              <li>Vote for contender</li>
               <li>Cancel your contribution</li>
             </ul>
             <button type="button" class="w-100 btn btn-lg btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#create-contribution" id="contributions-card-create-contribution">Create Contribution</button>

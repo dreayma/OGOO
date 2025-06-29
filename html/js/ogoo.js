@@ -97,7 +97,7 @@ $(async function() {
         // returns a structured vote object from combined voting value
         var failure = voting == CONTRACT_FAILED;
         return {
-            contractor: ethers.toBeHex(failure ? 0n: voting, 20),
+            contender: ethers.getAddress(ethers.toBeHex(failure ? 0n: voting, 20)),
             failure: failure,
         }
     }
@@ -465,7 +465,7 @@ $(async function() {
                     if(offer_record.contributor_vote.failure) {
                         cl = 'text-danger';
                     } else
-                    if(offer_record.contributor_vote.contractor == '0x' + '0'.repeat(40)) {
+                    if(offer_record.contributor_vote.contender == '0x' + '0'.repeat(40)) {
                         cl = '';
                     }
                     if( cl ) {
@@ -491,7 +491,7 @@ $(async function() {
                     if(offer_record.observer_vote.failure) {
                         cl = 'text-danger';
                     } else
-                    if(offer_record.observer_vote.contractor == '0x' + '0'.repeat(40)) {
+                    if(offer_record.observer_vote.contender == '0x' + '0'.repeat(40)) {
                         cl = '';
                     }
                     if( cl ) {
@@ -1144,7 +1144,7 @@ $(async function() {
         var dialogue$ = $('#contributor-vote');
         var form$ = dialogue$.find('form');
         var failure = dialogue$.find('.failure')[0].ariaPressed == 'true';
-        var contractor = dialogue$.find('.ether-address-input').val();
+        var contender = dialogue$.find('.ether-address-input').val();
         var offer_address = dialogue$.find('.offer-address').text();
         var current_account = await get_current_account_async();
         var offer_access = new ethers.Contract(
@@ -1164,7 +1164,7 @@ $(async function() {
             if( failure ) {
                 tx = await offer_access.contributor_vote_failure();
             } else {
-                tx = await offer_access.contributor_vote(contractor);
+                tx = await offer_access.contributor_vote(contender);
             }
             await tx.wait();
             modal_info$.text('');
@@ -1225,7 +1225,7 @@ $(async function() {
         var dialogue$ = $('#observer-vote');
         var form$ = dialogue$.find('form');
         var failure = dialogue$.find('.failure')[0].ariaPressed == 'true';
-        var contractor = dialogue$.find('.ether-address-input').val();
+        var contender = dialogue$.find('.ether-address-input').val();
         var offer_address = dialogue$.find('.offer-address').text();
         var current_account = await get_current_account_async();
         var offer_access = new ethers.Contract(
@@ -1245,7 +1245,7 @@ $(async function() {
             if( failure ) {
                 tx = await offer_access.observer_vote_failure();
             } else {
-                tx = await offer_access.observer_vote(contractor);
+                tx = await offer_access.observer_vote(contender);
             }
             await tx.wait();
             modal_info$.text('');
@@ -1514,15 +1514,15 @@ $(async function() {
             offer_record.observers = Object.assign({}, ...offer_record.observers.map((key, index) => ({[key]: key})));
             offer_record.voting_statistics.sorted_observers_leaders = offer_record.voting_statistics.sorted_observers_leaders.map((item) => {
                 var vote = as_vote(item[0]);
-                return [(vote.failure ? 'Failure' : vote.contractor), item[1]];
+                return [(vote.failure ? 'Failure' : vote.contender), item[1]];
             });
             offer_record.voting_statistics.sorted_contributors_leaders = offer_record.voting_statistics.sorted_contributors_leaders.map((item) => {
                 var vote = as_vote(item[0]);
-                return [(vote.failure ? 'Failure' : vote.contractor), item[1]];
+                return [(vote.failure ? 'Failure' : vote.contender), item[1]];
             });
             offer_record.voting_statistics.sorted_contributors_fund_leaders = offer_record.voting_statistics.sorted_contributors_fund_leaders.map((item) => {
                 var vote = as_vote(item[0]);
-                return [(vote.failure ? 'Failure' : vote.contractor), item[1]];
+                return [(vote.failure ? 'Failure' : vote.contender), item[1]];
             });
         } catch(ex) {
             console.error('Error reading the Offer data. Is it a proper Offer contract address?', offer_record.id, ex);
