@@ -113,6 +113,26 @@ library leaders {
     function topmost_points(Storage storage self) internal view returns(uint) {
         return self.points_index.last();
     }
+    function sorted_leaders(Storage storage self) internal view returns(uint[2][] memory) {
+        // returns [leader, points] pairs sorted by points in descending order
+        uint total_leaders = 0;
+        for(uint i=self.points_index.last(); i != 0; i=self.points_index.prev(i)) {
+            uint_set.Set storage l = self.leaders_storage[i];
+            total_leaders += l.length();
+        }
+        uint[2][] memory ret = new uint[2][](total_leaders);
+        uint current_leader = 0;
+        for(uint i=self.points_index.last(); i != 0; i=self.points_index.prev(i)) {
+            uint_set.Set storage l = self.leaders_storage[i];
+            for(uint j=0; j < l.length(); j++) {
+                uint256 leader = l.at(j);
+                ret[current_leader][0] = leader;
+                ret[current_leader][1] = i;
+                current_leader++;
+            }
+        }
+        return ret;
+    }
     function topmost_leaders(Storage storage self) internal view returns(uint[] storage) {
         return leaders_having(self, topmost_points(self));
     }
@@ -257,22 +277,11 @@ contract Offer {
     error WrongParameter();             // The function should not be called with this parameter
     error TooLowContribution();         // Creating contribution with the balance less than provided is forbidden
     error CancelationInProgress();      // Contribute from the account with the cancelation in progress is forbidden
-    //TODO: Make visible for client
-    error VotingConflict();             // When the observers voting conflichs with the both, contribution count and contribution amount votings
     error StartedOnly();                // When the operation has to be called only in the started state
     error PreparedOnly();               // When the operation has to be called only in the prepared state
     error RunningOnly();                // When the operation has to be called only in the running state
-    //TODO: Make visible for client
     error ContributionFundLow();        // The contribution fund is too low to start voting
-    //TODO: Make visible for client
     error ContributionsCountLow();      // The contributions count is too low to start voting
-    //TODO: Make visible for client
-    error NoWinnerContributionsCount(); // The contributions count is too low to determine the winner
-    //TODO: Make visible for client
-    error NoWinnerContributionsFund();  // The contribution fund is too low to determine the winner
-    //TODO: Make visible for client
-    error NoWinnerObservers();          // The observers count is too low to determine the winner
-
 
     function is_finished() internal view returns (bool) {
         // The contract is finished when completed or failed
@@ -356,46 +365,45 @@ contract Offer {
         _;
     }
 
+    // Events
+
+    event OfferCreated();                               // the offer has been created
+    event OfferDefinitionUpdated(                       // the offer descriptor has been changes since creation
+        OfferDefinition offer_definition
+    );
+    event ObserverCreated (                             // observer created, contains the created observer address
+        address payable indexed observer
+    );
+    event ObserverRemoved (                             // observer removed, contains the removed observer address
+        address payable indexed observer
+    );
+    event OfferApproved ();                             // the offer is approved
+    event ContributionCreated (                         // contribution created, contains the contributor address
+        address payable indexed contributor
+    );
+    event ContributionUpdated (                         // contribution is updated, contains the total contribution amount
+        address payable indexed contributor, uint amount
+    );
+    event ContributionCancelation (                     // contributor starts cancelation
+        address payable indexed contributor
+    );
+    event ContributionCanceled (                        // contributor finishes cancelation and the funds are returned back
+        address payable indexed contributor
+    );
+    event ContributorVote(                              // the contributor votes, either for the contender or for the failure
+        address payable indexed contributor,
+        address payable contender, bool failure
+    );
+    event ObserverVote(                                 // the observer votes, either for the contender or for the failure
+        address payable indexed observer,
+        address payable contender, bool failure
+    );
+    event OfferCompleted (                              // the offer has completed successfully, the winner is paid
+        address payable winner, uint amount
+    );
+    event OfferFailed ();                               // the offer has failed
+
     // Updating functions
-
-    // the event emitted when the offer has been created
-    event OfferCreated();
-
-    // the event emitted when the offer descriptor has been changes since creation
-    event OfferDefinitionUpdated(OfferDefinition offer_definition);
-
-    // the event emitted by the create_observer method
-    event ObserverCreated (address payable indexed observer);
-
-    // the event emitted by the remove_observer method
-    event ObserverRemoved (address payable indexed observer);
-
-    // the event emitted by the approve method when the offer has approved
-    event OfferApproved ();
-
-    // the event emitted by the payment when creating a new contribution
-    event ContributionCreated (address payable indexed contributor);
-
-    // the event emitted by the payment when adding funds, and contains the total contribution
-    event ContributionUpdated (address payable indexed contributor, uint amount);
-
-    // the event emitted by the cancel_contribution method when the contributor starts cancelation
-    event ContributionCancelation (address payable indexed contributor);
-
-    // the event emitted by the cancel_contribution method when the contributor finishes cancelation and the funds are returned back
-    event ContributionCanceled (address payable indexed contributor);
-
-    // the event emitted by the calculate_voting when the offer has completed
-    event OfferCompleted (address payable winner, uint amount);
-
-    // the event emitted when the contributor votes
-    event ContributorVote(address payable indexed contributor, address payable contender, bool failure);
-
-    // the event emitted when the observer votes
-    event ObserverVote(address payable indexed observer, address payable contender, bool failure);
-
-    // the event emitted by different update methods when the offer has failed
-    event OfferFailed ();
 
     // Constructor
     constructor(OfferDefinition memory offer_definition) sender_origin() {
@@ -613,7 +621,7 @@ contract Offer {
     //
     // As soon as the contribution canceling timeout starts, the contributor voting
     // is excluded from the voting results.
-    // 
+    //
     // To make the contribution canceled, pays back the whole contribution
     // and removes the contribution from the list of contributions
     function contribution_cancel() external not_completed_only() contributor_only() sender_origin() {
@@ -695,48 +703,69 @@ contract Offer {
         _observer_vote_for(address(msg.sender), CONTRACT_FAILED);
         emit ObserverVote(payable(msg.sender), payable(address(0)), true);
     }
+
     // Informational functions
 
-    // Returns contribution amount for the caller (tx.origin == msg.sender)
-    function contribution_get_for_origin() external view sender_origin() returns(uint) {
-        return _contributor_contribution[tx.origin];
-    }
-
-    // Returns a time difference between the current time and
-    // the time when the contribution fulfills the canceling timeout
-    // and so the cancelation can be really finished
-    // using the secondary cancel request
-    //
-    // When the timeout has expired, returns 0
-    //
-    // If the contribution has not been canceled, or even has not been made,
-    // returns contribution_unlock_timeout
-    //
-    // The function doesn't take the state of the Offer in account
-    function contribution_can_be_canceled(address contributor) public view returns (uint timeout) {
-        if( !_contributors.contains(contributor) )
-            return _definition.contribution_unlock_timeout;
-        uint canceled_at = _contributor_canceled_at[contributor];
-        if( canceled_at == 0 ) {
-            return _definition.contribution_unlock_timeout;
+    function origin_observer_status() external view sender_origin() returns(
+        bool is_observer,
+        uint observer_voting
+    ) {
+        is_observer = _observers.contains(tx.origin);
+        observer_voting = 0;
+        if( is_observer ) {
+            // if the origin is an observer, check the voting status
+            observer_voting = _observers_leaders.current_voting(tx.origin);
         }
-        if( canceled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
-            return canceled_at + _definition.contribution_unlock_timeout - block.timestamp;
+    }
+    function origin_contributor_status() external view sender_origin() returns(
+        bool is_contributor,
+        uint contributor_voting,
+        uint contribution_amount,
+        uint canceled_at,
+        uint contribution_cancelation_timeout
+    ) {
+        is_contributor = _contributors.contains(tx.origin);
+        contribution_amount = 0;
+        contribution_cancelation_timeout = 0;
+        contributor_voting = 0;
+        if( is_contributor ) {
+            // if the origin is a contributor, check the contribution cancelation status
+            // and return the contribution amount and cancelation timeout
+            canceled_at = _contributor_canceled_at[tx.origin];
+            if( canceled_at != 0 ) {
+                if( canceled_at + _definition.contribution_unlock_timeout > block.timestamp )
+                    contribution_cancelation_timeout = canceled_at + _definition.contribution_unlock_timeout - block.timestamp;
+            }
+            contribution_amount = _contributor_contribution[tx.origin];
+            contributor_voting = _contributors_leaders.current_voting(tx.origin);
         }
-        return 0;
     }
-
-    // Checks whether the message sender is an observer
-    // TODO: remove?
-    function is_origin_observer() external view returns(bool yes) {
-        return _observers.contains(msg.sender);
+    function observers() external view returns(address[] memory) {
+        // Returns the list of observers
+        return _observers.values;
     }
-    // Checks whether the transaction origin is a contributor
-    // TODO: remove?
-    function is_origin_contributor() external view returns(bool yes) {
-        return _contributors.contains(tx.origin);
+    function voting_statistics() external view returns(
+        uint total_observers_count,
+        uint total_contributors_count,
+        uint total_contributors_fund,
+        uint voted_observers_percent,
+        uint voted_contributors_percent,
+        uint voted_contributors_fund_percent,
+        uint[2][] memory sorted_observers_leaders,
+        uint[2][] memory sorted_contributors_leaders,
+        uint[2][] memory sorted_contributors_fund_leaders
+    ) {
+        total_observers_count = _observers.length();
+        total_contributors_count = _total_contributors_count;
+        total_contributors_fund = _total_contributors_fund;
+        voted_observers_percent = total_observers_count > 0 ? _observers_leaders.total_points * 10000 / total_observers_count: 0;
+        voted_contributors_percent = total_contributors_count > 0 ? _contributors_leaders.total_points * 10000 / total_contributors_count: 0;
+        voted_contributors_fund_percent = total_contributors_fund > 0 ? _contributors_fund_leaders.total_points * 10000 / total_contributors_fund: 0;
+        sorted_observers_leaders = _observers_leaders.sorted_leaders();
+        sorted_contributors_leaders = _contributors_leaders.sorted_leaders();
+        sorted_contributors_fund_leaders = _contributors_fund_leaders.sorted_leaders();
     }
-    function validate() external view returns(bool) {
+    function validate() external view {
         _observers_leaders.validate();
         _contributors_leaders.validate();
         _contributors_fund_leaders.validate();

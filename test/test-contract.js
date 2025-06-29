@@ -22,6 +22,16 @@ function extractData(ex) {
   return data;
 }
 
+const CONTRACT_FAILED = 1n << 255n;
+const as_vote = function(voting) {
+    // returns a structured vote object from combined voting value
+    var failure = voting == CONTRACT_FAILED;
+    return {
+        contractor: ethers.getAddress(ethers.toBeHex(failure ? 0n: voting, 20)),
+        failure: failure,
+    }
+}
+
 describe("Contract Tests", function () {
   it("Test the contract life circle main path", async function () {
     console.log("Test the contract life circle main path");
@@ -178,10 +188,10 @@ describe("Contract Tests", function () {
       console.debug("Owner account after creating contribution:", end_balance_owner);
 
       // test access to the origin's contribution
-      var outside_contribution = await outside_access.contribution_get_for_origin();
+      var outside_contribution = (await outside_access.origin_contributor_status())[2];
       outside_contribution.should.be.equal(0n);
 
-      var contributor_contribution = await contributor_access.contribution_get_for_origin();
+      var contributor_contribution = (await contributor_access.origin_contributor_status())[2];
       contributor_contribution.should.be.equal(40000000000000002n);
 
       // testing observers creation
@@ -413,15 +423,15 @@ describe("Contract Tests", function () {
       console.debug("Owner account after creating contribution:", end_balance_owner);
 
       // test access to the origin's contribution
-      var outside_contribution = await outside_access.contribution_get_for_origin();
+      var outside_contribution = (await outside_access.origin_contributor_status())[2];
       outside_contribution.should.be.equal(0n);
 
       {
-        var contributor_contribution = await contributor_access.contribution_get_for_origin();
+        var contributor_contribution = (await contributor_access.origin_contributor_status())[2];
         contributor_contribution.should.be.equal(30000000000000001n);
       }
       {
-        var contributor2_contribution = await contributor2_access.contribution_get_for_origin();
+        var contributor2_contribution = (await contributor2_access.origin_contributor_status())[2];
         contributor2_contribution.should.be.equal(30000000000000001n);
       }
 
@@ -605,15 +615,15 @@ describe("Contract Tests", function () {
       console.debug("Owner account after creating contribution:", end_balance_owner);
 
       // test access to the origin's contribution
-      var outside_contribution = await outside_access.contribution_get_for_origin();
+      var outside_contribution = (await outside_access.origin_contributor_status())[2];
       outside_contribution.should.be.equal(0n);
 
       {
-        var contributor_contribution = await contributor_access.contribution_get_for_origin();
+        var contributor_contribution = (await contributor_access.origin_contributor_status())[2];
         contributor_contribution.should.be.equal(30000000000000001n);
       }
       {
-        var contributor2_contribution = await contributor2_access.contribution_get_for_origin();
+        var contributor2_contribution = (await contributor2_access.origin_contributor_status())[2];
         contributor2_contribution.should.be.equal(30000000000000001n);
       }
 
@@ -631,7 +641,7 @@ describe("Contract Tests", function () {
       await (await contributor2_access.contribution_cancel()).wait();
       console.debug("Contributor2 has just cancelled contribution");
       {
-        var time_to_cancel = await contributor2_access.contribution_can_be_canceled(account_contributor2.address);
+        var time_to_cancel = (await contributor2_access.origin_contributor_status())[4];
         console.log("Contributor2 time to cancel", time_to_cancel);
       }
 
@@ -764,15 +774,15 @@ describe("Contract Tests", function () {
       console.debug("Owner account after creating contribution:", end_balance_owner);
 
       // test access to the origin's contribution
-      var outside_contribution = await outside_access.contribution_get_for_origin();
+      var outside_contribution = (await outside_access.origin_contributor_status())[2];
       outside_contribution.should.be.equal(0n);
 
       {
-        var contributor_contribution = await contributor_access.contribution_get_for_origin();
+        var contributor_contribution = (await contributor_access.origin_contributor_status())[2];
         contributor_contribution.should.be.equal(30000000000000001n);
       }
       {
-        var contributor2_contribution = await contributor2_access.contribution_get_for_origin();
+        var contributor2_contribution = (await contributor2_access.origin_contributor_status())[2];
         contributor2_contribution.should.be.equal(30000000000000001n);
       }
 
@@ -791,7 +801,7 @@ describe("Contract Tests", function () {
       while(42) {
         // generate a block to increase the time without mining - necessary for hardhat node
         await (await account_contributor2.sendTransaction({to:account_owner, value:100n})).wait();
-        var time_to_cancel = await contributor2_access.contribution_can_be_canceled(account_contributor2.address);
+        var time_to_cancel = (await contributor2_access.origin_contributor_status())[4];
         if( !time_to_cancel )
           break;
         console.log("Contributor2 time to cancel", time_to_cancel);
@@ -1757,9 +1767,9 @@ describe("Contract Tests", function () {
       await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
       await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
       await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
-      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
-      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
+      (await contributor1_access.origin_contributor_status())[2].should.be.equal(10000000000000001n);
+      (await contributor2_access.origin_contributor_status())[2].should.be.equal(20000000000000001n);
+      (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -1865,9 +1875,9 @@ describe("Contract Tests", function () {
       await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
       await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
       await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
-      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
-      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
+      (await contributor1_access.origin_contributor_status())[2].should.be.equal(10000000000000001n);
+      (await contributor2_access.origin_contributor_status())[2].should.be.equal(20000000000000001n);
+      (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -1973,9 +1983,9 @@ describe("Contract Tests", function () {
       await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
       await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
       await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
-      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
-      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
+      (await contributor1_access.origin_contributor_status())[2].should.be.equal(10000000000000001n);
+      (await contributor2_access.origin_contributor_status())[2].should.be.equal(20000000000000001n);
+      (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -2089,9 +2099,9 @@ describe("Contract Tests", function () {
       await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
       await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
       await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
-      (await contributor1_access.contribution_get_for_origin()).should.be.equal(10000000000000001n);
-      (await contributor2_access.contribution_get_for_origin()).should.be.equal(20000000000000001n);
-      (await contributor3_access.contribution_get_for_origin()).should.be.equal(30000000000000003n);
+      (await contributor1_access.origin_contributor_status())[2].should.be.equal(10000000000000001n);
+      (await contributor2_access.origin_contributor_status())[2].should.be.equal(20000000000000001n);
+      (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
 
       // voting process
       var state = await contractor_access.state();
@@ -2172,6 +2182,21 @@ describe("Contract Tests", function () {
       console.info('Approve the contract');
       await (await o.approve()).wait();
 
+      {
+        var statistics = (await o.voting_statistics()).toObject();
+        statistics.total_observers_count.should.be.equal(4n);
+        statistics.total_contributors_count.should.be.equal(0n);
+        statistics.total_contributors_fund.should.be.equal(0n);
+
+        statistics.voted_observers_percent.should.be.equal(0n);
+        statistics.voted_contributors_percent.should.be.equal(0n);
+        statistics.voted_contributors_fund_percent.should.be.equal(0n);
+
+        statistics.sorted_observers_leaders.length.should.be.equal(0);
+        statistics.sorted_contributors_leaders.length.should.be.equal(0);
+        statistics.sorted_contributors_fund_leaders.length.should.be.equal(0);
+      }
+
       var c_amount = 10000000000000000n;
       console.info('Contribute the contract');
       await Promise.all(contributors.map(async (c, i) => {
@@ -2179,6 +2204,22 @@ describe("Contract Tests", function () {
       }));
 
       await o.validate();
+
+      {
+        var statistics = (await o.voting_statistics()).toObject();
+        statistics.total_observers_count.should.be.equal(4n);
+        statistics.total_contributors_count.should.be.equal(10n);
+        statistics.total_contributors_fund.should.be.equal(100000000000000045n);
+
+        statistics.voted_observers_percent.should.be.equal(0n);
+        statistics.voted_contributors_percent.should.be.equal(0n);
+        statistics.voted_contributors_fund_percent.should.be.equal(0n);
+
+        statistics.sorted_observers_leaders.length.should.be.equal(0);
+        statistics.sorted_contributors_leaders.length.should.be.equal(0);
+        statistics.sorted_contributors_fund_leaders.length.should.be.equal(0);
+      }
+
       // Initial state before voting
       var state = await o.state();
       console.info('State before first vote', state);
@@ -2196,12 +2237,12 @@ describe("Contract Tests", function () {
       }))
 
       observers.map((b) => {
-          b.is_origin_observer().should.eventually.be.equal(true);
+          (async (b) => (await b.origin_observer_status())[0])(b).should.eventually.be.equal(true);
       });
       await o.validate();
 
       contributors.map((c) => {
-        c.is_origin_contributor().should.eventually.be.equal(true);
+        (async (c) => (await c.origin_contributor_status())[0])(c).should.eventually.be.equal(true);
       });
       await o.validate();
       console.log('Bad observers voting');
@@ -2215,6 +2256,35 @@ describe("Contract Tests", function () {
       o.state().should.eventually.be.equal(1n);
       await o.validate();
 
+      {
+        var statistics = (await o.voting_statistics()).toObject();
+        statistics.total_observers_count.should.be.equal(4n);
+        statistics.total_contributors_count.should.be.equal(10n);
+        statistics.total_contributors_fund.should.be.equal(100000000000000045n);
+
+        statistics.voted_observers_percent.should.be.equal(10000n);
+        statistics.voted_contributors_percent.should.be.equal(0n);
+        statistics.voted_contributors_fund_percent.should.be.equal(0n);
+
+        statistics.sorted_observers_leaders.length.should.be.equal(4);
+        statistics.sorted_contributors_leaders.length.should.be.equal(0);
+        statistics.sorted_contributors_fund_leaders.length.should.be.equal(0);
+
+        var contractors_set = {};
+        contractors.forEach((c) => {
+          contractors_set[c.runner.address] = true;
+        });
+        delete contractors_set[contractors[4].runner.address]; // The last contractor was not voted
+        var observer_leaders_set = {};
+        statistics.sorted_observers_leaders.toArray().forEach((c) => {
+          observer_leaders_set[as_vote(c[0]).contractor] = true;
+        });
+        console.debug("Observer leaders result", statistics.sorted_observers_leaders);
+        console.debug("Observer leaders set", observer_leaders_set);
+        console.debug("Contractors set", contractors_set);
+        observer_leaders_set.should.be.deep.equal(contractors_set);
+      }
+
       console.log('Bad contributors voting');
       await contributors.reduce(async (memo, c) => {
           var i;
@@ -2226,6 +2296,35 @@ describe("Contract Tests", function () {
       o.state().should.eventually.be.equal(1n);
       await o.validate();
 
+      {
+        var statistics = (await o.voting_statistics()).toObject();
+        statistics.total_observers_count.should.be.equal(4n);
+        statistics.total_contributors_count.should.be.equal(10n);
+        statistics.total_contributors_fund.should.be.equal(100000000000000045n);
+
+        statistics.voted_observers_percent.should.be.equal(10000n);
+        statistics.voted_contributors_percent.should.be.equal(10000n);
+        statistics.voted_contributors_fund_percent.should.be.equal(10000n);
+
+        statistics.sorted_observers_leaders.length.should.be.equal(4);
+        statistics.sorted_contributors_leaders.length.should.be.equal(5);
+
+        var contractors_set = {};
+        contractors.forEach((c) => {
+          contractors_set[c.runner.address] = true;
+        });
+        var contributor_leaders_set = {};
+        statistics.sorted_contributors_leaders.forEach((c) => {
+          contributor_leaders_set[as_vote(c[0]).contractor] = true;
+        });
+        contributor_leaders_set.should.be.deep.equal(contractors_set);
+        var contributor_fund_leaders_set = {};
+        statistics.sorted_contributors_fund_leaders.forEach((c) => {
+          contributor_fund_leaders_set[as_vote(c[0]).contractor] = true;
+        });
+        contributor_fund_leaders_set.should.be.deep.equal(contractors_set);
+      }
+
       console.log('Fine observers revoting for the leader contractor', contractors[0].runner.address);
       await observers.reduce(async (memo, b) => {
           await memo;
@@ -2234,8 +2333,23 @@ describe("Contract Tests", function () {
           return await (await b.observer_vote(contractors[0].runner.address)).wait();
       }, 0);
       await o.validate();
-
       o.state().should.eventually.be.equal(1n);
+
+      {
+        var statistics = (await o.voting_statistics()).toObject();
+        statistics.total_observers_count.should.be.equal(4n);
+        statistics.total_contributors_count.should.be.equal(10n);
+        statistics.total_contributors_fund.should.be.equal(100000000000000045n);
+
+        statistics.voted_observers_percent.should.be.equal(10000n);
+        statistics.voted_contributors_percent.should.be.equal(10000n);
+        statistics.voted_contributors_fund_percent.should.be.equal(10000n);
+
+        statistics.sorted_observers_leaders.length.should.be.equal(1);
+        as_vote(statistics.sorted_observers_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+        statistics.sorted_contributors_leaders.length.should.be.equal(5);
+        statistics.sorted_contributors_fund_leaders.length.should.be.equal(5);
+      }
 
       console.log('Fine contributors revoting for the leader contractor', contractors[0].runner.address);
       await contributors.reduce(async (memo, c) => {
@@ -2250,7 +2364,20 @@ describe("Contract Tests", function () {
       var final_balance_offer = await account_owner.provider.getBalance(offer.target);
       console.debug("Offer account after contract completion", final_balance_offer);
       final_balance_offer.should.be.equal(0n);
-
+      {
+        var statistics = (await o.voting_statistics()).toObject();
+        statistics.total_observers_count.should.be.equal(4n);
+        statistics.total_contributors_count.should.be.equal(10n);
+        statistics.voted_observers_percent.should.be.equal(10000n);
+        statistics.voted_contributors_percent.should.be.equal(10000n);
+        statistics.voted_contributors_fund_percent.should.be.equal(10000n);
+        statistics.sorted_observers_leaders.length.should.be.equal(1);
+        as_vote(statistics.sorted_observers_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+        statistics.sorted_contributors_leaders.length.should.be.equal(1);
+        as_vote(statistics.sorted_contributors_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+        statistics.sorted_contributors_fund_leaders.length.should.be.equal(1);
+        as_vote(statistics.sorted_contributors_fund_leaders[0][0]).contractor.should.be.equal(contractors[0].runner.address);
+      }
       var end_balance_contractor = await account_owner.provider.getBalance(contractors[0].runner.address);
       console.debug("Leader contractor account after contract success:", end_balance_contractor);
       console.debug("Leader contractor account diff after contract success ($):", to$(end_balance_contractor - start_balance_contractor));

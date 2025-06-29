@@ -146,7 +146,7 @@ receive() external payable sender_origin()
 
 Any EOA can contribute funds. The first contribution from a new contributor must meet the [minimum contribution](OfferDefinition.md#-contribution-minimal-balance) requirement; subsequent contributions may be any amount.
 
-## 🔙 Cancel Contribution
+## 🔙 Cancel Contribution Method
 
 ```solidity
 function contribution_cancel() external not_completed_only() contributor_only() sender_origin()
@@ -156,7 +156,7 @@ Contributors can request a refund via a two-step process:
 1. **Initial request** – Marks the contributor for refund processing and starts the [unlock timeout](OfferDefinition.md#-contribution-unlock-timeout). Voting rights are suspended until the contributor reclaims the contribution.
 2. **Final request** – After the timeout expires, the contributor may reclaim all of their contributions in a single transaction.
 
-## 🗳️ Contributor Voting
+## 🗳️ Contributor Voting Methods
 
 ```solidity
 function contributor_vote(address payable voice) external started_only() contributor_only() sender_origin()
@@ -167,7 +167,7 @@ function contributor_vote_failure() external started_only() contributor_only() s
 
 Contributors can vote for a contender or indicate Offer failure. Votes may be changed until the Offer is finalized.
 
-## 🗳️ Observer Voting
+## 🗳️ Observer Voting Methods
 
 ```solidity
 function observer_vote(address payable voice) external started_only() observer_only()
@@ -234,34 +234,93 @@ The block timestamp when the Offer fails.
 
 These view functions provide detailed insights into the Offer state and contributor information.
 
-### 💰 Contribution Amount
+## 🗳️ Current Voting Status Return Value
 
-```solidity
-function contribution_get_for_origin() external view sender_origin() returns(uint)
+Some functions return the **current voting status** as an unsigned 256-bit integer.
+
+A special constant indicates a vote for Offer failure:
+
+```javascript
+const CONTRACT_FAILED = 1n << 255n;
 ```
 
-Returns the total contribution amount made by the caller.
+- A return value of `0n` means that no vote has been cast.
+- A return value equal to `CONTRACT_FAILED` means a vote for Offer failure.
+- Any other value represents the address of a contender, encoded in the lower 160 bits of the integer.
 
-### ⏳ Unlock Timeout
+To interpret the result using `ethers.js`:
+
+```javascript
+var failure = voting == CONTRACT_FAILED;
+var contender = ethers.toBeHex(failure ? 0n : voting, 20);
+```
+This extracts the contender’s address as a hexadecimal string, or returns `0x00...00` if the vote was for failure.
+
+### 👁️‍🗨️ Origin Observer Status
+
+Returns whether the transaction origin is a registered observer and, if so, provides the current voting status of that observer.
 
 ```solidity
-function contribution_can_be_canceled(address contributor) public view returns (uint timeout)
+function origin_observer_status() external view sender_origin() returns(bool is_observer, uint observer_voting)
 ```
 
-Returns the remaining time (in seconds) of the unlock timeout for a contributor. If a cancellation has not been requested, it returns the full unlock timeout duration.
+- `is_observer` – `true` if the origin is a registered observer; otherwise, `false`.
+- `observer_voting` – the vote cast by the observer, represented as a 256-bit integer (see "🗳️ Current Voting Status Return Value").
 
-### 👁️‍🗨️ Is Origin an Observer?
+### 👥 Origin Contributor Status
+
+Returns whether the transaction origin is a registered contributor and, if so, provides details about their current voting and contribution state.
 
 ```solidity
-function is_origin_observer() external view returns(bool yes)
+function origin_contributor_status() external view sender_origin() returns(
+    bool is_contributor,
+    uint contributor_voting,
+    uint contribution_amount,
+    uint canceled_at,
+    uint contribution_cancelation_timeout
+)
 ```
 
-Returns `true` if the transaction's origin is a registered observer; otherwise, returns `false`.
+- `is_contributor` – `true` if the origin is a registered contributor; otherwise, `false`.
+- `contributor_voting` – the vote cast by the contributor, represented as a 256-bit integer (see "🗳️ Current Voting Status Return Value").
+- `contribution_amount` – the total amount of funds contributed by this address, in `wei`.
+- `canceled_at` – the block timestamp of the cancellation request, or `0` if no request has been made.
+- `contribution_cancelation_timeout` – time in seconds remaining until the contributor can reclaim their funds. Returns `0` if no cancellation request exists or if the timeout has already expired.
 
-### 👥 Is Origin a Contributor?
+### 👁️‍🗨️ Observers List
+
+Returns the complete list of registered observer addresses.
 
 ```solidity
-function is_origin_contributor() external view returns(bool yes)
+function observers() external view returns(address[] memory)
 ```
 
-Returns `true` if the transaction's origin is a registered contributor; otherwise, returns `false`.
+The observer list is initialized during the setup phase and becomes immutable after the Offer is approved.
+
+### 📊 Voting Statistics
+
+Provides the current voting status and detailed breakdown of voting power distributions among observers and contributors.
+
+```solidity
+function voting_statistics() external view returns(
+    uint total_observers_count,
+    uint total_contributors_count,
+    uint total_contributors_fund,
+    uint voted_observers_percent,
+    uint voted_contributors_percent,
+    uint voted_contributors_fund_percent,
+    uint[2][] memory sorted_observers_leaders,
+    uint[2][] memory sorted_contributors_leaders,
+    uint[2][] memory sorted_contributors_fund_leaders
+)
+```
+
+- `total_observers_count` – the number of registered observers.
+- `total_contributors_count` – the number of contributors with an active vote.
+- `total_contributors_fund` – the combined contribution balances of actively voting contributors.
+- `voted_observers_percent` – percentage (in basis points) of observers who have cast a vote.
+- `voted_contributors_percent` – percentage (in basis points) of contributors who have cast a vote.
+- `voted_contributors_fund_percent` – percentage (in basis points) of funds from contributors who have cast a vote.
+- `sorted_observers_leaders` – sorted descending list of `[voice, count]` pairs representing observer votes.
+- `sorted_contributors_leaders` – sorted descending list of `[voice, count]` pairs representing contributor votes by count.
+- `sorted_contributors_fund_leaders` – sorted descending list of `[voice, amount]` pairs representing contributor votes by total fund weight.

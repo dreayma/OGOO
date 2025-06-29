@@ -93,6 +93,15 @@ $(async function() {
         return bigIntUnsplit(bigIntSplitRound(bigIntSplit(amount, 1), digits, 1), 1);
     }
 
+    const as_vote = function(voting) {
+        // returns a structured vote object from combined voting value
+        var failure = voting == CONTRACT_FAILED;
+        return {
+            contractor: ethers.toBeHex(failure ? 0n: voting, 20),
+            failure: failure,
+        }
+    }
+
     /*const*/ etherFormatApprox = function(amount, parts=2) {
         var ret = '';
         var i;
@@ -283,21 +292,24 @@ $(async function() {
 
     const bs_selectPane = function(selector) {
         var pane$ = $(selector);
-        pane$.parent().find('.tab-pane').removeClass('active show');
-        pane$.addClass('active show');
-        $('[data-bs-toggle="tab"]').removeClass('active show');
-        $(`.nav-item a`).removeClass('active show');
-        $(`[data-bs-target="${selector}"][data-bs-toggle="tab"]`).addClass('active show');
-        $(`li.nav-item.dropdown:has([data-bs-target="${selector}"][data-bs-toggle="tab"]) a.dropdown-toggle`).addClass('active show');
+        $(document).find('.tab-pane').add(
+            $('[data-bs-toggle="tab"]')
+        ).add(
+            $(`.nav-item a`)            
+        ).removeClass('active show');
+        var parents$ = pane$.parents('.tab-pane');
+        parents$.add(
+            pane$
+        ).add(
+            $(`[data-bs-target="${selector}"][data-bs-toggle="tab"]`)    
+        ).add(
+            $(`li.nav-item.dropdown:has([data-bs-target="${selector}"][data-bs-toggle="tab"]) a.dropdown-toggle`)
+        ).addClass('active show');
+        //$('[data-bs-toggle="tab"]').removeClass('active show');
+        //$(`.nav-item a`).removeClass('active show');
+        //$(`[data-bs-target="${selector}"][data-bs-toggle="tab"]`).addClass('active show');
+        //$(`li.nav-item.dropdown:has([data-bs-target="${selector}"][data-bs-toggle="tab"]) a.dropdown-toggle`).addClass('active show');
         document.title = pane$.attr('pagetitle');
-    }
-
-    const edit_offer = async function(address) {
-        var hash = document.location.hash;
-        var params = new URLSearchParams(hash.substring(1));
-        params.set('pane', 'edit-offer');
-        params.set('address', address);
-        document.location.hash = '#' + params.toString().replaceAll('+', ' ');
     }
 
     var offer_abi;  // loaded dynamically
@@ -314,153 +326,6 @@ $(async function() {
         }).show();
         return;
     }
-
-    /*const*/ get_observers = async function(offer_address, account) {
-        var access = new ethers.Contract(
-            offer_address,
-            offer_abi.abi,
-            account
-        );
-        var raw_events = {};
-        [raw_events.created, raw_events.removed] = await Promise.all([
-            access.queryFilter(access.filters.ObserverCreated()),
-            access.queryFilter(access.filters.ObserverRemoved()),
-        ]);
-        var events = [
-            ...raw_events.created,
-            ...raw_events.removed
-        ].sort((a, b) => {
-            if (a.blockNumber !== b.blockNumber) {
-                return a.blockNumber - b.blockNumber;
-            }
-            return a.transactionIndex - b.transactionIndex;
-        });
-        var ret = {}
-        events.map(function(event) {
-            var addr = event.args[0];
-            switch(event.eventName) {
-                case 'ObserverCreated':
-                    ret[addr] = (ret[addr] || 0) + 1;
-                    break;
-                case 'ObserverRemoved':
-                    ret[addr] = (ret[addr] || 0) - 1;
-                    break;
-            }
-            if(ret[addr] == 0) {
-                delete ret[addr];
-            }
-        });
-        return ret;
-    };
-
-    /*const*/ contributed_by = async function(offer_address, address, account) {
-        var access = new ethers.Contract(
-            offer_address,
-            offer_abi.abi,
-            account
-        );
-        var raw_events = {};
-        [raw_events.updated, raw_events.cancelation, raw_events.canceled] = await Promise.all([
-            access.queryFilter(access.filters.ContributionUpdated(address)),
-            access.queryFilter(access.filters.ContributionCancelation(address)),
-            access.queryFilter(access.filters.ContributionCanceled(address)),
-        ]);
-        var events = [
-            ...raw_events.updated,
-            ...raw_events.cancelation,
-            ...raw_events.canceled,
-        ].sort((a, b) => {
-            if (a.blockNumber !== b.blockNumber) {
-                return a.blockNumber - b.blockNumber;
-            }
-            return a.transactionIndex - b.transactionIndex;
-        });
-        var ret = {
-            amount: 0n,
-            cancelation: false,
-        };
-        events.map(function(event) {
-            switch(event.eventName) {
-                case 'ContributionCanceled':
-                    ret.amount = 0n;
-                    ret.cancelation = false;
-                    break;
-                case 'ContributionUpdated':
-                    ret.amount = event.args[1];
-                    break;
-                case 'ContributionCancelation':
-                    ret.cancelation = true;
-                    break;
-            }
-        });
-        return ret;
-    };
-
-    /*const*/ contributor_vote = async function(offer_address, address, account) {
-        var access = new ethers.Contract(
-            offer_address,
-            offer_abi.abi,
-            account
-        );
-        var raw_events = {};
-        [raw_events.voting] = await Promise.all([
-            access.queryFilter(access.filters.ContributorVote(address)),
-        ]);
-        var events = [
-            ...raw_events.voting,
-        ].sort((a, b) => {
-            if (a.blockNumber !== b.blockNumber) {
-                return a.blockNumber - b.blockNumber;
-            }
-            return a.transactionIndex - b.transactionIndex;
-        });
-        var ret = null;
-        events.map(function(event) {
-            switch(event.eventName) {
-                case 'ContributorVote':
-                    ret = {};
-                    ret.contractor = event.args[1];
-                    ret.failure = event.args[2];
-                    break;
-            }
-        });
-        return ret;
-    };
-
-    /*const*/ observer_vote = async function(offer_address, address, account) {
-        var access = new ethers.Contract(
-            offer_address,
-            offer_abi.abi,
-            account
-        );
-        var raw_events = {};
-        [raw_events.voting] = await Promise.all([
-            access.queryFilter(access.filters.ObserverVote(address)),
-        ]);
-        var events = [
-            ...raw_events.voting,
-        ].sort((a, b) => {
-            if (a.blockNumber !== b.blockNumber) {
-                return a.blockNumber - b.blockNumber;
-            }
-            return a.transactionIndex - b.transactionIndex;
-        });
-        var ret = null;
-        events.map(function(event) {
-            switch(event.eventName) {
-                case 'ObserverVote':
-                    ret = {};
-                    ret.contractor = event.args[1];
-                    ret.failure = event.args[2];
-                    break;
-            }
-        });
-        return ret;
-    };
-
-
-
-
 
     // get all offers accordingly to the current account
     const get_offer_records_list = async function(current_account) {
@@ -481,25 +346,29 @@ $(async function() {
                     offer_record.definition,
                     offer_record.amount,
                     offer_record.observers,
-                    offer_record.contributed_by,
-                    offer_record.contributor_vote,
-                    offer_record.cancelation_timer,
-                    offer_record.observer_vote,
+                    offer_record.origin_contributor_status,
+                    offer_record.origin_observer_status,
                 ] = await Promise.all([
                     offer_access.owner(),
                     offer_access.state(),
                     offer_access.definition(),
                     provider.getBalance(offer_record.id),
-                    get_observers(id, current_account),
-                    contributed_by(id, current_account.address, current_account),
-                    contributor_vote(id, current_account.address, current_account),                   
-                    offer_access.contribution_can_be_canceled(current_account.address),
-                    observer_vote(id, current_account.address, current_account),                   
+                    offer_access.observers(),
+                    offer_access.origin_contributor_status(),
+                    offer_access.origin_observer_status(),
                 ]);
-                offer_record.contribution = offer_record.contributed_by.amount;
-                offer_record.is_contributor = !!offer_record.contribution;
-                offer_record.cancelation = offer_record.contributed_by.cancelation;
-                offer_record.is_observer = offer_record.observers[current_account.address];
+                offer_record.origin_contributor_status = offer_record.origin_contributor_status.toObject();
+                offer_record.origin_observer_status = offer_record.origin_observer_status.toObject();
+                offer_record.observers = Object.assign({}, ...offer_record.observers.map((key, index) => ({[key]: key})));
+                offer_record.contributor_vote = as_vote(offer_record.origin_contributor_status.contributor_voting);
+                offer_record.cancelation_timer = offer_record.origin_contributor_status.contribution_cancelation_timeout;
+                offer_record.observer_vote = as_vote(offer_record.origin_observer_status.observer_voting);
+
+                offer_record.contribution = offer_record.origin_contributor_status.contribution_amount;
+                offer_record.is_contributor = offer_record.origin_contributor_status.is_contributor;
+                offer_record.cancelation = offer_record.origin_contributor_status.cancelled_at != 0n;
+
+                offer_record.is_observer = offer_record.origin_observer_status.is_observer;
                 offer_record.definition = (offer_record.definition).toObject();
                 offer_record.state_name = OfferState[offer_record.state];
                 offer_record.is_owner = (offer_record.owner == current_account.address);
@@ -547,6 +416,7 @@ $(async function() {
                 managed_list_row.find('.managed-list-row-address').text(offer_record.id);
                 managed_list_row.find('.managed-list-row-name').text(offer_record.definition.caption);
                 if(offer_record.state != 0n) {
+                    managed_list_row.find('.offer-edit-button').addClass('disabled');
                     managed_list_row.find('.offer-approve-button').addClass('disabled');
                 }
                 if(offer_record.state > 1n) {
@@ -725,11 +595,14 @@ $(async function() {
         if( $(selector).length > 0 ) {
             bs_selectPane(selector);
         }
-        if(selector == '#edit-offer' || selector == '#view-offer') {
+        if(selector == '#edit-offer') {
             var address = params.get('address');
             if( address ) {
                 await on_edit_offer(address);
             }
+        } else if(selector.startsWith('#view-offer')) {
+            var address = params.get('address');
+            // TODO: implement view offer
         } else {
             if( params.get('address') ) {
                 params.delete('address');
@@ -888,7 +761,7 @@ $(async function() {
         var offer_address = $(event.currentTarget).find('.offer-address').text();
         var hash = document.location.hash;
         var params = new URLSearchParams(hash.substring(1));
-        params.set('pane', 'edit-offer');
+        params.set('pane', 'view-offer-main');
         params.set('address', offer_address);
         document.location.hash = '#' + params.toString().replaceAll('+', ' ');
     });
@@ -907,6 +780,16 @@ $(async function() {
         bootstrap.Modal.getOrCreateInstance($('#no-accounts')[0]).hide();
         $('#no-accounts .dialog-error').text('');
         $('#connect-account-button').prop('disabled', false);
+    });
+
+    $(document).on('click', '.offer-edit-button', async function(event) {
+        event.preventDefault();
+        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var hash = document.location.hash;
+        var params = new URLSearchParams(hash.substring(1));
+        params.set('pane', 'edit-offer');
+        params.set('address', offer_address);
+        document.location.hash = '#' + params.toString().replaceAll('+', ' ');
     });
 
     $(document).on('click', '.offer-approve-button', async function(event) {
@@ -1409,21 +1292,24 @@ $(async function() {
         try {
             [
                 offer_record.owner,
-                offer_record.is_contributor,
                 offer_record.state,
                 offer_record.definition,
-                offer_record.contribution,
+                offer_record.origin_contributor_status,
                 offer_record.amount,
                 offer_record.observers,
-            ] = await Promise.all([
+                ] = await Promise.all([
                 offer_access.owner(),
-                offer_access.is_origin_contributor(),
                 offer_access.state(),
                 offer_access.definition(),
-                offer_access.contribution_get_for_origin(),
+                offer_access.origin_contributor_status(),
                 provider.getBalance(offer_record.id),
-                get_observers(address, current_account),
+                offer_access.observers(),
             ]);
+            offer_record.origin_contributor_status = offer_record.origin_contributor_status.toObject();
+            offer_record.is_contributor = offer_record.origin_contributor_status.is_contributor;
+            offer_record.contribution = offer_record.origin_contributor_status.contribution;
+            offer_record.observers = Object.assign({}, ...offer_record.observers.map((key, index) => ({[key]: key})));
+
             offer_record.is_observer = offer_record.observers[current_account.address];
             offer_record.definition = (offer_record.definition).toObject();
             offer_record.state_name = OfferState[offer_record.state];
@@ -1581,6 +1467,175 @@ $(async function() {
         await update_accounts();
         form$.find('button').prop('disabled', false);
     });
+
+    var fill_view_offer = async function() {
+        var hash = window.location.hash;
+        var params = new URLSearchParams(hash.substring(1));
+        var address = params.get('address');
+        if( !address ) {
+            return;
+        }
+        var current_account = await get_current_account_async();
+        var offer_record = {
+            id: address
+        };
+        var offer_access = new ethers.Contract(
+            address,
+            offer_abi.abi,
+            current_account
+        );
+        try {
+            [
+                offer_record.owner,
+                offer_record.state,
+                offer_record.definition,
+                offer_record.amount,
+                offer_record.approved_at,
+                offer_record.completed_at,
+                offer_record.failed_at,
+                offer_record.voting_statistics,
+                offer_record.observers,
+                offer_record.winner,
+            ] = await Promise.all([
+                offer_access.owner(),
+                offer_access.state(),
+                offer_access.definition(),
+                provider.getBalance(offer_record.id),
+                offer_access.approved_at(),
+                offer_access.completed_at(),
+                offer_access.failed_at(),
+                offer_access.voting_statistics(),
+                offer_access.observers(),
+                offer_access.winner(),
+            ]);
+            offer_record.definition = (offer_record.definition).toObject();
+            offer_record.state_name = OfferState[offer_record.state];
+            offer_record.voting_statistics = offer_record.voting_statistics.toObject();
+            offer_record.observers = Object.assign({}, ...offer_record.observers.map((key, index) => ({[key]: key})));
+            offer_record.voting_statistics.sorted_observers_leaders = offer_record.voting_statistics.sorted_observers_leaders.map((item) => {
+                var vote = as_vote(item[0]);
+                return [(vote.failure ? 'Failure' : vote.contractor), item[1]];
+            });
+            offer_record.voting_statistics.sorted_contributors_leaders = offer_record.voting_statistics.sorted_contributors_leaders.map((item) => {
+                var vote = as_vote(item[0]);
+                return [(vote.failure ? 'Failure' : vote.contractor), item[1]];
+            });
+            offer_record.voting_statistics.sorted_contributors_fund_leaders = offer_record.voting_statistics.sorted_contributors_fund_leaders.map((item) => {
+                var vote = as_vote(item[0]);
+                return [(vote.failure ? 'Failure' : vote.contractor), item[1]];
+            });
+        } catch(ex) {
+            console.error('Error reading the Offer data. Is it a proper Offer contract address?', offer_record.id, ex);
+            // TODO: UI message
+            return;
+        }
+        $('#view-offer .offer-address').text(address);
+        $('#view-offer .offer-caption').text(offer_record.definition.caption);
+        $('#view-offer .offer-state').text(offer_record.state_name);
+        $('#view-offer .offer-winner').text(offer_record.winner);
+        if(offer_record.state < 2n) {
+            $('#view-offer .offer-winner-table').addClass('d-none');
+            $('#view-offer .offer-winner-head').addClass('d-none');
+            $('#view-offer .offer-balance-head').removeClass('d-none');
+            $('#view-offer .offer-balance-table').removeClass('d-none');
+        } else if(offer_record.state == 2n) {
+            $('#view-offer .offer-winner-table').removeClass('d-none');
+            $('#view-offer .offer-winner-head').removeClass('d-none');
+            $('#view-offer .offer-winner-head').text('Winner');
+            $('#view-offer .offer-balance-head').addClass('d-none');
+            $('#view-offer .offer-balance-table').addClass('d-none');
+        } else {
+            $('#view-offer .offer-winner-head').removeClass('d-none');
+            $('#view-offer .offer-winner-head').text('Failure');
+            $('#view-offer .offer-winner-table').addClass('d-none');
+            $('#view-offer .offer-balance-head').removeClass('d-none');
+            $('#view-offer .offer-balance-table').removeClass('d-none');
+        }
+        var md = new remarkable.Remarkable('full', {
+            html: true,
+            breaks: true,
+            typographer:  true,
+        });
+        $('#view-offer .offer-description').html(md.render(offer_record.definition.description));
+        $('#view-offer .offer-full-details').html(md.render(offer_record.definition.full_details));
+        $('#view-offer .offer-state-icon').html(
+            $($('#icon-state-' + offer_record.state_name).text())
+        );
+        $('#view-offer .offer-balance').text(etherHuman(offer_record.amount));
+        $('#view-offer .offer-approved-at-row').addClass('d-none');
+        $('#view-offer .offer-completed-at-row').addClass('d-none');
+        $('#view-offer .offer-failed-at-row').addClass('d-none');
+        if(offer_record.state > 0n) {
+             $('#view-offer .offer-approved-at-row').removeClass('d-none');
+        }
+        if(offer_record.state == 2n) {
+            $('#view-offer .offer-completed-at-row').removeClass('d-none');
+        } else if(offer_record.state == 3n) {
+            $('#view-offer .offer-failed-at-row').removeClass('d-none');
+        }
+        $('#view-offer .offer-approved-at').text(offer_record.approved_at ? new Date(Number(offer_record.approved_at) * 1000).toLocaleString() : '-');
+        $('#view-offer .offer-completed-at').text(offer_record.completed_at ? new Date(Number(offer_record.completed_at) * 1000).toLocaleString() : '-');
+        $('#view-offer .offer-failed-at').text(offer_record.failed_at ? new Date(Number(offer_record.failed_at) * 1000).toLocaleString() : '-');
+        $('#view-offer .offer-total-observers-count').text(
+            offer_record.voting_statistics.total_observers_count
+        );
+        $('#view-offer .offer-total-contributors-count').text(
+            offer_record.voting_statistics.total_contributors_count
+        );
+        $('#view-offer .offer-total-contributors-fund').text(
+            etherHuman(offer_record.voting_statistics.total_contributors_fund)
+        );
+        $('#view-offer .offer-observer-contenders-count').text(
+            offer_record.voting_statistics.sorted_observers_leaders.length
+        );
+        $('#view-offer .offer-contributor-contenders-count').text(
+            offer_record.voting_statistics.sorted_contributors_leaders.length
+        );
+        var contenders_set = Object.assign({}, ...offer_record.voting_statistics.sorted_contributors_leaders.map(([k, p], index) => ({[k]: k})));
+        contenders_set = Object.assign(contenders_set, ...offer_record.voting_statistics.sorted_observers_leaders.map(([k, p], index) => ({[k]: k})));
+        var contenders_list = Object.keys(contenders_set);
+        $('#view-offer .offer-contenders-count').text(
+            contenders_list.length
+        );
+        $('#view-offer .offer-observers-list').text('');
+        for(var k in offer_record.observers) {
+            var row$ = $($('#view-observers-list-item').text());
+            row$.find('.item-text').text(k);
+            $('#view-offer .offer-observers-list').append(row$);
+        }
+        $('#view-offer .offer-observers-contenders-list').text('');
+        offer_record.voting_statistics.sorted_observers_leaders.map(([k, p]) => {
+            var row$ = $($('#offer-contenders-list-item').text());
+            row$.find('.item-text').text(k);
+            row$.find('.item-percent').text(Number(p * 10000n / offer_record.voting_statistics.total_observers_count)/100);
+            $('#view-offer .offer-observers-contenders-list').append(row$);
+            console.log('Observer contender:', k, p);
+        });
+        $('#view-offer .offer-contributors-contenders-list').text('');
+        offer_record.voting_statistics.sorted_contributors_leaders.map(([k, p]) => {
+            var row$ = $($('#offer-contenders-list-item').text());
+            row$.find('.item-text').text(k);
+            row$.find('.item-percent').text(Number(p * 10000n / offer_record.voting_statistics.total_contributors_count)/100);
+            $('#view-offer .offer-contributors-contenders-list').append(row$);
+            console.log('Contributor contender:', k, p);
+        });
+        $('#view-offer .offer-contributors-fund-contenders-list').text('');
+        offer_record.voting_statistics.sorted_contributors_fund_leaders.map(([k, p]) => {
+            var row$ = $($('#offer-contenders-list-item').text());
+            row$.find('.item-text').text(k);
+            row$.find('.item-percent').text(Number(p * 10000n / offer_record.voting_statistics.total_contributors_fund)/100);
+            $('#view-offer .offer-contributors-fund-contenders-list').append(row$);
+            console.log('Contributor fund contender:', k, p);
+        });
+        console.log(">>>>>");
+    };
+
+    $('#view-offer').on('visible', async function(event) {
+        if(event.target == $('#view-offer')[0] ) {
+            await fill_view_offer();
+        }
+    });
+
 
     $('#edit-offer form').on('submit', async function(event) {
         // edit offer page submit
@@ -1871,7 +1926,7 @@ $(async function() {
         ethereum = option$[0].ethereum;
         provider = new ethers.BrowserProvider(ethereum, 'any');
         button$[0].current = option$[0].rdns;
-        button$.html(`<img src="${option$[0].icon}"> ${option$[0].name}`);
+        button$.html(`<img src="${option$[0].icon}" height="20pt"> ${option$[0].name}`);
         form$.find('a.dropdown-item').removeClass('active');
         option$.find('a').addClass('active');
         await update_accounts();
@@ -1901,7 +1956,7 @@ $(async function() {
             var option$ = $(`
                 <li rdns="${event.detail.info.rdns}">
                     <a class="dropdown-item" href="#" title="${account_address}">
-                        <img src="${event.detail.info.icon}"></img> ${event.detail.info.name}
+                        <img src="${event.detail.info.icon}" height="20p"></img> ${event.detail.info.name}
                         <p class="text-little">
                         <em>${account_balance_s}</em>
                         </p>
