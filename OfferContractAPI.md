@@ -265,7 +265,7 @@ function origin_observer_status() external view sender_origin() returns(bool is_
 ```
 
 - `is_observer` – `true` if the origin is a registered observer; otherwise, `false`.
-- `observer_voting` – the vote cast by the observer, represented as a 256-bit integer (see "🗳️ Current Voting Status Return Value").
+- `observer_voting` – the vote cast by the observer, represented as a 256-bit integer (see [🗳️ Current Voting Status Return Value](#%EF%B8%8F-current-voting-status-return-value)).
 
 ### 👥 Origin Contributor Status
 
@@ -282,7 +282,7 @@ function origin_contributor_status() external view sender_origin() returns(
 ```
 
 - `is_contributor` – `true` if the origin is a registered contributor; otherwise, `false`.
-- `contributor_voting` – the vote cast by the contributor, represented as a 256-bit integer (see "🗳️ Current Voting Status Return Value").
+- `contributor_voting` – the vote cast by the contributor, represented as a 256-bit integer (see [🗳️ Current Voting Status Return Value](#%EF%B8%8F-current-voting-status-return-value)).
 - `contribution_amount` – the total amount of funds contributed by this address, in `wei`.
 - `canceled_at` – the block timestamp of the cancellation request, or `0` if no request has been made.
 - `contribution_cancelation_timeout` – time in seconds remaining until the contributor can reclaim their funds. Returns `0` if no cancellation request exists or if the timeout has already expired.

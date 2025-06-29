@@ -66,8 +66,8 @@ The **OGOO Web GUI** includes an option to deploy a contract instance. However, 
 
 All dependencies are listed in the [package.json](package.json) file. Key dependencies include:
 
-- **Hardhat** – An Ethereum development framework.
-- **SOLT** – A Solidity preprocessing and templating tool.
+- [Hardhat](https://github.com/NomicFoundation/hardhat) – An Ethereum development framework.
+- [SOLT](https://github.com/nnseva/solt) – A Solidity preprocessing and templating tool.
 
 ## 🛠️ Contributions
 
