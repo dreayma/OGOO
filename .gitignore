@@ -1,4 +1,7 @@
-.*
+.git
+.env
+.kateconfig
+*.kate-swp
 cache/
 node_modules/
 artifacts/
