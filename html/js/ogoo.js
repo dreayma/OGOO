@@ -1558,6 +1558,15 @@ $(async function() {
         });
         $('#view-offer .offer-description').html(md.render(offer_record.definition.description));
         $('#view-offer .offer-full-details').html(md.render(offer_record.definition.full_details));
+        $('#view-offer .offer-contribution-min-balance').text(etherHuman(offer_record.definition.contribution_min_balance));
+        $('#view-offer .offer-contribution-unlock-timeout').text(durationHuman(offer_record.definition.contribution_unlock_timeout));
+        $('#view-offer .offer-voting-start-balance').text(etherHuman(offer_record.definition.voting_start_balance));
+        $('#view-offer .offer-voting-start-count').text(offer_record.definition.voting_start_count);
+        $('#view-offer .offer-voting-start-timeout').text(durationHuman(offer_record.definition.voting_start_timeout));
+        $('#view-offer .offer-voting-fail-timeout').text(durationHuman(offer_record.definition.voting_fail_timeout));
+        $('#view-offer .offer-observers-vote-percent').text(Number(offer_record.definition.observers_vote_percent) / 100 + '%');
+        $('#view-offer .offer-contributors-vote-percent').text(Number(offer_record.definition.contributors_vote_percent) / 100 + '%');
+        $('#view-offer .offer-contributors-vote-fund-percent').text(Number(offer_record.definition.contributors_vote_fund_percent) / 100 + '%');
         $('#view-offer .offer-state-icon').html(
             $($('#icon-state-' + offer_record.state_name).text())
         );
@@ -1627,7 +1636,7 @@ $(async function() {
             $('#view-offer .offer-contributors-fund-contenders-list').append(row$);
             console.log('Contributor fund contender:', k, p);
         });
-        console.log(">>>>>");
+        
     };
 
     $('#view-offer').on('visible', async function(event) {

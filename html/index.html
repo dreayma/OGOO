@@ -1043,6 +1043,9 @@ p,h1,h2,h3,h4:has(.account-address) {
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="view-offer-details-tab" data-bs-toggle="tab" data-bs-target="#view-offer-details" type="button" role="tab" aria-controls="view-offer-details" aria-selected="false">Full Details</button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="view-offer-definition-tab" data-bs-toggle="tab" data-bs-target="#view-offer-definition" type="button" role="tab" aria-controls="view-offer-definition" aria-selected="false">Parameters</button>
+      </li>
     </ul>
     <div class="tab-content" id="view-offer-tabs-content">
       <div class="tab-pane fade" id="view-offer-main" role="tabpanel" aria-labelledby="view-offer-main-tab"  pagetitle="Offer Info | View Offer | OGOO">
@@ -1169,6 +1172,80 @@ p,h1,h2,h3,h4:has(.account-address) {
           </div>
           <div class="mb-3">
             <div class="markdown offer-full-details bg-light"></div>
+          </div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="view-offer-definition" role="tabpanel" aria-labelledby="view-offer-definition-tab" pagetitle="Parameters | View Offer | OGOO">
+        <div class="mb-3 border rounded shadow-sm p-3 bg-white">
+          <div class="mb-2 border-bottom pb-2 d-flex align-items-center">
+            <span class="offer-state-icon me-2"></span>
+            <span class="fw-bold offer-caption"></span>
+          </div>
+          <div class="row mb-3">
+            <div class="col col-12 col-sm-6 col-lg-3">
+              <h5>Contributor Limitations</h5>
+              <table class="table table-sm">
+                <tbody>
+                  <tr class="offer-contribution-min-balance-row">
+                    <td class="offer-contribution-min-balance-head">Contribution Minimum Balance:</td>
+                    <td><em class="offer-contribution-min-balance"></em></td>
+                  </tr>
+                  <tr class="offer-contribution-unlock-timeout-row">
+                    <td class="offer-contribution-unlock-timeout-head">Contribution Unlock Timeout:</td>
+                    <td><em class="offer-contribution-unlock-timeout"></em></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="col col-12 col-sm-6 col-lg-3">
+              <h5>Voting Start Conditions</h5>
+              <table class="table table-sm">
+                <tbody>
+                  <tr class="offer-voting-start-balance-row">
+                    <td class="offer-voting-start-balance-head">Voting Start Balance:</td>
+                    <td><em class="offer-voting-start-balance"></em></td>
+                  </tr>
+                  <tr class="offer-voting-start-count-row">
+                    <td class="offer-voting-start-count-head">Voting Start Count:</td>
+                    <td><em class="offer-voting-start-count"></em></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="col col-12 col-sm-6 col-lg-3">
+              <h5>Failure Timeouts</h5>
+              <table class="table table-sm">
+                <tbody>
+                  <tr class="offer-voting-start-timeout-row">
+                    <td class="offer-voting-start-timeout-head">Voting Start Timeout:</td>
+                    <td><em class="offer-voting-start-timeout"></em></td>
+                  </tr>
+                  <tr class="offer-voting-fail-timeout-row">
+                    <td class="offer-voting-fail-timeout-head">Voting Fail Timeout:</td>
+                    <td><em class="offer-voting-fail-timeout"></em></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="col col-12 col-sm-6 col-lg-3">
+              <h5>Voting Success Criteria</h5>
+              <table class="table table-sm">
+                <tbody>
+                  <tr class="offer-observers-vote-percent-row">
+                    <td class="offer-observers-vote-percent-head">Observers Vote Percent:</td>
+                    <td><em class="offer-observers-vote-percent"></em></td>
+                  </tr>
+                  <tr class="offer-contributors-vote-percent-row">
+                    <td class="offer-contributors-vote-percent-head">Contributors Vote Percent:</td>
+                    <td><em class="offer-contributors-vote-percent"></em></td>
+                  </tr>
+                  <tr class="offer-contributors-vote-fund-percent-row">
+                    <td class="offer-contributors-vote-fund-percent-head">Contributors Vote Fund Percent:</td>
+                    <td><em class="offer-contributors-vote-fund-percent"></em></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
       </div>
     </div>

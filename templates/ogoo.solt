@@ -755,6 +755,7 @@ contract Offer {
         uint[2][] memory sorted_contributors_leaders,
         uint[2][] memory sorted_contributors_fund_leaders
     ) {
+        // Returns some statistics collected
         total_observers_count = _observers.length();
         total_contributors_count = _total_contributors_count;
         total_contributors_fund = _total_contributors_fund;
