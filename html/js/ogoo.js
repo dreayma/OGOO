@@ -1202,6 +1202,12 @@ $(async function() {
             }
             await update_accounts();
             bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
+            // select the edit offer pane for the just created offer
+            var hash = document.location.hash;
+            var params = new URLSearchParams(hash.substring(1));
+            params.set('pane', 'edit-offer');
+            params.set('address', offer.target);
+            document.location.hash = '#' + params.toString().replaceAll('+', ' ');
         } catch(ex) {
             var err = ex.shortMessage;
             console.error('Error creating the contract:', ex);
