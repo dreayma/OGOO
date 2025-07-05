@@ -1060,7 +1060,32 @@ $(async function() {
             input.click();
         }
     });
-
+    $('.share-archive-button').on('click', async function (event) {
+        // share archive button
+        event.preventDefault();
+        var offers = await get_offers_list();
+        console.log('Share Archive', offers);
+        var content = offers.join("\n") + "\n";
+        if (false && navigator.canShare && navigator.canShare({ text: content })) {
+            // Use the Web Share API if available
+            // TODO: test on supporting browsers and platforms before release
+            try {
+                await navigator.share({
+                    title: 'Ogoo Offers Archive',
+                    text: content,
+                    url: 'data:text/csv;charset=utf-8,' + encodeURIComponent(content)
+                });
+            } catch (err) {
+                console.error('Error sharing archive:', err);
+                alert('Failed to share archive: ' + err.message);
+            }
+        } else {
+            // Fallback: open share dialog
+            const shareDialog = $('#share-archive');
+            shareDialog.find('.share-archive-content').val(content);
+            bootstrap.Modal.getOrCreateInstance(shareDialog[0]).show();
+        }
+    });
     $('#create-offer form').on('submit', async function(event) {
         // create offer page submit
         event.preventDefault();
