@@ -128,7 +128,7 @@ $(async function() {
     };
 
     const convertToWei = function(value, unit_index=0) {
-        var int, frac;
+        var sint, sfrac;
         [sint, sfrac] = value.toString().split('.');
         if(typeof(sfrac) == 'undefined')
             sfrac = '';
@@ -152,7 +152,7 @@ $(async function() {
         var sfrac;
         if(swei.length > unit_index * 3) {
             sint = swei.substr(0, swei.length - unit_index * 3);
-            sfrac = swei.substr(swei.length - unit_index * 3, swei.length); 
+            sfrac = swei.substr(swei.length - unit_index * 3, swei.length);
         } else {
             sint = '0';
             sfrac = '0'.repeat(unit_index * 3 - swei.length) + swei;
@@ -301,7 +301,7 @@ $(async function() {
         parents$.add(
             pane$
         ).add(
-            $(`[data-bs-target="${selector}"][data-bs-toggle="tab"]`)    
+            $(`[data-bs-target="${selector}"][data-bs-toggle="tab"]`)
         ).add(
             $(`li.nav-item.dropdown:has([data-bs-target="${selector}"][data-bs-toggle="tab"]) a.dropdown-toggle`)
         ).addClass('active show');
@@ -845,7 +845,7 @@ $(async function() {
                 await tx.wait();
                 modal_info$.text('');
                 await update_accounts();
-                bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+                bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
                 dialogue$.find('.approve-offer-warning').addClass('d-none');
                 dialogue$.find('button.pre-approve').removeClass('d-none');
                 dialogue$.find('button.approve').addClass('d-none disabled');
@@ -901,7 +901,7 @@ $(async function() {
                 await tx.wait();
                 modal_info$.text('');
                 await update_accounts();
-                bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+                bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
             } catch(ex) {
                 var err = ex.shortMessage;
                 console.error('Error contributing to the contract:', ex);
@@ -983,6 +983,84 @@ $(async function() {
         await fill_offer_lists();
         bootstrap.Modal.getOrCreateInstance($('#watch-offer')[0]).hide();
     });
+    $('.save-archive-button').on('click', async function (event) {
+        // save archive button
+        event.preventDefault();
+        var offers = await get_offers_list();
+        console.log('Save Archive', offers);
+        var content = offers.join("\n") + "\n";
+        if (window.showSaveFilePicker) {
+            // If File System Access API is available
+            const opts = {
+                types: [{
+                    description: 'CSV file',
+                    accept: { 'text/csv': ['.csv'] },
+                }],
+                suggestedName: 'offers.csv'
+            };
+            const handle = await window.showSaveFilePicker(opts);
+            const writable = await handle.createWritable();
+            await writable.write(content);
+            await writable.close();
+        } else {
+            // Fallback: create a download link
+            // Prepare CSV content
+            let csvContent = "data:text/csv;charset=utf-8," + content;
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "offers.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    });
+    $('.restore-archive-button').on('click', async function (event) {
+        // restore archive button
+        event.preventDefault();
+        var _read_and_add_offers = async function (file) {
+            // Read offers from a file
+            const text = await file.text();
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+            for (const line of lines) {
+                try {
+                    await add_offer_to_list(line);
+                } catch (ex) {
+                    // Ignore duplicates or invalid offers, optionally show error
+                    console.warn('Failed to add offer from archive:', line, ex);
+                }
+            }
+            await fill_offer_lists();
+        };
+        if (window.showOpenFilePicker) {
+            // Use the File Picker API if available
+            const [fileHandle] = await window.showOpenFilePicker({
+                types: [{
+                description: 'CSV file',
+                accept: { 'text/csv': ['.csv'] },
+                }],
+                multiple: false
+            });
+            const file = await fileHandle.getFile();
+            await _read_and_add_offers(file);
+        } else {
+            // Fallback for browsers without File Picker API
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv,text/csv';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                await _read_and_add_offers(file);
+                document.body.removeChild(input);
+            };
+            input.click();
+        }
+    });
+
     $('#create-offer form').on('submit', async function(event) {
         // create offer page submit
         event.preventDefault();
@@ -1030,7 +1108,7 @@ $(async function() {
         dialogue$.find('form')[0].definition = definition;
         dialogue$.find('form')[0].current_account = current_account;
         var balance = await provider.getBalance(current_account.address);
-        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show(); 
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
         dialogue$.find('.modal-header h1').text('Create a new Offer');
         dialogue$.find('.current-account-id').text(current_account.address);
         dialogue$.find('.current-account-balance').text(etherFormatApprox(balance));
@@ -1048,7 +1126,7 @@ $(async function() {
         var md = new remarkable.Remarkable('full', {
             html: true,
             breaks: true,
-            typographer:  true,
+            typographer: true,
         });
         dialogue$.find('.input-description').html(md.render(definition.description));
         dialogue$.find('.input-full-details').html(md.render(definition.full_details));
@@ -1098,7 +1176,7 @@ $(async function() {
                 modal_info$.text('Error adding the offer to the list: '+ err.toString());
             }
             await update_accounts();
-            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
         } catch(ex) {
             var err = ex.shortMessage;
             console.error('Error creating the contract:', ex);
@@ -1168,7 +1246,7 @@ $(async function() {
             }
             await tx.wait();
             modal_info$.text('');
-            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
         } catch(ex) {
             console.error('Error voting:', ex);
             var err = ex.shortMessage || ex.message;
@@ -1249,7 +1327,7 @@ $(async function() {
             }
             await tx.wait();
             modal_info$.text('');
-            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
         } catch(ex) {
             console.error('Error voting:', ex);
             var err = ex.shortMessage || ex.message;
@@ -1297,7 +1375,7 @@ $(async function() {
                 offer_record.origin_contributor_status,
                 offer_record.amount,
                 offer_record.observers,
-                ] = await Promise.all([
+            ] = await Promise.all([
                 offer_access.owner(),
                 offer_access.state(),
                 offer_access.definition(),
@@ -1323,7 +1401,7 @@ $(async function() {
 
         var edit_offer$ = $('#edit-offer');
         edit_offer$.find('form')[0].address = address;
-        
+
         {
             edit_offer$.find('input.input-caption').val(offer_record.definition.caption);
             var v = etherExactHuman(offer_record.definition.contribution_min_balance);
@@ -1405,7 +1483,7 @@ $(async function() {
             modal_info$.text('Waiting for transaction...');
             await tx.wait();
             modal_info$.text('');
-            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
         } catch(ex) {
             console.error('Error adding an observer:', ex);
             var err = ex.shortMessage || ex.message;
@@ -1446,7 +1524,7 @@ $(async function() {
             modal_info$.text('Waiting for transaction...');
             await tx.wait();
             modal_info$.text('');
-            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
         } catch(ex) {
             console.error('Error removing an observer:', ex);
             var err = ex.shortMessage || ex.message;
@@ -1575,7 +1653,7 @@ $(async function() {
         $('#view-offer .offer-completed-at-row').addClass('d-none');
         $('#view-offer .offer-failed-at-row').addClass('d-none');
         if(offer_record.state > 0n) {
-             $('#view-offer .offer-approved-at-row').removeClass('d-none');
+            $('#view-offer .offer-approved-at-row').removeClass('d-none');
         }
         if(offer_record.state == 2n) {
             $('#view-offer .offer-completed-at-row').removeClass('d-none');
@@ -1636,7 +1714,6 @@ $(async function() {
             $('#view-offer .offer-contributors-fund-contenders-list').append(row$);
             console.log('Contributor fund contender:', k, p);
         });
-        
     };
 
     $('#view-offer').on('visible', async function(event) {
@@ -1694,7 +1771,7 @@ $(async function() {
         dialogue$.find('form')[0].current_account = current_account;
         dialogue$.find('form')[0].address = form$[0].address;
         var balance = await provider.getBalance(current_account.address);
-        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show(); 
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
         dialogue$.find('.modal-header h1').text('Update Offer ');
         dialogue$.find('.current-account-id').text(current_account.address);
         dialogue$.find('.current-account-balance').text(etherFormatApprox(balance));
@@ -1713,7 +1790,7 @@ $(async function() {
         var md = new remarkable.Remarkable('full', {
             html: true,
             breaks: true,
-            typographer:  true,
+            typographer: true,
         });
         dialogue$.find('.input-description').html(md.render(definition.description));
         dialogue$.find('.input-full-details').html(md.render(definition.full_details));
@@ -1737,7 +1814,7 @@ $(async function() {
         dialogue$.find('.observer-address').text(observer_address);
         var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
     });
-    
+
     $('#edit-offer-submit form').on('submit', async function(event) {
         // edit offer dialog submit
         event.preventDefault();
@@ -1760,7 +1837,7 @@ $(async function() {
             modal_info$.text('');
             console.log('Offer updated:', address, definition);
             await fill_offer_lists();
-            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide(); 
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
         } catch(ex) {
             console.error('Error updating the offer:', ex);
             var err = ex.shortMessage || ex.message;
