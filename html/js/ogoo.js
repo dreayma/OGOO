@@ -366,7 +366,7 @@ $(async function() {
 
                 offer_record.contribution = offer_record.origin_contributor_status.contribution_amount;
                 offer_record.is_contributor = offer_record.origin_contributor_status.is_contributor;
-                offer_record.cancelation = offer_record.origin_contributor_status.cancelled_at != 0n;
+                offer_record.cancelation = offer_record.origin_contributor_status.canceled_at != 0n;
 
                 offer_record.is_observer = offer_record.origin_observer_status.is_observer;
                 offer_record.definition = (offer_record.definition).toObject();
