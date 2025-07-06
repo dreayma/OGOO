@@ -85,6 +85,10 @@ The **OGOO Web GUI** uses the following CDN-based libraries:
 
 ## 🛠️ Contributions
 
+### 🐞 Beta Testing
+
+Use the [brief testing manual](HOWTOTEST.md) to set up your testing environment and experiment with the OGOO application. Submit issues to the repository.
+
 ### 💡 Ideas
 
 Contributions to improve the project are welcome. Feel free to open an issue and describe your ideas to extend the functionality of the [OGOO Contract](OGOOContract.md) or the **OGOO Web GUI**.
