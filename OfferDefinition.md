@@ -1,5 +1,15 @@
 # Offer Definition Data Structure
 
+## 🗐 Documentation Pages
+
+- [README](README.md)
+- [OGOO Contract](OGOOContract.md)
+- [Offer Definition](OfferDefinition.md) ⏴ *this page*
+- [Offer Contract API](OfferContractAPI.md)
+- [How To Test](HOWTOTEST.md)
+
+## 📖 Introduction
+
 The `OfferDefinition` data structure defines the parameters of an Offer and is used in the Offer contract constructor. These parameters remain **immutable** for the entire lifecycle of the Offer after approval. The creator of the Offer can modify this structure **freely** until the Offer is approved.  
 
 All the parameters described below are available in the Offer creation and modification UI.
@@ -11,7 +21,7 @@ All the parameters described below are available in the Offer creation and modif
 ### 🏷️ Caption
 The `caption` attribute is a **short, free-form plain text** field. It provides a brief human-readable identifier for the Offer, helping users distinguish it from other Offers.
 
-### 📖 Description
+### 🗉 Description
 The `description` attribute is a **detailed, informal description** of the Offer.  
 - It supports **Markdown formatting**.  
 - It appears **directly below** the `caption` in the Offer details view.
@@ -23,7 +33,7 @@ The `full_details` attribute provides a **formal, structured description** of th
 
 ---
 
-## 🔹 Contributor Limitations
+## ⏹ Contributor Limitations
 
 ### 💰 Contribution Minimal Balance
 The `contribution_min_balance` attribute defines the **minimum contribution amount** in ${Wei}=10^{-18}Ξ$.  
@@ -59,7 +69,7 @@ If an Offer's impact fund **fails to meet the thresholds** within the specified 
 The `voting_start_timeout` attribute defines the **time limit** (in seconds) within which voting must become active.  
 If the threshold is not met within this period, the Offer fails.
 
-### 🔚 Voting Fail Timeout
+### ❌ Voting Fail Timeout
 The `voting_fail_timeout` attribute defines the **maximum duration** (in seconds) for completing voting on a contender.  
 If the timeout expires without a successful vote, the Offer is considered **failed**.  
 This parameter effectively determines the **maximum lifespan** of the Offer after approval.

@@ -1,5 +1,15 @@
 # Offer Contract API Reference
 
+## 🗐 Documentation Pages
+
+- [README](README.md)
+- [OGOO Contract](OGOOContract.md)
+- [Offer Definition](OfferDefinition.md)
+- [Offer Contract API](OfferContractAPI.md) ⏴ *this page*
+- [How To Test](HOWTOTEST.md)
+
+## 📖 Introduction
+
 This document provides a comprehensive reference for all public API endpoints of the Offer smart contract.
 
 ## 🏗️ Offer Definition Structure

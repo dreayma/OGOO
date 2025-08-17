@@ -1,5 +1,13 @@
 # How to Test the OGOO Software
 
+## 🗐 Documentation Pages
+
+- [README](README.md)
+- [OGOO Contract](OGOOContract.md)
+- [Offer Definition](OfferDefinition.md)
+- [Offer Contract API](OfferContractAPI.md)
+- [How To Test](HOWTOTEST.md) ⏴ *this page*
+
 ## Install a Wallet
 
 The OGOO software requires a cryptocurrency wallet. We recommend [MetaMask](https://metamask.io/).

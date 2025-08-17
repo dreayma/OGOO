@@ -1,5 +1,13 @@
 # Open Group Open Offer (OGOO)
 
+## 🗐 Documentation Pages
+
+- [README](README.md) ⏴ *this page*
+- [OGOO Contract](OGOOContract.md)
+- [Offer Definition](OfferDefinition.md)
+- [Offer Contract API](OfferContractAPI.md)
+- [How To Test](HOWTOTEST.md)
+
 ## ⚠️ Disclaimer
 
 **This software is in an early beta stage. Use it at your own risk.**
