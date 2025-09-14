@@ -128,7 +128,10 @@ To use one of the HardHat test accounts in MetaMask:
 
 The test account will now appear in your MetaMask wallet, and you can use its pre-funded test ETH for transactions.
 
-Make sure to select the _test network_ as your current network (dropdown in the top left corner of MetaMask), and your _test account_ as your current account (dropdown at the top center of MetaMask). You should see your test account pre-funded with 10000 ETH. If the balance does not appear immediately, try switching networks in MetaMask.
+Make sure to select the _test network_ as your current network, and your _test account_ as your current account (dropdown at the top center of MetaMask). You should see your test account pre-funded with 10000 ETH. If the balance does not appear immediately, try switching networks in MetaMask.
+
+- In the oldest versions of MetaMask, the _network_ is switched globally using dropdown in the top left corner of MetaMask
+- In the modern versions of MetaMask, the _network_ is switched individually for the application, clicking the _application icon_ to the left of the menu switch in the top right corner of MetaMask.
 
 ## Go to the Site
 
