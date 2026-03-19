@@ -193,6 +193,157 @@ $(async function() {
         return `${data.name}(${data.args.join(', ')})`;
     };
 
+    // Language Support
+    let currentLang = 'en'; // Default to English
+    const translations = {
+        'en': {
+            'nav_dashboard': 'Dashboard',
+            'nav_offers': 'Offers',
+            'nav_offers_list': 'Offers List',
+            'nav_add_offer': 'Add by Address',
+            'nav_contributions': 'Contributions',
+            'nav_my_contributions': 'My Contributions',
+            'nav_new_contribution': 'New Contribution',
+            'nav_management': 'Management',
+            'start_tour': 'Tour',
+            'hero_title': 'Open Group Open Offer',
+            'hero_subtitle': 'Decentralized impact funds governed by the community. Create, contribute, and solve real-world problems.',
+            'btn_create_offer': 'Create Offer',
+            'card_offers_title': 'Active Offers',
+            'card_offers_subtitle': 'Offers currently being tracked',
+            'btn_view_all': 'View All',
+            'card_contrib_title': 'My Contributions',
+            'card_contrib_subtitle': 'Your active stakes in funds',
+            'btn_manage': 'Manage',
+            'card_managed_title': 'Managed by Me',
+            'card_managed_subtitle': 'Offers you have created',
+            'btn_admin_panel': 'Admin Panel',
+            'how_it_works_title': 'How it works?',
+            'how_it_works_text': 'OGOO is a platform where anyone can propose a problem to be solved. The community funds the reward, and the best solution gets the prize after a transparent voting process.',
+            'btn_learn_more': 'Learn More'
+        },
+        'ru': {
+            'nav_dashboard': 'Панель управления',
+            'nav_offers': 'Предложения',
+            'nav_offers_list': 'Список предложений',
+            'nav_add_offer': 'Добавить по адресу',
+            'nav_contributions': 'Вклады',
+            'nav_my_contributions': 'Мои вклады',
+            'nav_new_contribution': 'Новый вклад',
+            'nav_management': 'Управление',
+            'start_tour': 'Тур',
+            'hero_title': 'Open Group Open Offer',
+            'hero_subtitle': 'Децентрализованные фонды влияния, управляемые сообществом. Создавайте, инвестируйте и решайте реальные проблемы.',
+            'btn_create_offer': 'Создать оффер',
+            'card_offers_title': 'Активные офферы',
+            'card_offers_subtitle': 'Офферы, которые вы отслеживаете',
+            'btn_view_all': 'Смотреть все',
+            'card_contrib_title': 'Мои вклады',
+            'card_contrib_subtitle': 'Ваши активные доли в фондах',
+            'btn_manage': 'Управлять',
+            'card_managed_title': 'Управляемые мной',
+            'card_managed_subtitle': 'Офферы, созданные вами',
+            'btn_admin_panel': 'Панель админа',
+            'how_it_works_title': 'Как это работает?',
+            'how_it_works_text': 'OGOO — это платформа, где любой желающий может предложить проблему для решения. Сообщество финансирует награду, а лучшее решение получает приз после прозрачного процесса голосования.',
+            'btn_learn_more': 'Узнать больше'
+        }
+    };
+
+    const updateLanguage = function(lang) {
+        currentLang = lang;
+        $('[data-t]').each(function() {
+            const key = $(this).data('t');
+            if (translations[lang] && translations[lang][key]) {
+                $(this).text(translations[lang][key]);
+            }
+        });
+        $('[data-lang]').removeClass('active');
+        $(`[data-lang="${lang}"]`).addClass('active');
+        $('#langSelector').html(`<i class="bi bi-translate me-1"></i> ${lang.toUpperCase()}`);
+        localStorage.setItem('ogoo_lang', lang);
+    };
+
+    // Product Tour Logic
+    const startProductTour = function() {
+        const tour = introJs();
+        const steps = currentLang === 'ru' ? [
+            {
+                title: 'Добро пожаловать в OGOO!',
+                intro: 'Давайте быстро разберем, как работает платформа.'
+            },
+            {
+                element: '#tour-offers',
+                intro: 'Здесь вы можете найти список всех доступных предложений или добавить существующий контракт по адресу.'
+            },
+            {
+                element: '#tour-contributions',
+                intro: 'Управляйте своими вкладами и создавайте новые инвестиции в фонды влияния.'
+            },
+            {
+                element: '#tour-create-offer',
+                intro: 'Нажмите сюда, чтобы запустить собственный фонд и предложить задачу сообществу.'
+            },
+            {
+                element: '#tour-stats-offers',
+                intro: 'Ваша личная статистика: сколько офферов вы отслеживаете в данный момент.'
+            }
+        ] : [
+            {
+                title: 'Welcome to OGOO!',
+                intro: 'Let\'s quickly walk through how the platform works.'
+            },
+            {
+                element: '#tour-offers',
+                intro: 'Here you can find a list of all available offers or add an existing contract by address.'
+            },
+            {
+                element: '#tour-contributions',
+                intro: 'Manage your contributions and create new investments in impact funds.'
+            },
+            {
+                element: '#tour-create-offer',
+                intro: 'Click here to launch your own fund and propose a task to the community.'
+            },
+            {
+                element: '#tour-stats-offers',
+                intro: 'Your personal statistics: how many offers you are currently tracking.'
+            }
+        ];
+
+        tour.setOptions({
+            steps: steps,
+            showProgress: true,
+            showBullets: false,
+            nextLabel: currentLang === 'ru' ? 'Далее' : 'Next',
+            prevLabel: currentLang === 'ru' ? 'Назад' : 'Prev',
+            doneLabel: currentLang === 'ru' ? 'Готово' : 'Done'
+        }).start();
+    };
+
+    $(document).on('click', '[data-lang]', function(e) {
+        e.preventDefault();
+        updateLanguage($(this).data('lang'));
+    });
+
+    $(document).on('click', '#start-tour', function(e) {
+        e.preventDefault();
+        startProductTour();
+    });
+
+    // Initialize language on load
+    const detectLanguage = function() {
+        const saved = localStorage.getItem('ogoo_lang');
+        if (saved) return saved;
+        
+        const browserLang = (navigator.language || navigator.userLanguage).toLowerCase();
+        if (browserLang.startsWith('ru')) return 'ru';
+        
+        return 'en'; // Default
+    };
+    
+    updateLanguage(detectLanguage());
+
     const get_database = async function() {
         return await new Promise(function(resolve, reject) {
             var request = indexedDB.open('ogoo', 1);
@@ -320,12 +471,15 @@ $(async function() {
         'FAILED',
     ];
 
+    // [TEMPORARY DISABLED] Ethereum module check disabled for UI development
+    /*
     if( typeof(ethereum) == 'undefined' ) {
         bootstrap.Modal.getOrCreateInstance($('#no-ethereum')[0], {
             keyboard: false,
         }).show();
         return;
     }
+    */
 
     // get all offers accordingly to the current account
     const get_offer_records_list = async function(current_account) {
