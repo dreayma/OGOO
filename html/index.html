@@ -172,13 +172,8 @@
                         <li><a class="dropdown-item" id="observing-list-tab" data-bs-toggle="tab" data-bs-target="#observing-list" role="tab" data-t="nav_observing_list">Observed Offers</a></li>
                     </ul>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="helpdropdown" data-bs-toggle="dropdown" data-t="nav_help">Help</a>
-                    <ul class="dropdown-menu border-0 shadow-sm">
-                        <li><a class="dropdown-item" id="help-user-guide-tab" data-bs-toggle="tab" data-bs-target="#help-user-guide" role="tab" data-t="nav_help_guide">User Guide</a></li>
-                        <li><a class="dropdown-item" id="help-roles-tab" data-bs-toggle="tab" data-bs-target="#help-roles" role="tab" data-t="nav_help_roles">Roles Explained</a></li>
-                        <li><a class="dropdown-item" id="help-glossary-tab" data-bs-toggle="tab" data-bs-target="#help-glossary" role="tab" data-t="nav_help_glossary">Glossary</a></li>
-                    </ul>
+                <li class="nav-item">
+                    <a class="nav-link" id="help-page-tab" data-bs-toggle="tab" data-bs-target="#help-page" role="tab" data-t="nav_help">Help</a>
                 </li>
             </ul>
             
@@ -302,7 +297,8 @@
             <!-- About Section -->
             <div class="row mt-5 fade-in">
                 <div class="col-12">
-                    <div class="card bg-dark text-white p-4 border-0 rounded-4 shadow">
+                    <div class="card bg-dark text-white p-4 border-0 rounded-4 shadow position-relative">
+                        <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="card" aria-label="Close" onclick="this.closest('.card').remove();"></button>
                         <div class="row align-items-center">
                             <div class="col-md-8">
                                 <h3 class="fw-bold mb-3" data-t="how_it_works_title">How it works?</h3>
@@ -376,121 +372,78 @@
             </div>
         </div>
 
-        <!-- Help: User Guide -->
-        <div class="tab-pane fade" id="help-user-guide" role="tabpanel" pagetitle="OGOO | User Guide">
-            <div class="row g-4">
-                <div class="col-12">
-                    <h2 class="fw-bold mb-4" data-t="help_guide_title">User Guide</h2>
-                    <p class="lead text-muted" data-t="help_guide_subtitle">Welcome to OG OO! This guide will help you get started.</p>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body">
-                            <div class="bg-primary bg-opacity-10 p-3 rounded-3 d-inline-block mb-3">
-                                <i class="bi bi-wallet2 text-primary fs-4"></i>
-                            </div>
-                            <h5 data-t="help_step1_title">1. Connect Wallet</h5>
-                            <p class="text-muted small" data-t="help_step1_text">Click "Connect Wallet" to link your Ethereum wallet (MetaMask recommended).</p>
-                        </div>
+        <!-- Help: Single Page -->
+        <div class="tab-pane fade" id="help-page" role="tabpanel" pagetitle="OGOO">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="text-center mb-5">
+                        <h2 class="fw-bold mb-2" data-t="help_title">OGOO</h2>
+                        <p class="lead text-muted" data-t="help_subtitle">Decentralized impact fund platform</p>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body">
-                            <div class="bg-success bg-opacity-10 p-3 rounded-3 d-inline-block mb-3">
-                                <i class="bi bi-search text-success fs-4"></i>
-                            </div>
-                            <h5 data-t="help_step2_title">2. Explore Offers</h5>
-                            <p class="text-muted small" data-t="help_step2_text">Browse offers to find problems you want to help solve.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body">
-                            <div class="bg-warning bg-opacity-10 p-3 rounded-3 d-inline-block mb-3">
-                                <i class="bi bi-cash-stack text-warning fs-4"></i>
-                            </div>
-                            <h5 data-t="help_step3_title">3. Contribute</h5>
-                            <p class="text-muted small" data-t="help_step3_text">Add funds to offers you support. Your contribution gives you voting power.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Help: Roles -->
-        <div class="tab-pane fade" id="help-roles" role="tabpanel" pagetitle="OGOO | Roles">
-            <div class="row g-4">
-                <div class="col-12">
-                    <h2 class="fw-bold mb-4" data-t="help_roles_title">Roles Explained</h2>
-                </div>
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-primary text-white" data-t="role_owner">Owner</div>
-                        <div class="card-body">
-                            <p class="small mb-2" data-t="role_owner_desc">Creates the offer and defines the problem.</p>
-                            <p class="mb-1"><strong data-t="role_can">Can:</strong></p>
-                            <ul class="small">
-                                <li data-t="role_owner_can1">Edit offer before approval</li>
-                                <li data-t="role_owner_can2">Approve the offer</li>
-                                <li data-t="role_owner_can3">Add/remove observers</li>
-                            </ul>
+                    <!-- Quick Start -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-4" data-t="help_quick_start">Quick Start</h5>
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-primary rounded-pill me-3">1</span>
+                                <div>
+                                    <strong data-t="help_step1">Connect Wallet</strong>
+                                    <p class="text-muted mb-0 small" data-t="help_step1_desc">Use MetaMask to connect</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="badge bg-success rounded-pill me-3">2</span>
+                                <div>
+                                    <strong data-t="help_step2">Find an Offer</strong>
+                                    <p class="text-muted mb-0 small" data-t="help_step2_desc">Browse problems to solve</p>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-warning rounded-pill me-3" style="color:#000!important">3</span>
+                                <div>
+                                    <strong data-t="help_step3">Fund & Vote</strong>
+                                    <p class="text-muted mb-0 small" data-t="help_step3_desc">Contribute and pick a winner</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-success text-white" data-t="role_contributor">Contributor</div>
-                        <div class="card-body">
-                            <p class="small mb-2" data-t="role_contributor_desc">Funds the offer and gains voting power.</p>
-                            <p class="mb-1"><strong data-t="role_can">Can:</strong></p>
-                            <ul class="small">
-                                <li data-t="role_contributor_can1">Vote for contenders</li>
-                                <li data-t="role_contributor_can2">Cancel contribution</li>
-                                <li data-t="role_contributor_can3">View offer details</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Help: Glossary -->
-        <div class="tab-pane fade" id="help-glossary" role="tabpanel" pagetitle="OGOO | Glossary">
-            <div class="row g-4">
-                <div class="col-12">
-                    <h2 class="fw-bold mb-4" data-t="help_glossary_title">Glossary</h2>
-                </div>
-                <div class="col-md-6">
-                    <dl class="row">
-                        <dt class="col-sm-4" data-t="glossary_offer">Offer</dt>
-                        <dd class="col-sm-8" data-t="glossary_offer_desc">A proposal with problem description.</dd>
-                        
-                        <dt class="col-sm-4" data-t="glossary_fund">Impact Fund</dt>
-                        <dd class="col-sm-8" data-t="glossary_fund_desc">Pooled money to solve a problem.</dd>
-                        
-                        <dt class="col-sm-4" data-t="glossary_contrib">Contribution</dt>
-                        <dd class="col-sm-8" data-t="glossary_contrib_desc">Money added to an offer's fund.</dd>
-                        
-                        <dt class="col-sm-4" data-t="glossary_vote">Voting Power</dt>
-                        <dd class="col-sm-8" data-t="glossary_vote_desc">Weight of vote based on contribution.</dd>
-                    </dl>
-                </div>
-                <div class="col-md-6">
-                    <dl class="row">
-                        <dt class="col-sm-4" data-t="glossary_observer">Observer</dt>
-                        <dd class="col-sm-8" data-t="glossary_observer_desc">Trusted participant to validate.</dd>
-                        
-                        <dt class="col-sm-4" data-t="glossary_contender">Contender</dt>
-                        <dd class="col-sm-8" data-t="glossary_contender_desc">Person submitting a solution.</dd>
-                        
-                        <dt class="col-sm-4" data-t="glossary_approval">Approval</dt>
-                        <dd class="col-sm-8" data-t="glossary_approval_desc">When owner activates the offer.</dd>
-                        
-                        <dt class="col-sm-4" data-t="glossary_period">Voting Period</dt>
-                        <dd class="col-sm-8" data-t="glossary_period_desc">Time window for voting.</dd>
-                    </dl>
+                    <!-- Who does what -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-primary mb-2" data-t="role_owner">Owner</h6>
+                                    <p class="small text-muted mb-0" data-t="role_owner_desc">Creates the offer. Can edit, approve & add observers.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-success mb-2" data-t="role_contributor">Contributor</h6>
+                                    <p class="small text-muted mb-0" data-t="role_contributor_desc">Funds the offer. Votes for best solution.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-info mb-2" data-t="role_observer">Observer</h6>
+                                    <p class="small text-muted mb-0" data-t="role_observer_desc">Invited by owner. Helps validate solutions.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="fw-bold text-warning mb-2" data-t="role_contender">Contender</h6>
+                                    <p class="small text-muted mb-0" data-t="role_contender_desc">Submits solution. Wins fund if chosen.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -539,35 +492,78 @@
 
 <!-- About Application Modal -->
 <div class="modal fade" id="about-application" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-0 pb-0">
+            <div class="modal-header border-0">
+                <h5 class="fw-bold" data-t="about_title">How OGOO Works</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-5 pt-2">
-                <div class="text-center mb-4">
-                    <img src="./images/icons/favicon-96x96.png" alt="OGOO" class="mb-3">
-                    <h2 class="fw-bold">About OGOO</h2>
-                    <p class="text-muted">Version 0.0.1 Beta</p>
+            <div class="modal-body">
+                <p class="text-muted mb-4" data-t="about_desc">OGOO is a decentralized platform where anyone can propose a problem, the community funds the solution, and the best idea wins.</p>
+                
+                <!-- Steps -->
+                <h6 class="fw-bold mb-3" data-t="help_quick_start">Quick Start</h6>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-primary rounded-pill me-3">1</span>
+                    <div>
+                        <strong data-t="help_step1">Connect Wallet</strong>
+                        <p class="text-muted mb-0 small" data-t="help_step1_desc">Use MetaMask to connect</p>
+                    </div>
                 </div>
-                <p class="lead text-center mb-5">Open Group Open Offer is a decentralized platform for creating community-governed impact funds.</p>
-                <div class="row g-4 text-center">
-                    <div class="col-md-4">
-                        <i class="bi bi-shield-check text-primary fs-1"></i>
-                        <h6 class="fw-bold mt-2">Decentralized</h6>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-success rounded-pill me-3">2</span>
+                    <div>
+                        <strong data-t="help_step2">Find an Offer</strong>
+                        <p class="text-muted mb-0 small" data-t="help_step2_desc">Browse problems to solve</p>
                     </div>
-                    <div class="col-md-4">
-                        <i class="bi bi-people text-primary fs-1"></i>
-                        <h6 class="fw-bold mt-2">Community Led</h6>
+                </div>
+                <div class="d-flex align-items-center mb-4">
+                    <span class="badge bg-warning rounded-pill me-3" style="color:#000!important">3</span>
+                    <div>
+                        <strong data-t="help_step3">Fund & Vote</strong>
+                        <p class="text-muted mb-0 small" data-t="help_step3_desc">Contribute and pick a winner</p>
                     </div>
-                    <div class="col-md-4">
-                        <i class="bi bi-code-slash text-primary fs-1"></i>
-                        <h6 class="fw-bold mt-2">Open Source</h6>
+                </div>
+
+                <!-- Roles -->
+                <h6 class="fw-bold mb-3" data-t="help_roles_title">Roles</h6>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body py-2">
+                                <strong class="text-primary small" data-t="role_owner">Owner</strong>
+                                <p class="text-muted mb-0 small" data-t="role_owner_desc">Creates the offer</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body py-2">
+                                <strong class="text-success small" data-t="role_contributor">Contributor</strong>
+                                <p class="text-muted mb-0 small" data-t="role_contributor_desc">Funds & votes</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body py-2">
+                                <strong class="text-info small" data-t="role_observer">Observer</strong>
+                                <p class="text-muted mb-0 small" data-t="role_observer_desc">Validates solutions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body py-2">
+                                <strong class="text-warning small" data-t="role_contender">Contender</strong>
+                                <p class="text-muted mb-0 small" data-t="role_contender_desc">Submits solution</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer border-0 justify-content-center pb-4">
-                <a href="https://github.com/nnseva/OGOO" target="_blank" class="btn btn-dark">View on GitHub</a>
+                <a href="https://github.com/nnseva/OGOO" target="_blank" class="btn btn-dark" data-t="btn_github">View on GitHub</a>
             </div>
         </div>
     </div>
