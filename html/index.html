@@ -18,13 +18,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js" integrity="sha512-dj/EbePKIJrkhHMePgJ6ACP0v5whCZi+A8ot7WP+L0a3sPafqqWRiRhBBlGprs5hs5JjOYuTDlOic+qKc/s3mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js" integrity="sha512-NFUcDlm4V+a2sjPX7gREIXgCSFja9cHtKPOL1zj6QhnE0vcY695MODehqkaGYTLyL2wxe/wtr4Z49SvqXq12UQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qr-scanner/1.4.2/qr-scanner.umd.min.js" integrity="sha512-a/IwksuXdv0Q60tVkQpwMk5qY+6cJ0FJgi33lrrIddoFItTRiRfSdU1qogP3uYjgHfrGY7+AC+4LU4J+b9HcgQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js"></script>
-
     <!-- Styles (Restored Integrity) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" integrity="sha512-dPXYcDub/aeb08c63jRq/k6GaKccl256JQy/AnOq7CAnEZ9FzSL9wSbcZkMp4R26vBsMLFYH4kQ67/bbV8XaCQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/introjs.min.css">
     <link rel="stylesheet" href="css/custom.css">
 
     <!-- Favicons (Restored full set) -->
@@ -152,14 +149,14 @@
                 <li class="nav-item">
                     <a class="nav-link active" id="application-tab" data-bs-toggle="tab" data-bs-target="#application-page" role="tab" data-t="nav_dashboard">Dashboard</a>
                 </li>
-                <li class="nav-item dropdown" id="tour-offers">
+                <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="offersdropdown" data-bs-toggle="dropdown" data-t="nav_offers">Offers</a>
                     <ul class="dropdown-menu border-0 shadow-sm">
                         <li><a class="dropdown-item" id="offers-list-tab" data-bs-toggle="tab" data-bs-target="#offers-list" role="tab" data-t="nav_offers_list">Offers List</a></li>
                         <li><a class="dropdown-item" id="watch-offer-tab-btn" data-bs-toggle="modal" data-bs-target="#watch-offer" data-t="nav_add_offer">Add by Address</a></li>
                     </ul>
                 </li>
-                <li class="nav-item dropdown" id="tour-contributions">
+                <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="contributionsdropdown" data-bs-toggle="dropdown" data-t="nav_contributions">Contributions</a>
                     <ul class="dropdown-menu border-0 shadow-sm">
                         <li><a class="dropdown-item" id="contributions-list-tab" data-bs-toggle="tab" data-bs-target="#contributions-list" role="tab" data-t="nav_my_contributions">My Contributions</a></li>
@@ -169,13 +166,24 @@
                 <li class="nav-item">
                     <a class="nav-link" id="managed-offers-list-tab" data-bs-toggle="tab" data-bs-target="#managed-offers-list" role="tab" data-t="nav_management">Management</a>
                 </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="observingdropdown" data-bs-toggle="dropdown" data-t="nav_observing">Observing</a>
+                    <ul class="dropdown-menu border-0 shadow-sm">
+                        <li><a class="dropdown-item" id="observing-list-tab" data-bs-toggle="tab" data-bs-target="#observing-list" role="tab" data-t="nav_observing_list">Observed Offers</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="helpdropdown" data-bs-toggle="dropdown" data-t="nav_help">Help</a>
+                    <ul class="dropdown-menu border-0 shadow-sm">
+                        <li><a class="dropdown-item" id="help-user-guide-tab" data-bs-toggle="tab" data-bs-target="#help-user-guide" role="tab" data-t="nav_help_guide">User Guide</a></li>
+                        <li><a class="dropdown-item" id="help-roles-tab" data-bs-toggle="tab" data-bs-target="#help-roles" role="tab" data-t="nav_help_roles">Roles Explained</a></li>
+                        <li><a class="dropdown-item" id="help-glossary-tab" data-bs-toggle="tab" data-bs-target="#help-glossary" role="tab" data-t="nav_help_glossary">Glossary</a></li>
+                    </ul>
+                </li>
             </ul>
             
-            <div class="d-flex align-items-center">
-                <button class="btn btn-outline-primary btn-sm me-2" id="start-tour">
-                    <i class="bi bi-magic me-1"></i> <span data-t="start_tour">Tour</span>
-                </button>
-                <div class="dropdown me-2">
+                <div class="d-flex align-items-center">
+                    <div class="dropdown me-2">
                     <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="langSelector" data-bs-toggle="dropdown">
                         <i class="bi bi-translate me-1"></i> EN
                     </button>
@@ -231,7 +239,7 @@
 
             <div class="dashboard-grid fade-in">
                 <!-- Offers Stats -->
-                <div class="card border-0 shadow-sm" id="tour-stats-offers">
+                <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-center mb-3">
                             <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
@@ -246,7 +254,7 @@
                 </div>
 
                 <!-- Contributions Stats -->
-                <div class="card border-0 shadow-sm" id="tour-stats-contributions">
+                <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-center mb-3">
                             <div class="bg-success bg-opacity-10 p-3 rounded-3 me-3">
@@ -261,7 +269,7 @@
                 </div>
 
                 <!-- Management Stats -->
-                <div class="card border-0 shadow-sm" id="tour-stats-managed">
+                <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-center mb-3">
                             <div class="bg-info bg-opacity-10 p-3 rounded-3 me-3">
@@ -272,6 +280,21 @@
                         <h2 class="fw-bold mb-1" id="all-owned-number">0</h2>
                         <p class="text-muted small mb-3" data-t="card_managed_subtitle">Offers you have created</p>
                         <button class="btn btn-outline-dark btn-sm w-100" id="manage-card-managed-button" data-t="btn_admin_panel">Admin Panel</button>
+                    </div>
+                </div>
+
+                <!-- Observing Stats -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-3 me-3">
+                                <i class="fa-regular fa-eye text-warning fs-4"></i>
+                            </div>
+                            <h5 class="card-title mb-0" data-t="card_observing_title">Observing</h5>
+                        </div>
+                        <h2 class="fw-bold mb-1" id="all-observed-number">0</h2>
+                        <p class="text-muted small mb-3" data-t="card_observing_subtitle">Offers you are watching</p>
+                        <button class="btn btn-outline-dark btn-sm w-100" id="observing-card-observers-button" data-t="btn_view_observed">View All</button>
                     </div>
                 </div>
             </div>
@@ -328,6 +351,16 @@
             </div>
         </div>
 
+        <!-- Observing Page -->
+        <div class="tab-pane fade" id="observing-list" role="tabpanel">
+            <h2 class="fw-bold mb-4">Observed Offers</h2>
+            <div id="observing-container">
+                <table class="table d-none">
+                    <tbody id="observing-list-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Create Offer Form -->
         <div class="tab-pane fade" id="create-offer" role="tabpanel">
              <div class="max-w-700 mx-auto">
@@ -339,6 +372,125 @@
                             <i class="bi bi-info-circle me-2"></i> Deploying a new OGOO contract.
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help: User Guide -->
+        <div class="tab-pane fade" id="help-user-guide" role="tabpanel" pagetitle="OGOO | User Guide">
+            <div class="row g-4">
+                <div class="col-12">
+                    <h2 class="fw-bold mb-4" data-t="help_guide_title">User Guide</h2>
+                    <p class="lead text-muted" data-t="help_guide_subtitle">Welcome to OG OO! This guide will help you get started.</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="bg-primary bg-opacity-10 p-3 rounded-3 d-inline-block mb-3">
+                                <i class="bi bi-wallet2 text-primary fs-4"></i>
+                            </div>
+                            <h5 data-t="help_step1_title">1. Connect Wallet</h5>
+                            <p class="text-muted small" data-t="help_step1_text">Click "Connect Wallet" to link your Ethereum wallet (MetaMask recommended).</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="bg-success bg-opacity-10 p-3 rounded-3 d-inline-block mb-3">
+                                <i class="bi bi-search text-success fs-4"></i>
+                            </div>
+                            <h5 data-t="help_step2_title">2. Explore Offers</h5>
+                            <p class="text-muted small" data-t="help_step2_text">Browse offers to find problems you want to help solve.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="bg-warning bg-opacity-10 p-3 rounded-3 d-inline-block mb-3">
+                                <i class="bi bi-cash-stack text-warning fs-4"></i>
+                            </div>
+                            <h5 data-t="help_step3_title">3. Contribute</h5>
+                            <p class="text-muted small" data-t="help_step3_text">Add funds to offers you support. Your contribution gives you voting power.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help: Roles -->
+        <div class="tab-pane fade" id="help-roles" role="tabpanel" pagetitle="OGOO | Roles">
+            <div class="row g-4">
+                <div class="col-12">
+                    <h2 class="fw-bold mb-4" data-t="help_roles_title">Roles Explained</h2>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-primary text-white" data-t="role_owner">Owner</div>
+                        <div class="card-body">
+                            <p class="small mb-2" data-t="role_owner_desc">Creates the offer and defines the problem.</p>
+                            <p class="mb-1"><strong data-t="role_can">Can:</strong></p>
+                            <ul class="small">
+                                <li data-t="role_owner_can1">Edit offer before approval</li>
+                                <li data-t="role_owner_can2">Approve the offer</li>
+                                <li data-t="role_owner_can3">Add/remove observers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-success text-white" data-t="role_contributor">Contributor</div>
+                        <div class="card-body">
+                            <p class="small mb-2" data-t="role_contributor_desc">Funds the offer and gains voting power.</p>
+                            <p class="mb-1"><strong data-t="role_can">Can:</strong></p>
+                            <ul class="small">
+                                <li data-t="role_contributor_can1">Vote for contenders</li>
+                                <li data-t="role_contributor_can2">Cancel contribution</li>
+                                <li data-t="role_contributor_can3">View offer details</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help: Glossary -->
+        <div class="tab-pane fade" id="help-glossary" role="tabpanel" pagetitle="OGOO | Glossary">
+            <div class="row g-4">
+                <div class="col-12">
+                    <h2 class="fw-bold mb-4" data-t="help_glossary_title">Glossary</h2>
+                </div>
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-4" data-t="glossary_offer">Offer</dt>
+                        <dd class="col-sm-8" data-t="glossary_offer_desc">A proposal with problem description.</dd>
+                        
+                        <dt class="col-sm-4" data-t="glossary_fund">Impact Fund</dt>
+                        <dd class="col-sm-8" data-t="glossary_fund_desc">Pooled money to solve a problem.</dd>
+                        
+                        <dt class="col-sm-4" data-t="glossary_contrib">Contribution</dt>
+                        <dd class="col-sm-8" data-t="glossary_contrib_desc">Money added to an offer's fund.</dd>
+                        
+                        <dt class="col-sm-4" data-t="glossary_vote">Voting Power</dt>
+                        <dd class="col-sm-8" data-t="glossary_vote_desc">Weight of vote based on contribution.</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <dl class="row">
+                        <dt class="col-sm-4" data-t="glossary_observer">Observer</dt>
+                        <dd class="col-sm-8" data-t="glossary_observer_desc">Trusted participant to validate.</dd>
+                        
+                        <dt class="col-sm-4" data-t="glossary_contender">Contender</dt>
+                        <dd class="col-sm-8" data-t="glossary_contender_desc">Person submitting a solution.</dd>
+                        
+                        <dt class="col-sm-4" data-t="glossary_approval">Approval</dt>
+                        <dd class="col-sm-8" data-t="glossary_approval_desc">When owner activates the offer.</dd>
+                        
+                        <dt class="col-sm-4" data-t="glossary_period">Voting Period</dt>
+                        <dd class="col-sm-8" data-t="glossary_period_desc">Time window for voting.</dd>
+                    </dl>
                 </div>
             </div>
         </div>
@@ -368,7 +520,7 @@
             </form>
         </div>
     </div>
-</div>
+        </div>
 
 <!-- Footer -->
 <footer class="py-5 mt-5 border-top bg-white">
