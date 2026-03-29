@@ -534,14 +534,14 @@ $(async function() {
     ];
 
     // [TEMPORARY DISABLED] Ethereum module check disabled for UI development
-    /*
+//    /*
     if( typeof(ethereum) == 'undefined' ) {
         bootstrap.Modal.getOrCreateInstance($('#no-ethereum')[0], {
             keyboard: false,
         }).show();
         return;
     }
-    */
+//    */
 
     // get all offers accordingly to the current account
     const get_offer_records_list = async function(current_account) {
@@ -2254,7 +2254,7 @@ $(async function() {
     }
 
     const on_change_wallet = async function(option$) {
-        var form$ = $('form[role="wallets"]');
+        var form$ = $('[role="wallets"]');
         var button$ = form$.find('[data-bs-toggle="dropdown"]');
         ethereum = option$[0].ethereum;
         provider = new ethers.BrowserProvider(ethereum, 'any');
@@ -2285,7 +2285,7 @@ $(async function() {
                 var balance = await provider.getBalance(account_address);
                 account_balance_s = ethers.formatEther(balance) + ethers.EtherSymbol;
             }
-            var form$ = $('form[role="wallets"]');
+            var form$ = $('[role="wallets"]');
             var option$ = $(`
                 <li rdns="${event.detail.info.rdns}">
                     <a class="dropdown-item" href="#" title="${account_address}">
@@ -2337,13 +2337,13 @@ $(async function() {
         }
     );
     const refill_wallets = async function() {
-        var form$ = $('form[role="wallets"]');
+        var form$ = $('[role="wallets"]');
         form$.find('.dropdown-menu').html('');
         console.debug('Request providers');
         window.dispatchEvent(new Event("eip6963:requestProvider"));
     };
     refill_wallets();
-    $(document).on('click', 'form[role="wallets"] a.dropdown-item', async function(event) {
+    $(document).on('click', '[role="wallets"] a.dropdown-item', async function(event) {
         event.preventDefault();
         var option$ = $(event.currentTarget).parent();
         await on_change_wallet(option$);

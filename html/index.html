@@ -187,7 +187,7 @@
                         <li><a class="dropdown-item" href="#" data-lang="ru">Русский</a></li>
                     </ul>
                 </div>
-                <div class="wallets-list">
+                <div class="wallets-list" role="wallets">
                     <div class="dropdown">
                         <button class="btn btn-dark btn-sm rounded-pill px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             Connect Wallet
@@ -358,18 +358,157 @@
         </div>
 
         <!-- Create Offer Form -->
-        <div class="tab-pane fade" id="create-offer" role="tabpanel">
-             <div class="max-w-700 mx-auto">
-                <div class="card border-0 shadow-sm p-4">
-                    <h2 class="fw-bold mb-4" data-t="btn_create_offer">Create Offer</h2>
-                    <form id="create-offer-form" class="needs-validation" novalidate>
-                        <!-- Form fields will be handled by JS -->
-                        <div class="alert alert-info border-0 bg-light">
-                            <i class="bi bi-info-circle me-2"></i> Deploying a new OGOO contract.
+        <div class="tab-pane fade" id="create-offer" role="tabpanel" aria-labelledby="create-offer" pagetitle="Create Offer | OGOO">
+          <div class="container-fluid">
+              <h2 class="tab-pane-header">Create Offer</h2>
+              <form class="form needs-validation" novalidate onsubmit="return false">
+                <div class="row gx-1 gy-1">
+                  <!-- error message if happened -->
+                  <div class="error-message text-danger d-none"></div>
+                  <!-- caption -->
+                  <div class="form-check col col-12">
+                    <input type="text" class="form-control input-caption" placeholder="Caption" required></input>
+                    <div class="invalid-feedback">
+                      Caption should not be empty
+                    </div>
+                    <div class="form-text">Short one-line caption of the offer</div>
+                  </div>
+                  <!-- contribution_min_balance -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="text" class="form-control w-50 input-contribution-min-balance" placeholder="Min contribution" pattern="[0-9]+(\.[0-9]{1,3})?" required>
+                        <input type="hidden" class="select-value"> 
+                        <select class="form-select input-group-text input-amount-unit" size style="width:100px;" aria-label="Min contribution units">
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≥ 0, no more than 3 decimal digits
+                    </div>
+                    <div class="form-text">Minimal contribution balance to make the contribution</div>
+                  </div>
+                  <!-- contribution_unlock_timeout -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-contribution-unlock-timeout" placeholder="Cancel timeout" min="0" step="0.1" required>
+                        <input type="hidden" class="select-value"> 
+                        <select class="form-select input-group-text input-timeout-unit"  size style="width:100px;" aria-label="Timeout units">
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≥ 0, no more than 1 decimal digit
+                    </div>
+                    <div class="form-text">Timeout to unlock an individual contribution to return to the contributor</div>
+                  </div>
+                  <!-- voting_start_balance -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="text" class="form-control w-50 input-voting-start-balance" placeholder="Voting start balance" pattern="[0-9]+(\.[0-9]{1,3})?" required>
+                        <input type="hidden" class="select-value"> 
+                        <select class="form-select input-group-text input-amount-unit" size style="width:100px;" aria-label="Balance units">
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≥ 0, no more than 3 decimal digits
+                    </div>
+                    <div class="form-text">Minimal offer balance to start voting</div>
+                  </div>
+                  <!-- voting_start_count -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-voting-start-count" placeholder="Voting start count" min="0" step="1" required>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input integer value ≥ 0
+                    </div>
+                    <div class="form-text">Minimal number of the offer contributors to start voting</div>
+                  </div>
+                  <!-- voting_start_timeout -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-voting-start-timeout" placeholder="Voting start timeout" min="0" step="0.1" required>
+                        <input type="hidden" class="select-value"> 
+                        <select class="form-select input-group-text input-timeout-unit" size style="width:100px;" aria-label="Timeout units">
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≥ 0, no more than 1 decimal digit
+                    </div>
+                    <div class="form-text">The offer should exceed minimal voting bounds after approve within this timeout, or the offer has failed</div>
+                  </div>
+                  <!-- voting_fail_timeout -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-voting-fail-timeout" placeholder="Voting fail timeout" min="0" step="0.1" required>
+                        <input type="hidden" class="select-value"> 
+                        <select class="form-select input-group-text input-timeout-unit" size style="width:100px;" aria-label="Timeout units">
+                        </select>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≥ 0, no more than 1 decimal digit
+                    </div>
+                    <div class="form-text">The offer voting should be completed after approve within this timeout, or the offer has failed</div>
+                  </div>
+                  <!-- observers_vote_percent -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-observers-vote-percent" placeholder="Observers vote count %" min="0" max="100" step="0.01" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+                    </div>
+                    <div class="form-text">Observers vote percent (% of total count) to agree the observer's vote</div>
+                  </div>
+                  <!-- contributors_vote_percent -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-contributors-vote-percent" placeholder="Contributors vote count %" min="0" max="100" step="0.01" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+                    </div>
+                    <div class="form-text">Contributors vote percent (% of total count) to agree the contributor's vote</div>
+                  </div>
+                  <!-- contributors_vote_fund_percent -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-contributors-vote-fund-percent" placeholder="Contributors vote fund %" min="0" max="100" step="0.01" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+                    </div>
+                    <div class="form-text">Contributors vote fund percent (% of total amount) to agree the contributor's vote</div>
+                  </div>
+                  <div class="col col-12">
+                    <div class="input-group">
+                        <textarea class="form-control input-description markdown-source edit-only" rows="3" placeholder="Offer Description"></textarea>
+                    </div>
+                    <div class="form-control markdown text-light bg-dark"></div>
+                    <div class="form-text">Medium-sized multiline Markdown-formatted description of the offer (optional)</div>
+                  </div>
+                  <div class="col col-12">
+                    <div class="input-group">
+                        <textarea class="form-control input-full-details markdown-source edit-only" rows="3" placeholder="Offer Full Details"></textarea>
+                    </div>
+                    <div class="form-control markdown text-light bg-dark"></div>
+                    <div class="form-text">Full Markdown-formatted details of the offer (optional)</div>
+                  </div>
+                  <div class="col col-12 d-none">
+                    <div class="input-group">
+                      <div class="form-control input-observers-list lh-lg">
+                        <div class="d-inline-block" style="overflow-x:clip;text-overflow:ellipsis;max-width:100%;">
+                          <button type="button" class="btn btn-sm btn-outline-secondary list-add d-inline border-2 rounded-4 mb-1 edit-only"><i class="fa-solid fa-plus"></i></button>
                         </div>
-                    </form>
+                      </div>
+                    </div>
+                    <div class="form-text">List of observers for this offer</div>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Create Offer</button>
                 </div>
-            </div>
+              </form>
+          </div>
         </div>
 
         <!-- Help: Single Page -->
@@ -473,7 +612,95 @@
             </form>
         </div>
     </div>
+</div>
+
+<!--- Create Offer Submit Modal -->
+<div class="modal fade" id="create-offer-submit" tabindex="-1" aria-labelledby="createOffer" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form class="needs-validation" novalidate>
+                <div class="modal-header text-bg-light">
+                    <h1 class="modal-title fs-5"></h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div>
+                      <p class="offer-submit-header">
+                        Account <em class="current-account-id account-address"></em> [<em class="current-account-balance"></em>]
+                        is going to create a new Offer contract
+                      </p>
+                    </div>
+                    <!-- caption -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Caption</div>
+                    </div>
+                    <div class="form-control input-caption">&nbsp;</div>
+                    <!-- contribution_min_balance -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Min Contribution</div>
+                    </div>
+                    <div class="form-control input-contribution-min-balance">&nbsp;</div>
+                    <!-- contribution_unlock_timeout -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Cancel Timeout</div>
+                    </div>
+                    <div class="form-control input-contribution-unlock-timeout">&nbsp;</div>
+                    <!-- voting_start_balance -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Start Balance</div>
+                    </div>
+                    <div class="form-control input-voting-start-balance">&nbsp;</div>
+                    <!-- voting_start_count -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Start Count</div>
+                    </div>
+                    <div class="form-control input-voting-start-count">&nbsp;</div>
+                    <!-- voting_start_timeout -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Start Timeout</div>
+                    </div>
+                    <div class="form-control input-voting-start-timeout">&nbsp;</div>
+                    <!-- voting_fail_timeout -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Voting Fail Timeout</div>
+                    </div>
+                    <div class="form-control input-voting-fail-timeout">&nbsp;</div>
+                    <!-- observers_vote_percent -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Observers vote count %</div>
+                    </div>
+                    <div class="form-control input-observers-vote-percent">&nbsp;</div>
+                    <!-- contributors_vote_percent -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Contributors vote count %</div>
+                    </div>
+                    <div class="form-control input-contributors-vote-percent">&nbsp;</div>
+                    <!-- contributors_vote_fund_percent -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Contributors vote fund %</div>
+                    </div>
+                    <div class="form-control input-contributors-vote-fund-percent">&nbsp;</div>
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Description</div>
+                    </div>
+                    <div class="form-control markdown text-light bg-dark input-description">&nbsp;</div>
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Full Details</div>
+                    </div>
+                    <div class="form-control markdown text-light bg-dark input-full-details">&nbsp;</div>
+                </div>
+                <div class="modal-footer">
+                    <p class="modal-info text-info"></p>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Offer</button>
+                </div>
+            </form>
         </div>
+    </div>
+</div>
+
+<div class="modal fade" id="edit-offer-submit" tabindex="-1" aria-labelledby="createOffer" aria-hidden="true">
+</div>
 
 <!-- Footer -->
 <footer class="py-5 mt-5 border-top bg-white">
