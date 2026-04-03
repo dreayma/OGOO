@@ -199,7 +199,7 @@ $(async function() {
         'en': {
             'nav_dashboard': 'Dashboard',
             'nav_offers': 'Offers',
-            'nav_offers_list': 'Offers List',
+            'nav_offers_list': 'All Offers',
             'nav_add_offer': 'Add by Address',
             'nav_contributions': 'Contributions',
             'nav_my_contributions': 'My Contributions',
@@ -212,7 +212,7 @@ $(async function() {
             'hero_title': 'OGOO',
             'hero_subtitle': 'Decentralized impact funds governed by the community. Create, contribute, and solve real-world problems.',
             'btn_create_offer': 'Create Offer',
-            'card_offers_title': 'Active Offers',
+            'card_offers_title': 'All Offers',
             'card_offers_subtitle': 'Offers currently being tracked',
             'btn_view_all': 'View All',
             'card_contrib_title': 'My Contributions',
@@ -610,7 +610,7 @@ $(async function() {
         var observed = 0;
         var owned = 0;
 
-        var offer_list_tbody = $('#offers-list tbody');
+        var offer_list_tbody = $('#offers-list #offers-container');
         offer_list_tbody.html('');
         var contribution_list_tbody = $('#contributions-list tbody');
         contribution_list_tbody.html('');
@@ -620,9 +620,9 @@ $(async function() {
         managed_list_tbody.html('');
         offer_records.map(function(offer_record) {
             var offer_list_row = $($('#offer-list-row').text());
-            offer_list_row.find('.offer-list-row-address').text(offer_record.id);
-            offer_list_row.find('.offer-list-row-name').text(offer_record.definition.caption);
-            var offer_list_row_icon_box = offer_list_row.find('.offer-list-row-icon-box');
+            offer_list_row.find('.offer-address').text(offer_record.id);
+            offer_list_row.find('.offer-title').text(offer_record.definition.caption);
+            var offer_list_row_icon_box = offer_list_row.find('.offer-icon-box');
 
             if(offer_record.is_owner) {
                 owned += 1;
@@ -720,6 +720,9 @@ $(async function() {
             }
             offer_list_row_icon_box.append('&nbsp;');
             offer_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
+            offer_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
+            offer_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
+            offer_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
             offer_list_tbody.append(offer_list_row);
         });
         $('#all-contributions-number').text(contributions);
@@ -960,7 +963,7 @@ $(async function() {
         event.preventDefault();
         // All offer share buttons
         var share_dialog = $('#share-offer');
-        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var offer_address = $(event.currentTarget).parents('.offer-card').find('.offer-address').text();
         share_dialog.find('.share-offer-qr').html('').qrcode(offer_address);
         share_dialog.find('.share-offer-address').html('').text(offer_address);
 
@@ -968,9 +971,16 @@ $(async function() {
     });
     $(document).on('click', '.offer-remove-button', async function(event) {
         event.preventDefault();
-        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
-        await delete_offer_from_list(offer_address);
-        await fill_offer_lists();
+        var remove_dialog = $('#remove-offer');
+        var offer_address = $(event.currentTarget).parents('.offer-card').find('.offer-address').text();
+        var offer_title = $(event.currentTarget).parents('.offer-card').find('.offer-title').text();
+        remove_dialog.find('.offer-title').html('').text(offer_title);
+        remove_dialog.find('.offer-address').html('').text(offer_address);
+
+        bootstrap.Modal.getOrCreateInstance(remove_dialog[0]).show();
+
+//        await delete_offer_from_list(offer_address);
+//        await fill_offer_lists();
     });
     $(document).on('click', 'a:has(".offer-address")', async function(event) {
         event.preventDefault();
@@ -1133,6 +1143,22 @@ $(async function() {
                 modal_info$.text('Error: ' + err);
             }
             dialogue$.find('button').prop('disabled', false);
+        });
+    }
+
+    {
+        // Remove offer dialogue control
+        $('#remove-offer form').on('submit', async function(event) {
+            event.preventDefault();
+            var dialogue$ = $('#remove-offer');
+
+            var offer_address = dialogue$.find('.offer-address').text();
+            dialogue$.find('.offer-title').html('');
+            dialogue$.find('.offer-address').html('');
+
+            await delete_offer_from_list(offer_address);
+            await fill_offer_lists();
+            bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
         });
     }
 

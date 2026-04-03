@@ -4,7 +4,7 @@
     --accent-color: #3b82f6;
     --text-main: #111827;
     --text-muted: #6b7280;
-    --bg-main: #f9fafb;
+    --bg-main: #e2e2e2;
     --card-bg: #ffffff;
     --border-color: #e5e7eb;
     --radius: 16px;
@@ -68,11 +68,14 @@ body {
     transition: var(--transition);
 }
 
-.dropdown-item:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+/*.dropdown-item:hover {
+    color: var(--bs-dropdown-link-active-color);
+    background-color: var(--bs-dropdown-link-active-bg);
 }
+*/
 
 .nav-link,
+.dropdown-item,
 .dropdown-toggle,
 .btn {
     cursor: pointer;
@@ -344,4 +347,25 @@ section {
 }
 ::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
+}
+
+/* additional font size */
+.fs-05 {
+    font-size: 0.5rem;
+}
+
+.fs-06 {
+    font-size: 0.6rem;
+}
+
+.fs-07 {
+    font-size: 0.7rem;
+}
+
+.fs-08 {
+    font-size: 0.8rem;
+}
+
+.fs-09 {
+    font-size: 0.9rem;
 }
