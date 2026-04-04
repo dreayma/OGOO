@@ -610,14 +610,14 @@ $(async function() {
         var observed = 0;
         var owned = 0;
 
-        var offer_list_tbody = $('#offers-list #offers-container');
-        offer_list_tbody.html('');
-        var contribution_list_tbody = $('#contributions-list tbody');
-        contribution_list_tbody.html('');
-        var observing_list_tbody = $('#observing-list tbody');
-        observing_list_tbody.html('');
-        var managed_list_tbody = $('#managed-offers-list tbody');
-        managed_list_tbody.html('');
+        var offer_list_container = $('#offers-container');
+        offer_list_container.html('');
+        var contribution_list_container = $('#contributions-container');
+        contribution_list_container.html('');
+        var observing_list_container = $('#observing-container');
+        observing_list_container.html('');
+        var managed_list_container = $('#managed-container');
+        managed_list_container.html('');
         offer_records.map(function(offer_record) {
             var offer_list_row = $($('#offer-list-row').text());
             offer_list_row.find('.offer-address').text(offer_record.id);
@@ -629,8 +629,10 @@ $(async function() {
                 offer_list_row_icon_box.append($($('#icon-owner').text()));
 
                 var managed_list_row = $($('#managed-list-row').text());
-                managed_list_row.find('.managed-list-row-address').text(offer_record.id);
-                managed_list_row.find('.managed-list-row-name').text(offer_record.definition.caption);
+                managed_list_row.find('.offer-address').text(offer_record.id);
+                managed_list_row.find('.offer-title').text(offer_record.definition.caption);
+                managed_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
+                managed_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
                 if(offer_record.state != 0n) {
                     managed_list_row.find('.offer-edit-button').addClass('disabled');
                     managed_list_row.find('.offer-approve-button').addClass('disabled');
@@ -641,20 +643,21 @@ $(async function() {
                 if(offer_record.cancelation) {
                     managed_list_row.find('.offer-add-contribution-button').addClass('disabled');
                 }
-                var managed_list_row_icon_box = managed_list_row.find('.managed-list-row-icon-box');
+                var managed_list_row_icon_box = managed_list_row.find('.offer-icon-box');
                 managed_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
-                managed_list_tbody.append(managed_list_row);
-
+                managed_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
+                managed_list_container.append(managed_list_row);
             }
             if(offer_record.is_contributor) {
                 contributions += 1;
                 offer_list_row_icon_box.append($($('#icon-contributor').text()));
 
                 var contribution_list_row = $($('#contribution-list-row').text());
-                contribution_list_row.find('.contribution-list-row-address').text(offer_record.id);
-                contribution_list_row.find('.contribution-list-row-name').text(offer_record.definition.caption);
-                contribution_list_row.find('.contribution-list-row-contribution').text('≊' + etherFormatApprox(offer_record.contribution));
-                contribution_list_row.find('.contribution-list-row-contribution').attr('title',ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
+                contribution_list_row.find('.offer-address').text(offer_record.id);
+                contribution_list_row.find('.offer-title').text(offer_record.definition.caption);
+                contribution_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
+                contribution_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
+
                 if(offer_record.state > 1n) {
                     contribution_list_row.find('.offer-add-contribution-button').addClass('disabled');
                 }
@@ -662,12 +665,12 @@ $(async function() {
                     contribution_list_row.find('.contributor-vote-button').addClass('disabled');
                 }
                 if(offer_record.state == 2n) {
-                    contribution_list_row.find('.contribution-cancel-button').addClass('disabled');
+                    contribution_list_row.find('.cancel-contribution-button').addClass('disabled');
                 }
                 if(offer_record.cancelation) {
                     contribution_list_row.find('.offer-add-contribution-button').addClass('disabled');
                     contribution_list_row.find('.contributor-vote-button').addClass('disabled');
-                    var i$ = contribution_list_row.find('.contribution-cancel-icon');
+                    var i$ = contribution_list_row.find('.cancel-contribution-icon');
                     i$.removeClass('fa-regular fa-circle-xmark');
                     i$.addClass('fa-regular fa-clock');
                     if(offer_record.cancelation_timer) {
@@ -688,17 +691,20 @@ $(async function() {
                         contribution_list_row.find('.contributor-vote-button i').addClass(cl);
                     }
                 }
-                var contribution_list_row_icon_box = contribution_list_row.find('.contribution-list-row-icon-box');
+                var contribution_list_row_icon_box = contribution_list_row.find('.icon-box');
                 contribution_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
-                contribution_list_tbody.append(contribution_list_row);
+                contribution_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
+                contribution_list_container.append(contribution_list_row);
             }
             if(offer_record.is_observer) {
                 observed += 1;
                 offer_list_row_icon_box.append($($('#icon-observer').text()));
 
                 var observing_list_row = $($('#observing-list-row').text());
-                observing_list_row.find('.observing-list-row-address').text(offer_record.id);
-                observing_list_row.find('.observing-list-row-name').text(offer_record.definition.caption);
+                observing_list_row.find('.offer-address').text(offer_record.id);
+                observing_list_row.find('.offer-title').text(offer_record.definition.caption);
+                observing_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
+                observing_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
                 if(offer_record.state != 1n) {
                     observing_list_row.find('.observer-vote-button').addClass('disabled');
                 }
@@ -714,16 +720,17 @@ $(async function() {
                         observing_list_row.find('.observer-vote-button i').addClass(cl);
                     }
                 }
-                var observing_list_row_icon_box = observing_list_row.find('.observing-list-row-icon-box');
+                var observing_list_row_icon_box = observing_list_row.find('.offer-icon-box');
                 observing_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
-                observing_list_tbody.append(observing_list_row);
+                observing_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
+                observing_list_container.append(observing_list_row);
             }
             offer_list_row_icon_box.append('&nbsp;');
             offer_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
             offer_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
             offer_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
             offer_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
-            offer_list_tbody.append(offer_list_row);
+            offer_list_container.append(offer_list_row);
         });
         $('#all-contributions-number').text(contributions);
         $('#all-observed-number').text(observed);
@@ -963,7 +970,7 @@ $(async function() {
         event.preventDefault();
         // All offer share buttons
         var share_dialog = $('#share-offer');
-        var offer_address = $(event.currentTarget).parents('.offer-card').find('.offer-address').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
         share_dialog.find('.share-offer-qr').html('').qrcode(offer_address);
         share_dialog.find('.share-offer-address').html('').text(offer_address);
 
@@ -972,8 +979,8 @@ $(async function() {
     $(document).on('click', '.offer-remove-button', async function(event) {
         event.preventDefault();
         var remove_dialog = $('#remove-offer');
-        var offer_address = $(event.currentTarget).parents('.offer-card').find('.offer-address').text();
-        var offer_title = $(event.currentTarget).parents('.offer-card').find('.offer-title').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
+        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-title').text();
         remove_dialog.find('.offer-title').html('').text(offer_title);
         remove_dialog.find('.offer-address').html('').text(offer_address);
 
@@ -982,6 +989,18 @@ $(async function() {
 //        await delete_offer_from_list(offer_address);
 //        await fill_offer_lists();
     });
+
+    $(document).on('click', '.cancel-contribution-button', async function(event) {
+        event.preventDefault();
+        var cancel_dialog = $('#cancel-contribution');
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
+        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-title').text();
+        cancel_dialog.find('.offer-title').html('').text(offer_title);
+        cancel_dialog.find('.offer-address').html('').text(offer_address);
+
+        bootstrap.Modal.getOrCreateInstance(cancel_dialog[0]).show();
+    });
+
     $(document).on('click', 'a:has(".offer-address")', async function(event) {
         event.preventDefault();
         var offer_address = $(event.currentTarget).find('.offer-address').text();
@@ -1010,7 +1029,7 @@ $(async function() {
 
     $(document).on('click', '.offer-edit-button', async function(event) {
         event.preventDefault();
-        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
         var hash = document.location.hash;
         var params = new URLSearchParams(hash.substring(1));
         params.set('pane', 'edit-offer');
@@ -1022,8 +1041,8 @@ $(async function() {
         event.preventDefault();
         // Offer approval buttons
         var dialogue$ = $('#approve-offer');
-        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
-        var offer_title = $(event.currentTarget).parents('tr').find('.managed-list-row-name').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
+        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.managed-list-row-name').text();
         dialogue$.find('.offer-address').text(offer_address);
         dialogue$.find('.offer-title').text(offer_title);
         dialogue$.find('.approve-offer-warning').addClass('d-none');
@@ -1162,10 +1181,51 @@ $(async function() {
         });
     }
 
+    {
+        // Cancel contribution dialogue control
+        $('#cancel-contribution form').on('submit', async function(event) {
+            event.preventDefault();
+            var dialogue$ = $('#cancel-contribution');
+            var address = dialogue$.find('.offer-address').text();
+            var current_account = await get_current_account_async();
+            var modal_info$ = dialogue$.find('.modal-footer .modal-info');
+            modal_info$.removeClass('text-danger');
+            modal_info$.removeClass('text-warning');
+            modal_info$.addClass('text-info');
+            modal_info$.text('Waiting for canceling...');
+            dialogue$.find('button').prop('disabled', true);
+            try {
+                var contract = new ethers.Contract(address, offer_abi.abi, current_account);
+                var tx = await contract.contribution_cancel();
+                modal_info$.text('Waiting for transaction...');
+                await tx.wait();
+                modal_info$.text('');
+                dialogue$.find('.offer-title').html('');
+                dialogue$.find('.offer-address').html('');
+                await update_accounts();
+                bootstrap.Modal.getOrCreateInstance(dialogue$[0]).hide();
+            } catch(ex) {
+                var err = ex.shortMessage;
+                console.error('Error cancelling contribution:', ex);
+                if(ex.code == 'ACTION_REJECTED') {
+                    err = 'Cancellation rejected';
+                }
+                if(ex.code == 'CALL_EXCEPTION') {
+                    err = 'Operation rejected: ' + extract_revert_error(ex);
+                }
+                modal_info$.removeClass('text-info');
+                modal_info$.addClass('text-danger');
+                modal_info$.removeClass('text-warning');
+                modal_info$.text('Error: ' + err);
+            }
+            dialogue$.find('button').prop('disabled', false);
+        });
+    }
+
     $(document).on('click', '.offer-add-contribution-button', function(event) {
         // `Plus` sign on the contributions list line
         event.preventDefault();
-        var offer_address = $(event.currentTarget).parentsUntil('tr').parent().find('.offer-address').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').parent().find('.offer-address').text();
         var dialogue$ = $('#create-contribution');
         dialogue$.find('.input-address').val(offer_address);
         bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
@@ -1539,9 +1599,19 @@ $(async function() {
     });
     $(document).on('click', '.contributor-vote-button', function(event) {
         event.preventDefault();
-        var offer_title = $(event.currentTarget).parents('tr').find('.offer-title').text();
-        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-title').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
         var dialogue$ = $('#contributor-vote');
+        dialogue$.find('.offer-title').text(offer_title);
+        dialogue$.find('.offer-address').text(offer_address);
+        var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
+    });
+
+    $(document).on('click', '.cancel-contribution-button', function(event) {
+        event.preventDefault();
+        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-title').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
+        var dialogue$ = $('#cancel-contribution');
         dialogue$.find('.offer-title').text(offer_title);
         dialogue$.find('.offer-address').text(offer_address);
         var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
@@ -1621,8 +1691,8 @@ $(async function() {
     });
     $(document).on('click', '.observer-vote-button', function(event) {
         event.preventDefault();
-        var offer_title = $(event.currentTarget).parents('tr').find('.offer-title').text();
-        var offer_address = $(event.currentTarget).parents('tr').find('.offer-address').text();
+        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-title').text();
+        var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
         var dialogue$ = $('#observer-vote');
         dialogue$.find('.offer-title').text(offer_title);
         dialogue$.find('.offer-address').text(offer_address);
