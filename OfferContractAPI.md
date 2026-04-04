@@ -266,7 +266,7 @@ var contender = ethers.toBeHex(failure ? 0n : voting, 20);
 ```
 This extracts the contender’s address as a hexadecimal string, or returns `0x00...00` if the vote was for failure.
 
-### 👁️‍🗨️ Origin Observer Status
+### 👁 Origin Observer Status
 
 Returns whether the transaction origin is a registered observer and, if so, provides the current voting status of that observer.
 
@@ -297,7 +297,7 @@ function origin_contributor_status() external view sender_origin() returns(
 - `canceled_at` – the block timestamp of the cancellation request, or `0` if no request has been made.
 - `contribution_cancelation_timeout` – time in seconds remaining until the contributor can reclaim their funds. Returns `0` if no cancellation request exists or if the timeout has already expired.
 
-### 👁️‍🗨️ Observers List
+### 👁 Observers List
 
 Returns the complete list of registered observer addresses.
 

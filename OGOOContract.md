@@ -75,7 +75,7 @@ Contributors may request a refund, but not instantly. The refund process require
 1. **Initial request** – Marks the contributor for refund processing and starts the **unlock timeout**. Voting rights are suspended until the contributor reclaims the contribution.
 2. **Final request** – After the timeout expires, the contributor may reclaim all of their contributions in a single transaction.
 
-## 👁️‍🗨️ Observers
+## 👁 Observers
 
 The observer list is configured during the **setup phase** and becomes **immutable** after the Offer is approved.
 

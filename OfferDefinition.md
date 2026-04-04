@@ -76,12 +76,52 @@ This parameter effectively determines the **maximum lifespan** of the Offer afte
 
 ---
 
+## ⚖️ Quorum Criteria
+
+The quorum determines a minimal *amount of actual votes* relatively to the *total amount of available votes*, to make the decision by the voting.
+
+The *total amount of available votes* is a whole amount of votes which can participate in voting.
+
+The *amount of actual votes* is an amount of votes which actually participated in the voting.
+
+For the *observers voting*:  
+- the *total amount of available votes* is a total number of observers  
+- the *amount of actual votes* is a number of observers who has participated in the voting
+
+For the *contributors voting*:  
+- the *total amount of available votes* is a total number of contributors (except those who has requested the cancelling of their contributions)  
+- the *amount of actual votes* is a number of contributors who has participated in the voting
+
+For the *contributor funds voting*:  
+- the *total amount of available votes* is a total sum of all contributions (except those who has been requested to be cancelled)  
+- the *amount of actual votes* is a sum of contributions which has participated in the voting
+
+The **zero quorum** has a special meaning: if the quorum is zero, the [voting success](#-voting-success-criteria) is calculated relatively to the *total amount of available votes* instead of the *amount of actual votes*.
+
+The following attributes define **thresholds** that determine when the quorum is considered to be reached.
+These thresholds are expressed as **unsigned integers**, in units of $0.01\%$ (from $0=0\%$ to $10000=100\%$).
+
+### 👁 Observers Vote Quorum
+The `observers_vote_quorum` attribute defines the total **percentage of observers** required to vote.
+
+### 👥 Contributors Vote Percent
+The `contributors_vote_quorum` attribute defines the total **percentage of contributors** required to vote.
+
+### 💰 Contributors Vote Fund Percent
+The `contributors_vote_fund_quorum` attribute defines the total **percentage of total contribution funds** required to vote.
+
+---
+
 ## 🏆 Voting Success Criteria
+
+If the quorum is not zero, the voting success criteria determines an amount of votes relatively to the *amount of actual votes* that determine when voting is considered successfull.
+
+If the quorum is zero, the criteria determines an amount of votes relatively to the *total amount of available votes*.
 
 The following attributes define **thresholds** that determine when voting is considered successful.  
 These thresholds are expressed as **unsigned integers**, in units of $0.01\%$ (from $0=0\%$ to $10000=100\%$).
 
-### 👁️‍🗨️ Observers Vote Percent
+### 👁️Observers Vote Percent
 The `observers_vote_percent` attribute defines the **percentage of observers** required to vote for a contender in order for them to win.
 
 ### 👥 Contributors Vote Percent

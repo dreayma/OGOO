@@ -1417,6 +1417,15 @@ $(async function() {
                 BigInt(form$.find('.input-voting-fail-timeout').val() * 10) *
                 BigInt(form$.find('.input-voting-fail-timeout ~ select').val()) / 10n
             ),
+            observers_vote_quorum: (
+                BigInt(form$.find('.input-observers-vote-quorum').val() * 100)
+            ),
+            contributors_vote_quorum: (
+                BigInt(form$.find('.input-contributors-vote-quorum').val() * 100)
+            ),
+            contributors_vote_fund_quorum: (
+                BigInt(form$.find('.input-contributors-vote-fund-quorum').val() * 100)
+            ),
             observers_vote_percent: (
                 BigInt(form$.find('.input-observers-vote-percent').val() * 100)
             ),
@@ -1447,6 +1456,9 @@ $(async function() {
         dialogue$.find('.input-voting-start-count').text(definition.voting_start_count);
         dialogue$.find('.input-voting-start-timeout').text(durationHuman(definition.voting_start_timeout));
         dialogue$.find('.input-voting-fail-timeout').text(durationHuman(definition.voting_fail_timeout));
+        dialogue$.find('.input-observers-vote-quorum').text(Number(definition.observers_vote_quorum) / 100 + '%');
+        dialogue$.find('.input-contributors-vote-quorum').text(Number(definition.contributors_vote_quorum) / 100 + '%');
+        dialogue$.find('.input-contributors-vote-fund-quorum').text(Number(definition.contributors_vote_fund_quorum) / 100 + '%');
         dialogue$.find('.input-observers-vote-percent').text(Number(definition.observers_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-percent').text(Number(definition.contributors_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-fund-percent').text(Number(definition.contributors_vote_fund_percent) / 100 + '%');
@@ -1764,6 +1776,10 @@ $(async function() {
             edit_offer$.find('input.input-voting-fail-timeout').val(v[0]);
             edit_offer$.find('input.input-voting-fail-timeout ~ .input-timeout-unit').val(v[1]);
 
+            edit_offer$.find('input.input-observers-vote-quorum').val(Number(offer_record.definition.observers_vote_quorum) / 100.);
+            edit_offer$.find('input.input-contributors-vote-quorum').val(Number(offer_record.definition.contributors_vote_quorum) / 100.);
+            edit_offer$.find('input.input-contributors-vote-fund-quorum').val(Number(offer_record.definition.contributors_vote_fund_quorum) / 100.);
+
             edit_offer$.find('input.input-observers-vote-percent').val(Number(offer_record.definition.observers_vote_percent) / 100.);
             edit_offer$.find('input.input-contributors-vote-percent').val(Number(offer_record.definition.contributors_vote_percent) / 100.);
             edit_offer$.find('input.input-contributors-vote-fund-percent').val(Number(offer_record.definition.contributors_vote_fund_percent) / 100.);
@@ -1985,6 +2001,9 @@ $(async function() {
         $('#view-offer .offer-voting-start-count').text(offer_record.definition.voting_start_count);
         $('#view-offer .offer-voting-start-timeout').text(durationHuman(offer_record.definition.voting_start_timeout));
         $('#view-offer .offer-voting-fail-timeout').text(durationHuman(offer_record.definition.voting_fail_timeout));
+        $('#view-offer .offer-observers-vote-quorum').text(Number(offer_record.definition.observers_vote_quorum) / 100 + '%');
+        $('#view-offer .offer-contributors-vote-quorum').text(Number(offer_record.definition.contributors_vote_quorum) / 100 + '%');
+        $('#view-offer .offer-contributors-vote-fund-quorum').text(Number(offer_record.definition.contributors_vote_fund_quorum) / 100 + '%');
         $('#view-offer .offer-observers-vote-percent').text(Number(offer_record.definition.observers_vote_percent) / 100 + '%');
         $('#view-offer .offer-contributors-vote-percent').text(Number(offer_record.definition.contributors_vote_percent) / 100 + '%');
         $('#view-offer .offer-contributors-vote-fund-percent').text(Number(offer_record.definition.contributors_vote_fund_percent) / 100 + '%');
@@ -2095,6 +2114,15 @@ $(async function() {
                 BigInt(form$.find('.input-voting-fail-timeout').val() * 10) *
                 BigInt(form$.find('.input-voting-fail-timeout ~ select').val()) / 10n
             ),
+            observers_vote_quorum: (
+                BigInt(form$.find('.input-observers-vote-quorum').val() * 100)
+            ),
+            contributors_vote_quorum: (
+                BigInt(form$.find('.input-contributors-vote-quorum').val() * 100)
+            ),
+            contributors_vote_fund_quorum: (
+                BigInt(form$.find('.input-contributors-vote-fund-quorum').val() * 100)
+            ),
             observers_vote_percent: (
                 BigInt(form$.find('.input-observers-vote-percent').val() * 100)
             ),
@@ -2127,6 +2155,9 @@ $(async function() {
         dialogue$.find('.input-voting-start-count').text(definition.voting_start_count);
         dialogue$.find('.input-voting-start-timeout').text(durationHuman(definition.voting_start_timeout));
         dialogue$.find('.input-voting-fail-timeout').text(durationHuman(definition.voting_fail_timeout));
+        dialogue$.find('.input-observers-vote-quorum').text(Number(definition.observers_vote_quorum) / 100 + '%');
+        dialogue$.find('.input-contributors-vote-quorum').text(Number(definition.contributors_vote_quorum) / 100 + '%');
+        dialogue$.find('.input-contributors-vote-fund-quorum').text(Number(definition.contributors_vote_fund_quorum) / 100 + '%');
         dialogue$.find('.input-observers-vote-percent').text(Number(definition.observers_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-percent').text(Number(definition.contributors_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-fund-percent').text(Number(definition.contributors_vote_fund_percent) / 100 + '%');

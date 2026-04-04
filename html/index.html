@@ -557,6 +557,39 @@
                     </div>
                     <div class="form-text">The offer voting should be completed after approve within this timeout, or the offer has failed</div>
                   </div>
+                  <!-- observers_vote_quorum -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-observers-vote-quorum" placeholder="Observers count %" min="0" max="100" step="0.01" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+                    </div>
+                    <div class="form-text">Observers vote quorum (% of observers). Zero means voting per total available</div>
+                  </div>
+                  <!-- contributors_vote_quorum -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-contributors-vote-quorum" placeholder="Contributors count %" min="0" max="100" step="0.01" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+                    </div>
+                    <div class="form-text">Contributors vote quorum (% of contributors). Zero means voting per total available</div>
+                  </div>
+                  <!-- contributors_vote_fund_quorum -->
+                  <div class="form-check col col-12 col-sm-6 col-lg-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control w-50 input-contributors-vote-fund-quorum" placeholder="Contributors fund %" min="0" max="100" step="0.01" required>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="invalid-feedback">
+                      Input value ≤ 100, ≥ 0, no more than 2 decimal digits
+                    </div>
+                    <div class="form-text">Contributors vote fund quorum (% of contributor funds). Zero means voting per total available</div>
+                  </div>
                   <!-- observers_vote_percent -->
                   <div class="form-check col col-12 col-sm-6 col-lg-4">
                     <div class="input-group">
@@ -566,7 +599,7 @@
                     <div class="invalid-feedback">
                       Input value ≤ 100, ≥ 0, no more than 2 decimal digits
                     </div>
-                    <div class="form-text">Observers vote percent (% of total count) to agree the observer's vote</div>
+                    <div class="form-text">Observers vote percent (% of votes count) to agree the observer's vote</div>
                   </div>
                   <!-- contributors_vote_percent -->
                   <div class="form-check col col-12 col-sm-6 col-lg-4">
@@ -577,7 +610,7 @@
                     <div class="invalid-feedback">
                       Input value ≤ 100, ≥ 0, no more than 2 decimal digits
                     </div>
-                    <div class="form-text">Contributors vote percent (% of total count) to agree the contributor's vote</div>
+                    <div class="form-text">Contributors vote percent (% of votes count) to agree the contributor's vote</div>
                   </div>
                   <!-- contributors_vote_fund_percent -->
                   <div class="form-check col col-12 col-sm-6 col-lg-4">
@@ -588,7 +621,7 @@
                     <div class="invalid-feedback">
                       Input value ≤ 100, ≥ 0, no more than 2 decimal digits
                     </div>
-                    <div class="form-text">Contributors vote fund percent (% of total amount) to agree the contributor's vote</div>
+                    <div class="form-text">Contributors vote fund percent (% of voting amount) to agree the contributor's vote</div>
                   </div>
                   <div class="col col-12">
                     <div class="input-group">
@@ -814,6 +847,26 @@
                         </tbody>
                       </table>
                     </div>
+                    <div class="col col-12 col-sm-6 col-lg-3">
+                      <h5>Quorum Criteria</h5>
+                      <table class="table table-sm">
+                        <tbody>
+                          <tr class="offer-observers-vote-quorum-row">
+                            <td class="offer-observers-vote-quorum-head">Observers Vote Quorum:</td>
+                            <td><em class="offer-observers-vote-quorum"></em></td>
+                          </tr>
+                          <tr class="offer-contributors-vote-quorum-row">
+                            <td class="offer-contributors-vote-quorum-head">Contributors Vote Quorum:</td>
+                            <td><em class="offer-contributors-vote-quorum"></em></td>
+                          </tr>
+                          <tr class="offer-contributors-vote-fund-quorum-row">
+                            <td class="offer-contributors-vote-fund-quorum-head">Contributors Vote Fund Quorum:</td>
+                            <td><em class="offer-contributors-vote-fund-quorum"></em></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                     <div class="col col-12 col-sm-6 col-lg-3">
                       <h5>Voting Success Criteria</h5>
                       <table class="table table-sm">
@@ -1293,6 +1346,21 @@
                       <div class="input-group-text  w-100">Voting Fail Timeout</div>
                     </div>
                     <div class="form-control input-voting-fail-timeout">&nbsp;</div>
+                    <!-- observers_vote_quorum -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Observers quorum %</div>
+                    </div>
+                    <div class="form-control input-observers-vote-quorum">&nbsp;</div>
+                    <!-- contributors_vote_quorum -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Contributors quorum %</div>
+                    </div>
+                    <div class="form-control input-contributors-vote-quorum">&nbsp;</div>
+                    <!-- contributors_vote_fund_quorum -->
+                    <div class="input-group">
+                      <div class="input-group-text  w-100">Contributors fund quorum %</div>
+                    </div>
+                    <div class="form-control input-contributors-vote-fund-quorum">&nbsp;</div>
                     <!-- observers_vote_percent -->
                     <div class="input-group">
                       <div class="input-group-text  w-100">Observers vote count %</div>

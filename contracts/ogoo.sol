@@ -702,7 +702,9 @@ struct OfferDefinition {
     uint16 observers_vote_percent;          // Observers vote percent (% of total count) to agree the observer's vote
     uint16 contributors_vote_percent;       // Contributors vote percent (% of total count) to agree the contributor's vote
     uint16 contributors_vote_fund_percent;  // Contributors vote fund percent (% of total amount) to agree the contributor's vote
-    // TODO: another option? % of total - quorum to make voting available, and % of voice count/amount to calculate winner
+    uint16 observers_vote_quorum;           // Percent of voted per total observers to make voting valid to take a decision
+    uint16 contributors_vote_quorum;        // Percent of voted per total contributors to make voting valid to take a decision
+    uint16 contributors_vote_fund_quorum;   // Percent of voted per total contributor funds to make voting valid to take a decision
 }
 
 enum OfferState {
@@ -812,15 +814,44 @@ contract Offer {
     }
 
     function is_voting_started_balance() internal view returns(bool) {
+        // Is the balance of the offer allows to start voting
         return address(this).balance >= _definition.voting_start_balance;
     }
 
     function is_voting_started_count() internal view returns(bool) {
+        // Is the total count of the offer contributors allows to start voting
         return _contributors.length() >= _definition.voting_start_count;
     }
 
     function is_voting_started() internal view returns(bool) {
+        // Is the voting started conditions are met
         return is_voting_started_balance() && is_voting_started_count();
+    }
+
+    function is_contributors_quorum_reached() internal view returns(bool) {
+        // Is the contributors count quorum reached
+        uint voted_contributors_percent = _total_contributors_count > 0 ? _contributors_leaders.total_points * 10000 / _total_contributors_count: 0;
+        return voted_contributors_percent >= _definition.contributors_vote_quorum;
+    }
+
+    function is_contributors_fund_quorum_reached() internal view returns(bool) {
+        // Is the contributors fund quorum reached
+
+        uint voted_contributors_fund_percent = _total_contributors_fund > 0 ? _contributors_fund_leaders.total_points * 10000 / _total_contributors_fund: 0;
+        return voted_contributors_fund_percent >= _definition.contributors_vote_fund_quorum;
+    }
+
+    function is_observers_quorum_reached() internal view returns(bool) {
+        // Is the observers count quorum reached
+
+        uint total_observers_count = _observers.length();
+        uint voted_observers_percent = total_observers_count > 0 ? _observers_leaders.total_points * 10000 / total_observers_count: 0;
+        return voted_observers_percent >= _definition.observers_vote_quorum;
+    }
+
+    function is_quorum_reached() internal view returns(bool) {
+        // Is the quorum conditions are met
+        return is_contributors_quorum_reached() && is_contributors_fund_quorum_reached() && is_observers_quorum_reached();
     }
 
     // Metastate check modifiers
@@ -1060,6 +1091,8 @@ contract Offer {
         }
         if( !is_voting_started() )
             return;
+        if( !is_quorum_reached() )
+            return;
         uint256 winner_local = _calculate_winner();
 
         if( winner_local == CONTRACT_FAILED ) {
@@ -1081,18 +1114,21 @@ contract Offer {
     // Returns a winner looking to the contract restrictions,
     // or 0 in case of incomplete voting
     function _calculate_winner() internal view returns(uint256) {
-        uint observers_count = _observers.length();
-
+        uint observers_count = _definition.observers_vote_quorum == 0 ? _observers.length() : _observers_leaders.total_points;
         uint observers_leader_count = _observers_leaders.topmost_points();
         if(observers_count > 0 && observers_leader_count * 10000 / observers_count < _definition.observers_vote_percent ) {
             return 0;
         }
+
+        uint contributors_count = _definition.contributors_vote_quorum == 0 ? _total_contributors_count : _contributors_leaders.total_points;
         uint contributors_leader_count = _contributors_leaders.topmost_points();
-        if(_total_contributors_count > 0 && contributors_leader_count * 10000 / _total_contributors_count < _definition.contributors_vote_percent ) {
+        if(contributors_count > 0 && contributors_leader_count * 10000 / contributors_count < _definition.contributors_vote_percent ) {
             return 0;
         }
+
+        uint contributors_fund = _definition.contributors_vote_fund_quorum == 0 ? _total_contributors_fund : _contributors_fund_leaders.total_points;
         uint contributors_fund_leader_amount = _contributors_fund_leaders.topmost_points();
-        if(_total_contributors_fund > 0 && contributors_fund_leader_amount * 10000 / _total_contributors_fund < _definition.contributors_vote_fund_percent ) {
+        if(contributors_fund > 0 && contributors_fund_leader_amount * 10000 / contributors_fund < _definition.contributors_vote_fund_percent ) {
             return 0;
         }
 
@@ -1164,8 +1200,8 @@ contract Offer {
             emit ContributionCancelation(payable(tx.origin));
             _calculate_voting();
         }
-        if( state != OfferState.FAILED ) {
-            // non-failed contract forces waiting for the cancelation
+        if( state == OfferState.APPROVED ) {
+            // approved contract forces waiting for the cancelation
             if( canceled_at + _definition.contribution_unlock_timeout > block.timestamp ) {
                 return;
             }

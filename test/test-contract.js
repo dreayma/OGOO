@@ -48,6 +48,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var test_definition_values = [];
     for(var k in test_definition) {
@@ -329,6 +332,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -523,6 +529,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -680,6 +689,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -888,6 +900,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1070,6 +1085,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1249,6 +1267,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1400,6 +1421,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
     var start_balance = await account_owner.provider.getBalance(account_owner.address);
@@ -1567,6 +1591,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1710,6 +1737,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 6000n,
         "contributors_vote_fund_percent": 0n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1818,6 +1848,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 0n,
         "contributors_vote_fund_percent": 5000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -1921,6 +1954,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 6000n,
         "contributors_vote_percent": 0n,
         "contributors_vote_fund_percent": 0n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -2039,6 +2075,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 3000n,
         "contributors_vote_percent": 3000n,
         "contributors_vote_fund_percent": 3000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -2148,6 +2187,9 @@ describe("Contract Tests", function () {
         "observers_vote_percent": 10000n,
         "contributors_vote_percent": 10000n,
         "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
     };
     var accounts = await hre.ethers.getSigners();
     var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
@@ -2398,6 +2440,350 @@ describe("Contract Tests", function () {
     } catch(e) {
       if( e.data ) {
         console.error("Unexpected revert", o.interface.parseError(extractData(e)));
+      }
+      throw e;
+    }
+  });
+
+  it("Test the contributors quorum", async function () {
+    console.log("Test the contributors quorum");
+    var test_definition = {
+        "caption": "Test",
+        "description": "Test Description",
+        "full_details": "Test Details",
+        "contribution_unlock_timeout": 1n,
+        "contribution_min_balance": 10000000000000000n,
+        "voting_start_balance": 0n,
+        "voting_start_count": 0n,
+        "voting_start_timeout": 3600n,
+        "voting_fail_timeout": 3600n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 0n,
+        "contributors_vote_quorum": 6000n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
+    };
+    var accounts = await hre.ethers.getSigners();
+    var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var Offer = await ethers.getContractFactory("Offer", account_owner);
+    // Start deployment, returning a promise that resolves to a contract object
+    var offer = await Offer.deploy(test_definition);
+    console.info("Waiting for deployment...");
+    await offer.waitForDeployment();
+    var owner = await offer.owner();
+    console.info("Contract deployed to address:", offer.target);
+    console.info("Contract owner is:", owner);
+    expect(owner).to.equal(account_owner.address);
+
+    var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
+    var account_contender = accounts[4]; // the account will be a signer to check an access from the contender
+    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    // Gettings access from the owner
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner, // Signer to get access to the contract
+    )
+
+    // Getting access from the contributor
+    var contributor1_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor1, // Contributor account trying access to the contract
+    )
+    var contributor2_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor2, // Contributor account trying access to the contract
+    )
+    var contributor3_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor3, // Contributor account trying access to the contract
+    )
+
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contender, // Contender account trying access to the contract
+    )
+    try {
+      // Approve the contract to make it unmutable
+      await (await o.approve()).wait();
+
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
+      await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
+      (await contributor1_access.origin_contributor_status())[2].should.be.equal(10000000000000001n);
+      (await contributor2_access.origin_contributor_status())[2].should.be.equal(20000000000000001n);
+      (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
+
+      // voting process
+      var state = await contender_access.state();
+      console.log('State before first vote', state);
+      state.should.be.equal(1n);
+
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
+      await (await contributor3_access.contributor_vote(account_contender.address)).wait();
+      console.debug("The first contributor has just voted");
+      state = await contender_access.state();
+      console.log('State after the first contributors vote', state)
+      state.should.be.equal(1n);
+      await (await contributor1_access.contributor_vote(account_contender.address)).wait();
+      console.debug("The second contributor has just voted");
+      state = await contender_access.state();
+      console.log('State after second contributors vote', state)
+      state.should.be.equal(2n);
+
+      var final_balance_offer = await account_owner.provider.getBalance(offer.target);
+      console.debug("Offer account after contract completion", final_balance_offer);
+      final_balance_offer.should.be.equal(0n);
+
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
+    } catch(e) {
+      if( e.data ) {
+        console.error("Unexpected revert", o.interface.parseError(e.data));
+      }
+      throw e;
+    }
+  });
+  it("Test the contributors fund quorum", async function () {
+    console.log("Test the contributors fund quorum");
+    var test_definition = {
+        "caption": "Test",
+        "description": "Test Description",
+        "full_details": "Test Details",
+        "contribution_unlock_timeout": 1n,
+        "contribution_min_balance": 10000000000000000n,
+        "voting_start_balance": 0n,
+        "voting_start_count": 0n,
+        "voting_start_timeout": 3600n,
+        "voting_fail_timeout": 3600n,
+        "observers_vote_percent": 0n,
+        "contributors_vote_percent": 0n,
+        "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 6000n,
+        "observers_vote_quorum": 0n,
+    };
+    var accounts = await hre.ethers.getSigners();
+    var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var Offer = await ethers.getContractFactory("Offer", account_owner);
+    // Start deployment, returning a promise that resolves to a contract object
+    var offer = await Offer.deploy(test_definition);
+    console.info("Waiting for deployment...");
+    await offer.waitForDeployment();
+    var owner = await offer.owner();
+    console.info("Contract deployed to address:", offer.target);
+    console.info("Contract owner is:", owner);
+    expect(owner).to.equal(account_owner.address);
+
+    var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
+    var account_contender = accounts[4]; // the account will be a signer to check an access from the contender
+    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    // Gettings access from the owner
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner, // Signer to get access to the contract
+    )
+
+    // Getting access from the contributor
+    var contributor1_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor1, // Contributor account trying access to the contract
+    )
+    var contributor2_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor2, // Contributor account trying access to the contract
+    )
+    var contributor3_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor3, // Contributor account trying access to the contract
+    )
+
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contender, // Contender account trying access to the contract
+    )
+    try {
+      // Approve the contract to make it unmutable
+      await (await o.approve()).wait();
+
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
+      await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
+      (await contributor1_access.origin_contributor_status())[2].should.be.equal(10000000000000001n);
+      (await contributor2_access.origin_contributor_status())[2].should.be.equal(20000000000000001n);
+      (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
+
+      // voting process
+      var state = await contender_access.state();
+      console.log('State before first vote', state);
+      state.should.be.equal(1n);
+
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
+      await (await contributor3_access.contributor_vote(account_contender.address)).wait();
+      console.debug("The most valuable contributor has just voted");
+      state = await contender_access.state();
+      console.log('State after the most valuable contributor vote', state)
+      state.should.be.equal(1n);
+      await (await contributor1_access.contributor_vote(account_contender.address)).wait();
+      console.debug("The least valuable contributor has just voted");
+      state = await contender_access.state();
+      console.log('State after the least valuable contributor vote', state)
+      state.should.be.equal(2n);
+
+      var final_balance_offer = await account_owner.provider.getBalance(offer.target);
+      console.debug("Offer account after contract completion", final_balance_offer);
+      final_balance_offer.should.be.equal(0n);
+
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
+    } catch(e) {
+      if( e.data ) {
+        console.error("Unexpected revert", o.interface.parseError(e.data));
+      }
+      throw e;
+    }
+  });
+  it("Test the observers quorum", async function () {
+    console.log("Test the observers quorum");
+    var test_definition = {
+        "caption": "Test",
+        "description": "Test Description",
+        "full_details": "Test Details",
+        "contribution_unlock_timeout": 1n,
+        "contribution_min_balance": 10000000000000000n,
+        "voting_start_balance": 0n,
+        "voting_start_count": 0n,
+        "voting_start_timeout": 3600n,
+        "voting_fail_timeout": 3600n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 0n,
+        "contributors_vote_fund_percent": 0n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 6000n,
+    };
+    var accounts = await hre.ethers.getSigners();
+    var account_owner = accounts[0]; // the first account will be a signer to check an access from the owner
+    var Offer = await ethers.getContractFactory("Offer", account_owner);
+    // Start deployment, returning a promise that resolves to a contract object
+    var offer = await Offer.deploy(test_definition);
+    console.info("Waiting for deployment...");
+    await offer.waitForDeployment();
+    var owner = await offer.owner();
+    console.info("Contract deployed to address:", offer.target);
+    console.info("Contract owner is:", owner);
+    expect(owner).to.equal(account_owner.address);
+
+    var account_contributor1 = accounts[1]; // the account will be a signer to check an access from the contributor
+    var account_contributor2 = accounts[2]; // the account will be a signer to check an access from the contributor
+    var account_contributor3 = accounts[3]; // the account will be a signer to check an access from the contributor
+    var account_contender = accounts[4]; // the account will be a signer to check an access from the contender
+    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    // Gettings access from the owner
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner, // Signer to get access to the contract
+    )
+
+    // Getting access from the contributor
+    var contributor1_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor1, // Contributor account trying access to the contract
+    )
+    var contributor2_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor2, // Contributor account trying access to the contract
+    )
+    var contributor3_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor3, // Contributor account trying access to the contract
+    )
+
+    // Getting access from the contender
+    var contender_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contender, // Contender account trying access to the contract
+    )
+    try {
+      // Contributors also will be observers
+      await (await o.observer_create(account_contributor1.address)).wait();
+      await (await o.observer_create(account_contributor2.address)).wait();
+      await (await o.observer_create(account_contributor3.address)).wait();
+
+      // Approve the contract to make it unmutable
+      await (await o.approve()).wait();
+
+      // test the contributor created an account sending there enough amount
+      await (await account_contributor1.sendTransaction({to:offer.target, value: 10000000000000001n})).wait();
+      await (await account_contributor2.sendTransaction({to:offer.target, value: 20000000000000001n})).wait();
+      await (await account_contributor3.sendTransaction({to:offer.target, value: 30000000000000003n})).wait();
+      (await contributor1_access.origin_contributor_status())[2].should.be.equal(10000000000000001n);
+      (await contributor2_access.origin_contributor_status())[2].should.be.equal(20000000000000001n);
+      (await contributor3_access.origin_contributor_status())[2].should.be.equal(30000000000000003n);
+
+      // voting process
+      var state = await contender_access.state();
+      console.log('State before first vote', state);
+      state.should.be.equal(1n);
+
+      var start_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account before contract success:", start_balance_contender);
+      await (await contributor3_access.contributor_vote(account_contender.address)).wait();
+      console.debug("The most valuable contributor has just voted");
+      state = await contender_access.state();
+      console.log('State after contributors vote', state)
+      state.should.be.equal(1n);
+      await (await contributor1_access.observer_vote(account_contender.address)).wait();
+      console.debug("The first observer has just voted");
+      state = await contender_access.state();
+      console.log('State after the first observer vote', state)
+      state.should.be.equal(1n);
+      await (await contributor2_access.observer_vote(account_contender.address)).wait();
+      console.debug("The second observer has just voted");
+      state = await contender_access.state();
+      console.log('State after the second observer vote', state)
+      state.should.be.equal(2n);
+
+      var final_balance_offer = await account_owner.provider.getBalance(offer.target);
+      console.debug("Offer account after contract completion", final_balance_offer);
+      final_balance_offer.should.be.equal(0n);
+
+      var end_balance_contender = await account_contender.provider.getBalance(account_contender.address);
+      console.debug("Contender account after contract success:", end_balance_contender);
+      console.debug("Contender account diff after contract success ($):", to$(end_balance_contender - start_balance_contender));
+    } catch(e) {
+      if( e.data ) {
+        console.error("Unexpected revert", o.interface.parseError(e.data));
       }
       throw e;
     }
