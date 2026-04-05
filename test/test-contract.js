@@ -2878,4 +2878,91 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
+
+  it("Test voting start thresholds are latched on the crossing transaction", async function () {
+    console.log("Test voting start thresholds are latched on the crossing transaction");
+    var test_definition = {
+        "caption": "Test",
+        "description": "Test Description",
+        "full_details": "Test Details",
+        "contribution_unlock_timeout": 120n,
+        "contribution_min_balance": 10000000000000000n,
+        "voting_start_balance": 50000000000000000n,
+        "voting_start_count": 2n,
+        "voting_start_timeout": 3600n,
+        "voting_fail_timeout": 3600n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
+    };
+    var accounts = await hre.ethers.getSigners();
+    var account_owner = accounts[0];
+    var account_contributor = accounts[1];
+    var account_contributor2 = accounts[2];
+    var Offer = await ethers.getContractFactory("Offer", account_owner);
+    var offer = await Offer.deploy(test_definition);
+    await offer.waitForDeployment();
+    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner,
+    );
+    var contributor_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor,
+    );
+    var contributor2_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor2,
+    );
+
+    try {
+      (await o.voting_started_at()).should.be.equal(0n);
+      await (await o.approve()).wait();
+      (await o.voting_started_at()).should.be.equal(0n);
+
+      await (await account_contributor.sendTransaction({to:offer.target, value:20000000000000000n})).wait();
+      (await o.voting_started_at()).should.be.equal(0n);
+
+      await (await account_contributor2.sendTransaction({to:offer.target, value:10000000000000000n})).wait();
+      (await o.voting_started_at()).should.be.equal(0n);
+
+      var crossing_tx = await account_contributor.sendTransaction({to:offer.target, value:20000000000000000n});
+      var crossing_receipt = await crossing_tx.wait();
+      var crossing_block = await hre.ethers.provider.getBlock(crossing_receipt.blockNumber);
+      var voting_started_at = await o.voting_started_at();
+      voting_started_at.should.be.equal(BigInt(crossing_block.timestamp));
+
+      await (await contributor2_access.contribution_cancel()).wait();
+
+      (await o.voting_started_at()).should.be.equal(voting_started_at);
+
+      {
+          var contributor1_status = await contributor_access.origin_contributor_status();
+          contributor1_status[2].should.be.equal(40000000000000000n);
+      }
+      {
+          var contributor2_status = await contributor2_access.origin_contributor_status();
+          contributor2_status[2].should.be.equal(10000000000000000n);
+          contributor2_status[3].should.not.be.equal(0n);
+      }
+      {
+          var voting_statistics = await o.voting_statistics();
+          voting_statistics[1].should.be.equal(1n);
+          voting_statistics[2].should.be.equal(40000000000000000n);
+      }
+    } catch(e) {
+      if( e.data ) {
+        console.error("Unexpected revert", o.interface.parseError(e.data));
+      }
+      throw e;
+    }
+  });
 });

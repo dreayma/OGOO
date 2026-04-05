@@ -693,18 +693,18 @@ struct OfferDefinition {
     uint contribution_min_balance;          // Minimal contribution balance to make the contribution
 
     // Offer voting bounds. The offer should exceed minimal voting bounds within voting start timeout to make voting available
-    uint voting_start_balance;              // Minimal offer balance to start voting
-    uint voting_start_count;                // Minimal number of the offer contributors to start voting
+    uint voting_start_balance;              // Minimal balance of the active contributors to start voting
+    uint voting_start_count;                // Minimal number of the active contributors to start voting
     uint voting_start_timeout;              // The offer should exceed minimal voting bounds after approve within this timeout, or the offer has failed
     uint voting_fail_timeout;               // The offer voting should be completed after approve within this timeout, or the offer has failed
 
     // Voting parameters
-    uint16 observers_vote_percent;          // Observers vote percent (% of total count) to agree the observer's vote
-    uint16 contributors_vote_percent;       // Contributors vote percent (% of total count) to agree the contributor's vote
-    uint16 contributors_vote_fund_percent;  // Contributors vote fund percent (% of total amount) to agree the contributor's vote
-    uint16 observers_vote_quorum;           // Percent of voted per total observers to make voting valid to take a decision
-    uint16 contributors_vote_quorum;        // Percent of voted per total contributors to make voting valid to take a decision
-    uint16 contributors_vote_fund_quorum;   // Percent of voted per total contributor funds to make voting valid to take a decision
+    uint16 observers_vote_percent;          // Observers vote percent (per voted or total count depending on quorum) to agree the observer's vote
+    uint16 contributors_vote_percent;       // Contributors vote percent (per voted or total count depending on quorum) to agree the contributor's vote
+    uint16 contributors_vote_fund_percent;  // Contributors vote fund percent (per voted or total count depending on quorum) to agree the contributor's vote
+    uint16 observers_vote_quorum;           // Percent of voted per total observers to take a decision, 0 means count votes per total observers
+    uint16 contributors_vote_quorum;        // Percent of voted per total contributors to take a decision, 0 means count votes per total contributors
+    uint16 contributors_vote_fund_quorum;   // Percent of voted per total contributor funds to take a decision, 0 means count votes per total contributor funds
 }
 
 enum OfferState {
@@ -783,6 +783,9 @@ contract Offer {
     // When the offer has been approved
     uint public approved_at;
 
+    // When the voting start thresholds have been reached simultaneously for the first time
+    uint public voting_started_at;
+
     // When the offer has been completed
     uint public completed_at;
 
@@ -814,18 +817,31 @@ contract Offer {
     }
 
     function is_voting_started_balance() internal view returns(bool) {
-        // Is the balance of the offer allows to start voting
-        return address(this).balance >= _definition.voting_start_balance;
+        // Is the active contributors fund allows to start voting
+        return _total_contributors_fund >= _definition.voting_start_balance;
     }
 
     function is_voting_started_count() internal view returns(bool) {
-        // Is the total count of the offer contributors allows to start voting
-        return _contributors.length() >= _definition.voting_start_count;
+        // Is the active count of the offer contributors allows to start voting
+        return _total_contributors_count >= _definition.voting_start_count;
+    }
+
+    function update_voting_started() internal {
+        // Saves the first moment when both voting start thresholds are reached together
+        if( state != OfferState.APPROVED )
+            return;
+        if( voting_started_at != 0 )
+            return;
+        if( !is_voting_started_balance() )
+            return;
+        if( !is_voting_started_count() )
+            return;
+        voting_started_at = block.timestamp;
     }
 
     function is_voting_started() internal view returns(bool) {
-        // Is the voting started conditions are met
-        return is_voting_started_balance() && is_voting_started_count();
+        // Is the voting started conditions have been reached at least once
+        return voting_started_at != 0;
     }
 
     function is_contributors_quorum_reached() internal view returns(bool) {
@@ -892,15 +908,6 @@ contract Offer {
     modifier running_only() {
         if( state != OfferState.APPROVED )
             revert RunningOnly();
-        _;
-    }
-
-    modifier voting_started() {
-        //TODO: Make visible for client
-        if( !is_voting_started_balance() )
-            revert ContributionFundLow();
-        if( !is_voting_started_count() )
-            revert ContributionsCountLow();
         _;
     }
 
@@ -1009,6 +1016,7 @@ contract Offer {
         // Observers list is fixed and can not be modified since that.
         state = OfferState.APPROVED;
         approved_at = block.timestamp;
+        update_voting_started();
         emit OfferApproved();
     }
 
@@ -1053,6 +1061,7 @@ contract Offer {
         }
         _contributor_contribution[tx.origin] += msg.value;
         _total_contributors_fund += msg.value;
+        update_voting_started();
         uint voting_ = _contributors_fund_leaders.current_voting(tx.origin);
         if( voting_ != 0 ) {
             // when the contributor votes, the amount should be
@@ -1076,24 +1085,14 @@ contract Offer {
             return;
         }
 
-        if( block.timestamp > approved_at + _definition.voting_start_timeout ) {
-            uint contributions_count = _contributors.length();
-            uint balance = address(this).balance;
-            if( contributions_count < _definition.voting_start_count ) {
-                state = OfferState.FAILED;
+        if( !is_voting_started() ) {
+            if( block.timestamp > approved_at + _definition.voting_start_timeout ) {
+                state = OfferState.FAILED; 
                 failed_at = block.timestamp;
                 emit OfferFailed();
-                return;
             }
-            if( balance < _definition.voting_start_balance  ) {
-                state = OfferState.FAILED;
-                failed_at = block.timestamp;
-                emit OfferFailed();
-                return;
-            }
-        }
-        if( !is_voting_started() )
             return;
+        }
         if( !is_quorum_reached() )
             return;
         uint256 winner_local = _calculate_winner();
