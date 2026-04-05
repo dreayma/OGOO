@@ -508,7 +508,7 @@ $(async function() {
         $(document).find('.tab-pane').add(
             $('[data-bs-toggle="tab"]')
         ).add(
-            $(`.nav-item a`)            
+            $(`.nav-item a`)
         ).removeClass('active show');
         var parents$ = pane$.parents('.tab-pane');
         parents$.add(
@@ -818,22 +818,19 @@ $(async function() {
     const onhashchange = async function() {
         var params = new URLSearchParams(document.location.hash.substring(1));
         var selector = `#${params.get('pane')}`;
-        if( $(selector).length > 0 ) {
-            bs_selectPane(selector);
-        }
+        if( $(selector).length == 0 )
+            return;
         if(selector == '#edit-offer') {
-            var address = params.get('address');
-            if( address ) {
-                await on_edit_offer(address);
-            }
+            bs_selectPane(selector);
         } else if(selector.startsWith('#view-offer')) {
-            var address = params.get('address');
-            // TODO: implement view offer
+            bs_selectPane(selector);
         } else {
             if( params.get('address') ) {
-                params.delete('address');
+                params.delete('address');  // TODO: cleanup the history
                 var new_hash = '#' + params.toString().replaceAll('+', ' ');
                 document.location.hash = new_hash;
+            } else {
+                bs_selectPane(selector);
             }
         }
     };
@@ -985,9 +982,6 @@ $(async function() {
         remove_dialog.find('.offer-address').html('').text(offer_address);
 
         bootstrap.Modal.getOrCreateInstance(remove_dialog[0]).show();
-
-//        await delete_offer_from_list(offer_address);
-//        await fill_offer_lists();
     });
 
     $(document).on('click', '.cancel-contribution-button', async function(event) {
@@ -2084,6 +2078,14 @@ $(async function() {
         }
     });
 
+    $('#edit-offer').on('visible', async function(event) {
+        if(event.target == $('#edit-offer')[0] ) {
+            var params = new URLSearchParams(document.location.hash.substring(1));
+            var address = params.get('address');
+            if( address.length > 0 )
+                await on_edit_offer(address);
+        }
+    });
 
     $('#edit-offer form').on('submit', async function(event) {
         // edit offer page submit
@@ -2330,6 +2332,8 @@ $(async function() {
             $(panes$[ip]).on('visible', async function(event) {
                 var pane$ = $(event.target);
                 if( pane$.is('.tab-pane') ) {
+                    if( pane$.find('.tab-pane').length )
+                        return; // ignore pane with subpanes - they are processed separately
                     var hash = document.location.hash;
                     var params = new URLSearchParams(hash.substring(1));
                     params.set('pane', pane$.attr('id'));
