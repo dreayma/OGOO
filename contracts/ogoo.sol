@@ -952,6 +952,9 @@ contract Offer {
     event OfferCompleted (                              // the offer has completed successfully, the winner is paid
         address payable winner, uint amount
     );
+    event OfferPayoutFailed (                           // the successfull offer payout failed, the winner is not paid
+        address payable winner, uint amount
+    );
     event OfferFailed ();                               // the offer has failed
 
     // Updating functions
@@ -1106,7 +1109,16 @@ contract Offer {
             winner = payable(address(uint160(winner_local)));
             // Award the winner by the whole collected amount
             uint amount = address(this).balance;
-            winner.transfer(amount);
+            (bool sent, ) = winner.call{value: amount}("");
+            if( !sent ) {
+                // revert the state back if thransfer has failed
+                // and wait for the next voting to try again
+                emit OfferPayoutFailed(winner, amount);
+                state = OfferState.APPROVED;
+                completed_at = 0;
+                winner = payable(address(0));
+                return;
+            }
             emit OfferCompleted(winner, amount);
         }
     }

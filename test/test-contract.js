@@ -2788,4 +2788,94 @@ describe("Contract Tests", function () {
       throw e;
     }
   });
+
+  it("Test failed payout rolls completion state back", async function () {
+    console.log("Test failed payout rolls completion state back");
+    var test_definition = {
+        "caption": "Test",
+        "description": "Test Description",
+        "full_details": "Test Details",
+        "contribution_unlock_timeout": 1n,
+        "contribution_min_balance": 30000000000000000n,
+        "voting_start_balance": 0n,
+        "voting_start_count": 0n,
+        "voting_start_timeout": 3600n,
+        "voting_fail_timeout": 3600n,
+        "observers_vote_percent": 10000n,
+        "contributors_vote_percent": 10000n,
+        "contributors_vote_fund_percent": 10000n,
+        "contributors_vote_quorum": 0n,
+        "contributors_vote_fund_quorum": 0n,
+        "observers_vote_quorum": 0n,
+    };
+    var accounts = await hre.ethers.getSigners();
+    var account_owner = accounts[0];
+    var account_observer = accounts[1];
+    var account_contributor = accounts[2];
+    var Offer = await ethers.getContractFactory("Offer", account_owner);
+    var RejectEtherReceiver = await ethers.getContractFactory("RejectEtherReceiver", account_owner);
+    var reject_receiver = await RejectEtherReceiver.deploy();
+    await reject_receiver.waitForDeployment();
+    var offer = await Offer.deploy(test_definition);
+    await offer.waitForDeployment();
+    var contract_abi = require("../artifacts/contracts/ogoo.sol/Offer.json");
+
+    var o = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_owner,
+    );
+    var observer_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_observer,
+    );
+    var contributor_access = new ethers.Contract(
+      offer.target,
+      contract_abi.abi,
+      account_contributor,
+    );
+
+    try {
+      await (await o.observer_create(account_observer.address)).wait();
+      await (await o.approve()).wait();
+      await (await account_contributor.sendTransaction({to:offer.target, value:30000000000000001n})).wait();
+
+      var initial_offer_balance = await account_owner.provider.getBalance(offer.target);
+      initial_offer_balance.should.be.equal(30000000000000001n);
+
+      await (await contributor_access.contributor_vote(reject_receiver.target)).wait();
+      await (await observer_access.observer_vote(reject_receiver.target)).wait();
+
+      (await o.state()).should.be.equal(1n);
+      (await o.completed_at()).should.be.equal(0n);
+      expect(await o.winner()).to.equal(ethers.ZeroAddress);
+
+      var final_offer_balance = await account_owner.provider.getBalance(offer.target);
+      final_offer_balance.should.be.equal(initial_offer_balance);
+
+      var reject_receiver_balance = await account_owner.provider.getBalance(reject_receiver.target);
+      reject_receiver_balance.should.be.equal(0n);
+
+      {
+          var events = await o.queryFilter(o.filters.OfferCompleted());
+          events.length.should.be.equal(0);
+      }
+      {
+        var events = await o.queryFilter(o.filters.OfferPayoutFailed());
+        events.length.should.be.equal(1);
+        expect(events[0].args).to.deep.equal([reject_receiver.target, initial_offer_balance]);
+      }
+      {
+          var events = await o.queryFilter(o.filters.ObserverVote());
+          events.length.should.be.equal(1);
+          expect(events[0].args).to.deep.equal([account_observer.address,reject_receiver.target,false]);
+      }
+    } catch(e) {
+      if( e.data ) {
+        console.error("Unexpected revert", o.interface.parseError(e.data));
+      }
+      throw e;
+    }
+  });
 });
