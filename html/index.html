@@ -1017,7 +1017,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Share Offer address with others</h1>
+                    <h1 class="modal-title fs-5" data-t="share-offer-dialog-header-text">Share Offer address with others</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1025,7 +1025,7 @@
                   <div class="share-offer-address" style="text-align:center;word-wrap:break-word;"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary" data-bs-dismiss="modal" data-t="dialog-close-button">Close</button>
                 </div>
         </div>
     </div>
@@ -1036,14 +1036,14 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Share Offer Archive with others</h1>
+                    <h1 class="modal-title fs-5" data-t="share-archive-dialog-header-text">Share Offer Archive with others</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                   <textarea class="form-control share-archive-content font-monospace text-nowrap" rows="10" readonly></textarea>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary" data-bs-dismiss="modal" data-t="dialog-close-button" data-t="dialog-close-button">Close</button>
                 </div>
         </div>
     </div>
@@ -1055,29 +1055,29 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate onsubmit="return false">
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Create a new contribution</h1>
+                    <h1 class="modal-title fs-5" data-t="create-contribution-dialog-header-text">Create a new contribution</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-check p-0">
                       <div class="input-group">
-                          <input type="text" class="form-control w-50 input-amount" placeholder="Contribution amount" pattern="[0-9]+(\.[0-9]{1,3})?" required>
+                          <input type="text" class="form-control w-50 input-amount" data-t="create-contribution-dialog-amount-placeholder" placeholder="Contribution amount" pattern="[0-9]+(\.[0-9]{1,3})?" required>
                           <input type="hidden" class="select-value"> 
-                          <select class="form-select input-group-text input-amount-unit" size style="width:100px;" aria-label="Contribution units">
+                          <select class="form-select input-group-text input-amount-unit" data-t="create-contribution-dialog-amount-unit-title" title="Select amount unit" size style="width:100px;" aria-label="Contribution units">
                           </select>
                       </div>
                     </div>
                     <div class="form-check p-0">
                       <div class="input-group">
-                        <input type="text" class="form-control ether-address-input input-address" placeholder="Offer address" required oninput="address_input_check('#create-contribution .input-address')">
-                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" title="Camera"></i></button>
+                        <input type="text" class="form-control ether-address-input input-address" data-t="create-contribution-dialog-address-placeholder" placeholder="Offer address" required oninput="address_input_check('#create-contribution .input-address')">
+                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" data-t="dialog-address-camera-button" title="Camera"></i></button>
                       </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Contribution</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-t="create-contribution-dialog-create-button">Create Contribution</button>
                 </div>
             </form>
         </div>
@@ -1090,7 +1090,7 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Input Address</h1>
+                    <h1 class="modal-title fs-5" data-t="ether-address-input-dialog-header-text">Input Address</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1100,7 +1100,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-close-button">Close</button>
                 </div>
             </form>
         </div>
@@ -1113,7 +1113,7 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Remove Offer</h1>
+                    <h1 class="modal-title fs-5" data-t="remove-offer-dialog-header-text">Remove Offer</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1128,8 +1128,8 @@
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Remove</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-t="remove-offer-dialog-remove-button">Remove</button>
                 </div>
             </form>
         </div>
@@ -1142,21 +1142,21 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Add an address to the Offers list</h1>
+                    <h1 class="modal-title fs-5" data-t="watch-offer-dialog-header-text">Add an address to the Offers list</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-check p-0">
                       <div class="input-group">
-                        <input type="text" class="form-control ether-address-input" placeholder="Offer address" required oninput="address_input_check('#watch-offer .ether-address-input')">
-                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" title="Camera"></i></button>
+                        <input type="text" class="form-control ether-address-input" data-t="watch-offer-dialog-address-placeholder" placeholder="Offer address" required oninput="address_input_check('#watch-offer .ether-address-input')">
+                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" data-t="dialog-address-camera-button" title="Camera"></i></button>
                       </div>
                     </div>
                     <div class="text-bg-danger dialog-error"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Offer</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-t="watch-offer-dialog-add-offer-button">Add Offer</button>
                 </div>
             </form>
         </div>
@@ -1169,25 +1169,25 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Voting as a Contributor</h1>
+                    <h1 class="modal-title fs-5" data-t="contributor-vote-dialog-header-text">Voting as a Contributor</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-check p-0">
                       <div class="modal-text">
-                        <p>Vote as a contributor for the Offer <em class="offer-title"></em> [<em class="offer-address"></em>]</p>
+                        <p><span data-t="contributor-vote-dialog-text">Vote as a contributor for the Offer</span> <em class="offer-title"></em> [<em class="offer-address"></em>]</p>
                       </div>
                       <div class="input-group">
-                        <input type="text" class="form-control ether-address-input" placeholder="Contender address" required oninput="address_input_check('#contributor-vote .ether-address-input')">
-                        <button type="button" class="btn btn-outline-danger failure" data-bs-toggle="button"><i class="fa-solid fa-ban" title="Failure"></i></button>
-                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" title="Camera"></i></button>
+                        <input type="text" class="form-control ether-address-input" data-t="contributor-vote-dialog-contender-address-placeholder" placeholder="Contender address" required oninput="address_input_check('#contributor-vote .ether-address-input')">
+                        <button type="button" class="btn btn-outline-danger failure" data-bs-toggle="button"><i class="fa-solid fa-ban" data-t="dialog-failure-button" title="Failure"></i></button>
+                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" data-t="dialog-address-camera-button" title="Camera"></i></button>
                       </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Vote</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-t="contributor-vote-dialog-vote-button">Vote</button>
                 </div>
             </form>
         </div>
@@ -1195,30 +1195,30 @@
 </div>
 
 <!--- Observer Vote Modal -->
-<div class="modal fade" id="observer-vote" tabindex="-1" aria-labelledby="contributorVote" aria-hidden="true">
+<div class="modal fade" id="observer-vote" tabindex="-1" aria-labelledby="observerVote" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Voting as an Observer</h1>
+                    <h1 class="modal-title fs-5" data-t="observer-vote-dialog-header-text">Voting as an Observer</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-check p-0">
                       <div class="modal-text">
-                        <p>Vote as an observer for the Offer <em class="offer-title"></em> [<em class="offer-address"></em>]</p>
+                        <p><span data-t="observer-vote-dialog-text">Vote as an observer for the Offer</span> <em class="offer-title"></em> [<em class="offer-address"></em>]</p>
                       </div>
                       <div class="input-group">
-                        <input type="text" class="form-control ether-address-input" placeholder="Contender address" required oninput="address_input_check('#observer-vote .ether-address-input')">
-                        <button type="button" class="btn btn-outline-danger failure" data-bs-toggle="button"><i class="fa-solid fa-ban" title="Failure"></i></button>
-                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" title="Camera"></i></button>
+                        <input type="text" class="form-control ether-address-input" data-t="observer-vote-dialog-contender-address-placeholder" placeholder="Contender address" required oninput="address_input_check('#observer-vote .ether-address-input')">
+                        <button type="button" class="btn btn-outline-danger failure" data-bs-toggle="button"><i class="fa-solid fa-ban" data-t="dialog-failure-button" title="Failure"></i></button>
+                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" data-t="dialog-address-camera-button" title="Camera"></i></button>
                       </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Vote</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-t="observer-vote-dialog-vote-button">Vote</button>
                 </div>
             </form>
         </div>
@@ -1231,21 +1231,21 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Add an Observer to the Offer</h1>
+                    <h1 class="modal-title fs-5" data-t="add-observer-dialog-header-text">Add an Observer to the Offer</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-check p-0">
                       <div class="input-group">
-                        <input type="text" class="form-control ether-address-input" placeholder="Observer address" required oninput="address_input_check('#add-observer .ether-address-input')">
-                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" title="Camera"></i></button>
+                        <input type="text" class="form-control ether-address-input" data-t="add-observer-dialog-observer-address-placeholder" placeholder="Observer address" required oninput="address_input_check('#add-observer .ether-address-input')">
+                        <button type="button" class="btn btn-outline-secondary ether-address-input-button"><i class="fa-solid fa-camera" data-t="dialog-address-camera-button" title="Camera"></i></button>
                       </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Observer</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-t="add-observer-dialog-add-button">Add Observer</button>
                 </div>
             </form>
         </div>
@@ -1258,18 +1258,18 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Remove an Observer from the Offer</h1>
+                    <h1 class="modal-title fs-5" data-t="remove-observer-dialog-header-text">Remove an Observer from the Offer</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                   <div style="overflow-x:clip;text-overflow:ellipsis;max-width:100%;">
-                    Observer to remove: <em class="observer-address"></em>
+                    <span data-t="remove-observer-dialog-observer-to-remove-text">Observer to remove:</span> <em class="observer-address"></em>
                   </div>
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Remove Observer</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-t="remove-observer-dialog-remove-button">Remove Observer</button>
                 </div>
             </form>
         </div>
@@ -1282,7 +1282,7 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Approve Offer</h1>
+                    <h1 class="modal-title fs-5" data-t="approve-offer-dialog-header-text">Approve Offer</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1299,9 +1299,9 @@
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary pre-approve">Approve</button>
-                    <button type="submit" class="btn btn-primary d-none disabled approve">Approve</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-t="dialog-cancel-button">Cancel</button>
+                    <button type="button" class="btn btn-primary pre-approve" data-t="approve-offer-dialog-pre-approve-button">Approve</button>
+                    <button type="submit" class="btn btn-primary d-none disabled approve" data-t="approve-offer-dialog-approve-button">Approve</button>
                 </div>
             </form>
         </div>
@@ -1314,7 +1314,7 @@
         <div class="modal-content">
             <form class="needs-validation" novalidate>
                 <div class="modal-header text-bg-light">
-                    <h1 class="modal-title fs-5">Cancel Contribution</h1>
+                    <h1 class="modal-title fs-5" data-t="cancel-contribution-dialog-header-text">Cancel Contribution</h1>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -1328,7 +1328,7 @@
                 </div>
                 <div class="modal-footer">
                     <p class="modal-info text-info"></p>
-                    <button type="submit" class="btn btn-primary">Cancel Contribution</button>
+                    <button type="submit" class="btn btn-primary" data-t="cancel-contribution-dialog-cancel-button">Cancel Contribution</button>
                 </div>
             </form>
         </div>

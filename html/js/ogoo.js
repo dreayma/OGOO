@@ -2221,6 +2221,9 @@ $(async function() {
                     logger.warning('Error ignored', ex);
                 }
             }
+            if( dialogue$[0].parent_dialogue$ && dialogue$[0].parent_dialogue$.length ) {
+                bootstrap.Modal.getOrCreateInstance(dialogue$[0].parent_dialogue$[0]).show();
+            }
         });
         $(document).on('click', button_selector, function(event) {
             // find an input
@@ -2238,6 +2241,11 @@ $(async function() {
                 return;
             }
             dialogue$[0].input$ = input$;
+            var parent_dialogue$ = parent$.parents('.modal');
+            if( parent_dialogue$.length ) {
+                bootstrap.Modal.getOrCreateInstance(parent_dialogue$[0]).hide();
+            }
+            dialogue$[0].parent_dialogue$ = parent_dialogue$;
             bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
         });
         QrScanner.hasCamera().then((has)=>{
