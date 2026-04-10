@@ -117,6 +117,10 @@ body {
     letter-spacing: 0;
 }
 
+.btn.disabled {
+    border-color: transparent;
+}
+
 .btn-sm {
     padding: 0.375rem 0.875rem;
     font-size: 0.8125rem;

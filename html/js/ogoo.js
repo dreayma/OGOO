@@ -11,7 +11,7 @@ $(async function() {
     const WeiSymbol = 'w';
 
     const CONTRACT_FAILED = 1n << 255n;
-    
+
     const etherUnits = [
         WeiSymbol,
         'K' + WeiSymbol,
@@ -195,135 +195,51 @@ $(async function() {
 
     // Language Support
     let currentLang = 'en'; // Default to English
-    const translations = {
-        'en': {
-            'nav_dashboard': 'Dashboard',
-            'nav_offers': 'Offers',
-            'nav_offers_list': 'All Offers',
-            'nav_add_offer': 'Add by Address',
-            'nav_contributions': 'Contributions',
-            'nav_my_contributions': 'My Contributions',
-            'nav_new_contribution': 'New Contribution',
-            'nav_management': 'Management',
-            'nav_observing': 'Observing',
-            'nav_observing_list': 'Observed Offers',
-            'nav_help': 'Help',
-            'start_tour': 'Tour',
-            'hero_title': 'OGOO',
-            'hero_subtitle': 'Decentralized impact funds governed by the community. Create, contribute, and solve real-world problems.',
-            'btn_create_offer': 'Create Offer',
-            'card_offers_title': 'All Offers',
-            'card_offers_subtitle': 'Offers currently being tracked',
-            'btn_view_all': 'View All',
-            'card_contrib_title': 'My Contributions',
-            'card_contrib_subtitle': 'Your active stakes in funds',
-            'btn_manage': 'Manage',
-            'card_managed_title': 'Managed by Me',
-            'card_managed_subtitle': 'Offers you have created',
-            'btn_admin_panel': 'Admin Panel',
-            'card_observing_title': 'Observing',
-            'card_observing_subtitle': 'Offers you are watching',
-            'btn_view_observed': 'View All',
-            'how_it_works_title': 'How it works?',
-            'how_it_works_text': 'OGOO is a platform where anyone can propose a problem to be solved. The community funds the reward, and the best solution gets the prize after a transparent voting process.',
-            'btn_learn_more': 'Learn More',
-            'about_title': 'About OGOO',
-            'about_version': 'Version 0.0.1 Beta',
-            'about_desc': 'Open Group Open Offer is a decentralized platform for creating community-governed impact funds.',
-            'about_decentralized': 'Decentralized',
-            'about_community': 'Community Led',
-            'about_opensource': 'Open Source',
-            'btn_help': 'Help',
-            'btn_github': 'View on GitHub',
-            'help_title': 'OGOO',
-            'help_subtitle': 'Decentralized impact fund platform',
-            'help_quick_start': 'Quick Start',
-            'help_step1': 'Connect Wallet',
-            'help_step1_desc': 'Use MetaMask to connect',
-            'help_step2': 'Find an Offer',
-            'help_step2_desc': 'Browse problems to solve',
-            'help_step3': 'Fund & Vote',
-            'help_step3_desc': 'Contribute and pick a winner',
-            'role_owner': 'Owner',
-            'role_owner_desc': 'Creates the offer. Can edit, approve & add observers.',
-            'role_contributor': 'Contributor',
-            'role_contributor_desc': 'Funds the offer. Votes for best solution.',
-            'role_observer': 'Observer',
-            'role_observer_desc': 'Invited by owner. Helps validate solutions.',
-            'role_contender': 'Contender',
-            'role_contender_desc': 'Submits solution. Wins fund if chosen.'
-        },
-'ru': {
-            'nav_dashboard': 'Панель управления',
-            'nav_offers': 'Предложения',
-            'nav_offers_list': 'Список предложений',
-            'nav_add_offer': 'Добавить по адресу',
-            'nav_contributions': 'Вклады',
-            'nav_my_contributions': 'Мои вклады',
-            'nav_new_contribution': 'Новый вклад',
-            'nav_management': 'Управление',
-            'nav_observing': 'Наблюдение',
-            'nav_observing_list': 'Наблюдаемые предложения',
-            'nav_help': 'Помощь',
-            'start_tour': 'Тур',
-            'hero_title': 'OGOO',
-            'hero_subtitle': 'Децентрализованные фонды влияния, управляемые сообществом. Создавайте, инвестируйте и решайте реальные проблемы.',
-            'btn_create_offer': 'Создать предложение',
-            'card_offers_title': 'Активные предложения',
-            'card_offers_subtitle': 'Предложения, которые вы отслеживаете',
-            'btn_view_all': 'Смотреть все',
-            'card_contrib_title': 'Мои вклады',
-            'card_contrib_subtitle': 'Ваши активные доли в фондах',
-            'btn_manage': 'Управлять',
-            'card_managed_title': 'Управляемые мной',
-            'card_managed_subtitle': 'Предложения, созданные вами',
-            'btn_admin_panel': 'Панель управления',
-            'card_observing_title': 'Наблюдение',
-            'card_observing_subtitle': 'Предложения, которые вы наблюдаете',
-            'btn_view_observed': 'Смотреть все',
-            'how_it_works_title': 'Как это работает?',
-            'how_it_works_text': 'OGOO — это платформа, где любой желающий может предложить проблему для решения. Сообщество финансирует награду, а лучшее решение получает приз после прозрачного процесса голосования.',
-            'btn_learn_more': 'Узнать больше',
-            'about_title': 'О OGOO',
-            'about_version': 'Версия 0.0.1 Beta',
-            'about_desc': 'OGOO — децентрализованная платформа для создания фондов влияния под управлением сообщества.',
-            'about_decentralized': 'Децентрализация',
-            'about_community': 'Управление сообществом',
-            'about_opensource': 'Открытый код',
-            'btn_help': 'Помощь',
-            'btn_github': 'Смотреть на GitHub',
-            'help_title': 'OGOO',
-            'help_subtitle': 'Децентрализованная платформа фондов влияния',
-            'help_quick_start': 'Быстрый старт',
-            'help_step1': 'Подключить кошелёк',
-            'help_step1_desc': 'Используйте MetaMask',
-            'help_step2': 'Найти предложение',
-            'help_step2_desc': 'Просматривайте проблемы для решения',
-            'help_step3': 'Инвестировать и голосовать',
-            'help_step3_desc': 'Вносите вклад и выбирайте победителя',
-            'role_owner': 'Владелец',
-            'role_owner_desc': 'Создаёт предложение. Может редактировать, одобрять и добавлять наблюдателей.',
-            'role_contributor': 'Вкладчик',
-            'role_contributor_desc': 'Финансирует предложение. Голосует за лучшее решение.',
-            'role_observer': 'Наблюдатель',
-            'role_observer_desc': 'Приглашён владельцем. Помогает проверять решения.',
-            'role_contender': 'Претендент',
-            'role_contender_desc': 'Предлагает решение. Выигрывает фонд если выбран.'
+
+    // External variable `translations`
+    const translateElement = function(element, message) {
+        if(typeof(message) == 'string') {
+            if($(element).text() != message)
+                $(element).text(message);
+        } else {
+            if(message.text) {
+                $(element).text(message.text);
+            }
+            for(var attr in message) {
+                if(attr == 'text')
+                    continue;
+                if($(element).attr(attr) != message[attr])
+                    $(element).attr(attr, message[attr]);
+            }
         }
+        return element;
     };
+
+    const translateTree = function(element) {
+        const lang = localStorage.getItem('ogoo_lang');
+        $(element).find('[data-t]').each(function() {
+            const key = $(this).data('t');
+            if (translations[lang] && translations[lang][key]) {
+                translateElement(this, translations[lang][key]);
+            }
+        });
+        return element;
+    }
+
+    const translateHTML = function(html) {
+        var root = $('<div></div>');
+        root.html(html);
+        translateTree(root[0]);
+        return root.html();
+    }
 
     const updateLanguage = function(lang) {
         currentLang = lang;
-        $('[data-t]').each(function() {
-            const key = $(this).data('t');
-            if (translations[lang] && translations[lang][key]) {
-                $(this).text(translations[lang][key]);
-            }
-        });
         $('[data-lang]').removeClass('active');
         $(`[data-lang="${lang}"]`).addClass('active');
         $('#langSelector').html(`<i class="bi bi-translate me-1"></i> ${lang.toUpperCase()}`);
         localStorage.setItem('ogoo_lang', lang);
+        translateTree(document);
     };
 
     // Product Tour Logic
@@ -533,15 +449,12 @@ $(async function() {
         'FAILED',
     ];
 
-    // [TEMPORARY DISABLED] Ethereum module check disabled for UI development
-//    /*
     if( typeof(ethereum) == 'undefined' ) {
         bootstrap.Modal.getOrCreateInstance($('#no-ethereum')[0], {
             keyboard: false,
         }).show();
         return;
     }
-//    */
 
     // get all offers accordingly to the current account
     const get_offer_records_list = async function(current_account) {
@@ -646,7 +559,7 @@ $(async function() {
                 var managed_list_row_icon_box = managed_list_row.find('.offer-icon-box');
                 managed_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
                 managed_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
-                managed_list_container.append(managed_list_row);
+                managed_list_container.append(translateTree(managed_list_row));
             }
             if(offer_record.is_contributor) {
                 contributions += 1;
@@ -694,7 +607,7 @@ $(async function() {
                 var contribution_list_row_icon_box = contribution_list_row.find('.icon-box');
                 contribution_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
                 contribution_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
-                contribution_list_container.append(contribution_list_row);
+                contribution_list_container.append(translateTree(contribution_list_row));
             }
             if(offer_record.is_observer) {
                 observed += 1;
@@ -723,14 +636,14 @@ $(async function() {
                 var observing_list_row_icon_box = observing_list_row.find('.offer-icon-box');
                 observing_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
                 observing_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
-                observing_list_container.append(observing_list_row);
+                observing_list_container.append(translateTree(observing_list_row));
             }
             offer_list_row_icon_box.append('&nbsp;');
             offer_list_row_icon_box.append($($('#icon-state-' + offer_record.state_name).text()));
             offer_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
             offer_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
             offer_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
-            offer_list_container.append(offer_list_row);
+            offer_list_container.append(translateTree(offer_list_row));
         });
         $('#all-contributions-number').text(contributions);
         $('#all-observed-number').text(observed);
@@ -853,16 +766,16 @@ $(async function() {
     };
 
     // Copy the entire create-offer tab content to have a similar edit-offer tab
-    $('#edit-offer').html($('#create-offer').html());
+    $('#edit-offer').html(translateHTML($('#create-offer').html()));
     // Modify a display options for edit-offer tab
     $('#edit-offer .input-observers-list').parentsUntil('.col').parent().removeClass('d-none');
 
     // Copy the entire create-offer-submit dialog content to have a similar edit-offer-submit dialog
-    $('#edit-offer-submit').html($('#create-offer-submit').html());
-    $('#edit-offer-submit .offer-submit-header').html(
+    $('#edit-offer-submit').html(translateHTML($('#create-offer-submit').html()));
+    $('#edit-offer-submit .offer-submit-header').html(translateHTML(
         'Account <em class="current-account-id account-address"></em> [<em class="current-account-balance"></em>]' +
         'is going to update the Offer contract <em class="offer-address"></em>'
-    );
+    ));
     $('#edit-offer-submit button[type="submit"]').text('Update Offer');
     $('form.needs-validation').on('submit', event => {
         // initiale validation on submit for all forms
@@ -1247,7 +1160,7 @@ $(async function() {
             event.preventDefault();
             bs_selectPane('#managed-offers-list');
         });
-        $('#manage-card-create-offer-button').on('click', async function(event) {
+        $('.create-offer-button').on('click', async function(event) {
             event.preventDefault();
             bs_selectPane('#create-offer');
         });
@@ -1789,8 +1702,11 @@ $(async function() {
 
         }
 
+        edit_offer$.find('form button[type="submit"]').attr('data-t', 'edit-offer-tab-pane-submit');
         if( offer_record.is_owner && offer_record.state < 1n ) {
-            edit_offer$.find('.tab-pane-header').html(`Edit Offer <em class="offer-address>">${address}</em>`);
+            var header=$($('#edit-offer-tab-pane-header').text());
+            header.find('.offer-address').text(address);
+            edit_offer$.find('.tab-pane-header').html(header.html());
             edit_offer$.find('form button[type="submit"]').text('Update Offer');
             edit_offer$.find('form .form-control').prop('readonly', false);
             edit_offer$.find('form .form-select').prop('readonly', false);
@@ -1798,7 +1714,9 @@ $(async function() {
             edit_offer$.find('form button[type="submit"]').removeClass('invisible');
             edit_offer$.find('.edit-only').removeClass('d-none');
         } else {
-            edit_offer$.find('.tab-pane-header').html(`View Offer <em class="offer-address>">${address}</em>`);
+            var header=$($('#view-offer-tab-pane-header').text());
+            header.find('.offer-address').text(address);
+            edit_offer$.find('.tab-pane-header').html(header.html());
             edit_offer$.find('form button[type="submit"]').text('');
             edit_offer$.find('form .form-control').prop('readonly', true);
             edit_offer$.find('form .form-select').prop('readonly', true);
@@ -1806,6 +1724,7 @@ $(async function() {
             edit_offer$.find('form button[type="submit"]').addClass('invisible');
             edit_offer$.find('.edit-only').addClass('d-none');
         }
+        translateTree(edit_offer$[0]);
     };
 
     $('#edit-offer .input-observers-list .list-add').on('click', async function(event) {
@@ -2001,9 +1920,9 @@ $(async function() {
         $('#view-offer .offer-observers-vote-percent').text(Number(offer_record.definition.observers_vote_percent) / 100 + '%');
         $('#view-offer .offer-contributors-vote-percent').text(Number(offer_record.definition.contributors_vote_percent) / 100 + '%');
         $('#view-offer .offer-contributors-vote-fund-percent').text(Number(offer_record.definition.contributors_vote_fund_percent) / 100 + '%');
-        $('#view-offer .offer-state-icon').html(
+        $('#view-offer .offer-state-icon').html(translateTree(
             $($('#icon-state-' + offer_record.state_name).text())
-        );
+        ));
         $('#view-offer .offer-balance').text(etherHuman(offer_record.amount));
         $('#view-offer .offer-approved-at-row').addClass('d-none');
         $('#view-offer .offer-completed-at-row').addClass('d-none');
