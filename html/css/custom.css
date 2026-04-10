@@ -15,7 +15,7 @@ body {
     background-color: var(--bg-main);
     color: var(--text-main);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding-top: 80px !important;
+    padding-top: 4rem !important; /* space for the top nav header */
     min-height: 100vh !important;
     -webkit-font-smoothing: antialiased;
 }
