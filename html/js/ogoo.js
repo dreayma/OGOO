@@ -546,6 +546,8 @@ $(async function() {
                 managed_list_row.find('.offer-title').text(offer_record.definition.caption);
                 managed_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
                 managed_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
+                managed_list_row.find('.offer-balance').text(etherFormatApprox(offer_record.amount));
+                managed_list_row.find('.offer-balance').attr('title', ethers.formatEther(offer_record.amount) + ethers.EtherSymbol);
                 if(offer_record.state != 0n) {
                     managed_list_row.find('.offer-edit-button').addClass('disabled');
                     managed_list_row.find('.offer-approve-button').addClass('disabled');
@@ -570,6 +572,8 @@ $(async function() {
                 contribution_list_row.find('.offer-title').text(offer_record.definition.caption);
                 contribution_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
                 contribution_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
+                contribution_list_row.find('.offer-balance').text(etherFormatApprox(offer_record.amount));
+                contribution_list_row.find('.offer-balance').attr('title', ethers.formatEther(offer_record.amount) + ethers.EtherSymbol);
 
                 if(offer_record.state > 1n) {
                     contribution_list_row.find('.offer-add-contribution-button').addClass('disabled');
@@ -643,6 +647,8 @@ $(async function() {
             offer_list_row_icon_box.parent().append($($('#badge-state-' + offer_record.state_name).text()));
             offer_list_row.find('.offer-contribution').text(etherFormatApprox(offer_record.contribution));
             offer_list_row.find('.offer-contribution').attr('title', ethers.formatEther(offer_record.contribution) + ethers.EtherSymbol);
+            offer_list_row.find('.offer-balance').text(etherFormatApprox(offer_record.amount));
+            offer_list_row.find('.offer-balance').attr('title', ethers.formatEther(offer_record.amount) + ethers.EtherSymbol);
             offer_list_container.append(translateTree(offer_list_row));
         });
         $('#all-contributions-number').text(contributions);

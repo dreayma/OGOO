@@ -119,7 +119,12 @@
                   <p class="text-muted font-monospace fs-07 mb-3 offer-address"></p>
                 </a>
                 <div class="d-flex justify-content-between align-items-center mt-auto">
-                    <div class="text-primary fw-bold"><span class="offer-contribution-sign">≊</span><span class="offer-contribution"></span></div>
+                    <div>
+                        <span class="text-success fw-bold offer-balance-sign">≊</span>
+                        <span class="text-success fw-bold offer-contribution"></span>
+                        <span class="fw-bold offer-balance-sign">/</span>
+                        <span class="text-primary fw-bold offer-balance"></span>
+                    </div>
                     <button type="button" class="btn btn-light btn-sm offer-add-contribution-button"><i class="fa-solid fa-plus" data-t="offer-add-contribution-button-icon" title="Increase Contribution"></i></button>
                 </div>
                 <div class="btn-group" role="group">
@@ -145,7 +150,7 @@
                   <p class="text-muted font-monospace fs-07 mb-3 offer-address"></p>
                 </a>
                 <div class="d-flex justify-content-between align-items-center mt-auto">
-                    <div class="text-primary fw-bold"><span class="offer-contribution-sign">≊</span><span class="offer-contribution"></span></div>
+                    <div class="text-primary fw-bold"><span class="offer-balance-sign">≊</span><span class="offer-balance"></span></div>
                 </div>
                 <div class="btn-group" role="group">
                     <button type="button" class="btn btn-outline-secondary offer-edit-button" data-t="offer-edit-button"><i class="fa-solid fa-wrench"></i> <span class="d-none d-lg-inline" data-t="offer-edit-button-text">Edit</button>
@@ -170,7 +175,7 @@
                   <p class="text-muted font-monospace fs-07 mb-3 offer-address"></p>
                 </a>
                 <div class="d-flex justify-content-between align-items-center mt-auto">
-                    <div class="text-primary fw-bold"><span class="offer-contribution-sign">≊</span><span class="offer-contribution"></span></div>
+                    <div class="text-primary fw-bold"><span class="offer-balance-sign">≊</span><span class="offer-balance"></span></div>
                 </div>
                 <div class="btn-group" role="group">
                     <button type="button" class="btn btn-outline-secondary observer-vote-button" data-t="observer-vote-button"><i class="fa-regular fa-hand"></i> <span class="d-none d-lg-inline" data-t="observer-vote-button-text">Vote</button>
@@ -379,7 +384,7 @@
                         </div>
                         <h2 class="fw-bold mb-1" id="all-offers-number">0</h2>
                         <p class="text-muted small mb-3" data-t="card_offers_subtitle" style="height:2rem">Offers currently being tracked</p>
-                        <button class="btn btn-outline-dark btn-sm w-100" id="offers-card-offers-button" data-t="btn_view_all">View All</button>
+                        <button class="btn btn-outline-dark btn-sm w-100" id="offers-card-offers-button" data-t="card_offers_button">List View</button>
                     </div>
                 </div>
                 <!-- Contributions Stats -->
@@ -393,7 +398,7 @@
                         </div>
                         <h2 class="fw-bold mb-1" id="all-contributions-number">0</h2>
                         <p class="text-muted small mb-3" data-t="card_contrib_subtitle" style="height:2rem">Your active stakes in funds</p>
-                        <button class="btn btn-outline-dark btn-sm w-100" id="contributions-card-contributions-button" data-t="btn_manage">Manage</button>
+                        <button class="btn btn-outline-dark btn-sm w-100" id="contributions-card-contributions-button" data-t="card_contrib_button">List View</button>
                     </div>
                 </div>
                 <!-- Management Stats -->
@@ -407,7 +412,7 @@
                         </div>
                         <h2 class="fw-bold mb-1" id="all-owned-number">0</h2>
                         <p class="text-muted small mb-3" data-t="card_managed_subtitle" style="height:2rem">Offers you have created</p>
-                        <button class="btn btn-outline-dark btn-sm w-100" id="manage-card-managed-button" data-t="btn_admin_panel">Admin Panel</button>
+                        <button class="btn btn-outline-dark btn-sm w-100" id="manage-card-managed-button" data-t="card_managed_button">List View</button>
                     </div>
                 </div>
                 <!-- Observing Stats -->
@@ -421,7 +426,7 @@
                         </div>
                         <h2 class="fw-bold mb-1" id="all-observed-number">0</h2>
                         <p class="text-muted small mb-3" data-t="card_observing_subtitle" style="height:2rem">Offers you are watching</p>
-                        <button class="btn btn-outline-dark btn-sm w-100" id="observing-card-observers-button" data-t="btn_view_observed">View All</button>
+                        <button class="btn btn-outline-dark btn-sm w-100" id="observing-card-observers-button" data-t="card_observing_button">List View</button>
                     </div>
                 </div>
             </div>
@@ -448,7 +453,7 @@
         <div class="tab-pane fade" id="offers-list" role="tabpanel" pagetitle="All Offers | OGOO">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="fw-bold" data-t="nav_offers_list">All Offers</h2>
-                <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#watch-offer">Add by Address</button>
+                <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#watch-offer" data-t="add-by-address-tab-pane-button">Add by Address</button>
             </div>
             <div class="row g-4" id="offers-container">
                 <!-- Dynamic Content -->
@@ -459,7 +464,7 @@
         <div class="tab-pane fade" id="contributions-list" role="tabpanel" pagetitle="My Contributions | OGOO">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="fw-bold mb-4" data-t="nav_my_contributions">My Contributions</h2>
-                <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#create-contribution">Create contribution</button>
+                <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#create-contribution" data-t="create-contribution-tab-pane-button">Create contribution</button>
             </div>
             <div class="row g-4" id="contributions-container">
                 <!-- Dynamic Content -->
