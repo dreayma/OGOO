@@ -205,8 +205,11 @@ $(async function() {
             if(message.text) {
                 $(element).text(message.text);
             }
+            if(message.html) {
+                $(element).html(message.html);
+            }
             for(var attr in message) {
-                if(attr == 'text')
+                if(attr == 'text' || attr == 'html')
                     continue;
                 if($(element).attr(attr) != message[attr])
                     $(element).attr(attr, message[attr]);
@@ -777,12 +780,19 @@ $(async function() {
     $('#edit-offer .input-observers-list').parentsUntil('.col').parent().removeClass('d-none');
 
     // Copy the entire create-offer-submit dialog content to have a similar edit-offer-submit dialog
-    $('#edit-offer-submit').html(translateHTML($('#create-offer-submit').html()));
-    $('#edit-offer-submit .offer-submit-header').html(translateHTML(
+    $('#edit-offer-submit').html($('#create-offer-submit').html());
+    $('#edit-offer-submit .modal-header h1').text('Update Offer');
+    $('#edit-offer-submit .offer-submit-header').html(
         'Account <em class="current-account-id account-address"></em> [<em class="current-account-balance"></em>]' +
         'is going to update the Offer contract <em class="offer-address"></em>'
-    ));
+    );
     $('#edit-offer-submit button[type="submit"]').text('Update Offer');
+    $('#edit-offer-submit .modal-header h1').attr('data-t', 'edit-offer-submit-modal-head-text');
+    $('#edit-offer-submit .offer-submit-header').attr('data-t', 'edit-offer-submit-header-html');
+    $('#edit-offer-submit button[type="submit"]').attr('data-t', 'edit-offer-submit-button-text');
+
+    translateTree($('#edit-offer-submit'));
+
     $('form.needs-validation').on('submit', event => {
         // initiale validation on submit for all forms
         if (!event.target.checkValidity()) {
@@ -932,7 +942,7 @@ $(async function() {
         } catch(ex) {
             console.log('Account connection failed:', ex);
             $('#connect-account-button').prop('disabled', false);
-            $('#no-accounts .dialog-error').text('Account connection failed:' + ex.message);
+            $('#no-accounts .dialog-error').text(ex.message);
             return;
         }
         bootstrap.Modal.getOrCreateInstance($('#no-accounts')[0]).hide();
@@ -955,7 +965,7 @@ $(async function() {
         // Offer approval buttons
         var dialogue$ = $('#approve-offer');
         var offer_address = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-address').text();
-        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.managed-list-row-name').text();
+        var offer_title = $(event.currentTarget).parentsUntil('.offer-item').find('.offer-title').text();
         dialogue$.find('.offer-address').text(offer_address);
         dialogue$.find('.offer-title').text(offer_title);
         dialogue$.find('.approve-offer-warning').addClass('d-none');
@@ -1358,7 +1368,6 @@ $(async function() {
         dialogue$.find('form')[0].current_account = current_account;
         var balance = await provider.getBalance(current_account.address);
         var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
-        dialogue$.find('.modal-header h1').text('Create a new Offer');
         dialogue$.find('.current-account-id').text(current_account.address);
         dialogue$.find('.current-account-balance').text(etherFormatApprox(balance));
 
@@ -1847,6 +1856,7 @@ $(async function() {
                 offer_record.definition,
                 offer_record.amount,
                 offer_record.approved_at,
+                offer_record.voting_started_at,
                 offer_record.completed_at,
                 offer_record.failed_at,
                 offer_record.voting_statistics,
@@ -1858,6 +1868,7 @@ $(async function() {
                 offer_access.definition(),
                 provider.getBalance(offer_record.id),
                 offer_access.approved_at(),
+                offer_access.voting_started_at(),
                 offer_access.completed_at(),
                 offer_access.failed_at(),
                 offer_access.voting_statistics(),
@@ -1931,19 +1942,25 @@ $(async function() {
         ));
         $('#view-offer .offer-balance').text(etherHuman(offer_record.amount));
         $('#view-offer .offer-approved-at-row').addClass('d-none');
+        $('#view-offer .offer-voting-started-at-row').addClass('d-none');
         $('#view-offer .offer-completed-at-row').addClass('d-none');
         $('#view-offer .offer-failed-at-row').addClass('d-none');
         if(offer_record.state > 0n) {
             $('#view-offer .offer-approved-at-row').removeClass('d-none');
+        }
+        if(offer_record.voting_started_at > 0n) {
+            $('#view-offer .offer-voting-started-at-row').removeClass('d-none');
         }
         if(offer_record.state == 2n) {
             $('#view-offer .offer-completed-at-row').removeClass('d-none');
         } else if(offer_record.state == 3n) {
             $('#view-offer .offer-failed-at-row').removeClass('d-none');
         }
-        $('#view-offer .offer-approved-at').text(offer_record.approved_at ? new Date(Number(offer_record.approved_at) * 1000).toLocaleString() : '-');
-        $('#view-offer .offer-completed-at').text(offer_record.completed_at ? new Date(Number(offer_record.completed_at) * 1000).toLocaleString() : '-');
-        $('#view-offer .offer-failed-at').text(offer_record.failed_at ? new Date(Number(offer_record.failed_at) * 1000).toLocaleString() : '-');
+        var current_lang = localStorage.getItem('ogoo_lang') || 'en';
+        $('#view-offer .offer-approved-at').text(offer_record.approved_at ? new Date(Number(offer_record.approved_at) * 1000).toLocaleString(current_lang) : '-');
+        $('#view-offer .offer-voting-started-at').text(offer_record.voting_started_at ? new Date(Number(offer_record.voting_started_at) * 1000).toLocaleString(current_lang) : '-');
+        $('#view-offer .offer-completed-at').text(offer_record.completed_at ? new Date(Number(offer_record.completed_at) * 1000).toLocaleString(current_lang) : '-');
+        $('#view-offer .offer-failed-at').text(offer_record.failed_at ? new Date(Number(offer_record.failed_at) * 1000).toLocaleString(current_lang) : '-');
         $('#view-offer .offer-total-observers-count').text(
             offer_record.voting_statistics.total_observers_count
         );
@@ -2070,7 +2087,6 @@ $(async function() {
         dialogue$.find('form')[0].address = form$[0].address;
         var balance = await provider.getBalance(current_account.address);
         var dialogue = bootstrap.Modal.getOrCreateInstance(dialogue$[0]).show();
-        dialogue$.find('.modal-header h1').text('Update Offer ');
         dialogue$.find('.current-account-id').text(current_account.address);
         dialogue$.find('.current-account-balance').text(etherFormatApprox(balance));
         dialogue$.find('.offer-address').text(form$[0].address);

@@ -1,5 +1,17 @@
     const translations = {
         'en': {
+            'no-ethereum-dialog-header-text': 'Ethereum Module Not Found',
+            'no-ethereum-dialog-body-html': {
+                html: '<p>Please install a wallet supporting the Ethereum network to interact with OGOO.</p>' +
+                    '<a href="https://metamask.io/download/" target="_blank" class="btn btn-outline-danger w-100 mb-2">Get MetaMask Wallet</a>'
+            },
+            'no-ethereum-dialog-reload-button-text': 'Reload Page',
+            'no-accounts-dialog-header-text': 'Connect Account',
+            'no-accounts-dialog-body-html': {
+                html: '<p>Please allow access to your Ethereum account.</p>' +
+                    '<p><span class="text-danger dialog-error small mb-3"></span></p>'
+            },
+            'no-accounts-dialog-connect-button-text': 'Connect Wallet',
             'nav_dashboard': 'Dashboard',
             'nav_offers': 'Offers',
             'nav_offers_list': 'All Offers',
@@ -145,6 +157,7 @@
             'offer-winner-info-head-text': 'Winner',
             'offer-dates-head-text': 'Dates',
             'offer-approved-at-info-head-text': 'Approved at',
+            'offer-voting-started-at-info-head-text': 'Voting Started at',
             'offer-completed-at-info-head-text': 'Completed at',
             'offer-failed-at-info-head-text': 'Failed at',
             'offer-contenders-head-text': 'Contenders',
@@ -152,13 +165,13 @@
             'offer-contributor-contenders-head-text': 'By Contributors:',
             'offer-contenders-total-head-text': 'Total:',
             'offer-observer-voting-head-text': 'Observer Voting',
-            'offer-observer-voting-total-head-text': 'Total:',
+            'offer-observer-voting-total-head-text': 'Total Observers:',
             'offer-observer-voting-leaders-text': 'Leaders:',
             'offer-contributor-voting-head-text': 'Contributor Voting',
-            'offer-contributor-voting-total-head-text': 'Total:',
+            'offer-contributor-voting-total-head-text': 'Total Contributors:',
             'offer-contributor-voting-leaders-text': 'Leaders:',
             'offer-contributor-voting-by-fund-head-text': 'Contributor Voting by Fund',
-            'offer-contributor-voting-by-fund-total-head-text': 'Total:',
+            'offer-contributor-voting-by-fund-total-head-text': 'Contributor Funds:',
             'offer-contributor-voting-by-fund-leaders-text': 'Leaders:',
             'offer-observers-head-text': 'Observers:',
             'offer-contributor-limitations-head-text': 'Contributor Limitations:',
@@ -190,16 +203,22 @@
             'create-contribution-dialog-create-button': 'Create Contribution',
             'ether-address-input-dialog-header-text': 'Input Address',
             'remove-offer-dialog-header-text': 'Remove Offer',
+            'remove-offer-dialog-warning-html': {
+                html:   
+                    '<p>Once you remove the Offer from the list, you will <i>no longer</i> be able to <i>view</i> it in your list</p>' +
+                    '<p>The offer will not be deleted from the chain, and will be still available. No data will be lost.</p>' +
+                    '<p>You will be able to add the offer to your list of offers again by the offer\'s address</p>'
+            },
             'remove-offer-dialog-remove-button': 'Remove',
             'watch-offer-dialog-header-text': 'Add an Offer address to the list',
             'watch-offer-dialog-address-placeholder': { placeholder: "Offer address" },
             'watch-offer-dialog-add-offer-button': 'Add Offer',
             'contributor-vote-dialog-header-text': 'Vote for a Contender',
-            'contributor-vote-dialog-text': 'Vote as a contributor for the Offer',
+            'contributor-vote-dialog-html': {html: '<p><span>Vote as a contributor for the Offer</span> <em class="offer-title"></em> [<em class="offer-address"></em>]</p>'},
             'contributor-vote-dialog-contender-address-placeholder': { placeholder: "Contender address" },
             'contributor-vote-dialog-vote-button': 'Vote',
             'observer-vote-dialog-header-text': 'Vote for a Contender',
-            'observer-vote-dialog-text': 'Vote as an observer for the Offer',
+            'observer-vote-dialog-html': {html: '<p><span>Vote as an observer for the Offer</span> <em class="offer-title"></em> [<em class="offer-address"></em>]</p>'},
             'observer-vote-dialog-contender-address-placeholder': { placeholder: "Contender address" },
             'observer-vote-dialog-vote-button': 'Vote',
             'add-observer-dialog-header-text': 'Add an Observer to the Offer',
@@ -209,11 +228,52 @@
             'remove-observer-dialog-remove-button': 'Remove Observer',
             'approve-offer-dialog-header-text': 'Approve Offer',
             'approve-offer-dialog-pre-approve-button': 'Approve',
+            'approve-offer-dialog-warning-html': {
+                html:
+                    '<p><b>WARNING!</b></p>' +
+                    '<p>Once you approve the Offer, you will <i>no longer</i> be able to <i>edit</i> it, and you will <i>lose all control</i> over it. The Offer will be autonomously managed solely by its own algorithms.</p>' +
+                    '<p>From the moment of approval, the Offer will be open for collecting contributions and conducting voting until it is either successfully completed or ends unsuccessfully.</p>' +
+                    '<p>When the Offer is successfully completed, all funds contributed by participants will be <i>automatically</i> transferred to the contender who wins the vote, according to the parameters set for this Offer.</p>' +
+                    '<p>When the Offer ends unsuccessfully, all funds contributed by participants will be <i>automatically</i> returned to the contributors, according to the parameters set for this Offer.</p>'
+            },
             'approve-offer-dialog-approve-button': 'Approve',
             'cancel-contribution-dialog-header-text': 'Cancel Contribution',
             'cancel-contribution-dialog-cancel-button': 'Cancel Contribution',
+            'create-offer-submit-modal-head-text': 'Create Offer',
+            'create-offer-submit-header-html': {html: 'Account <em class="current-account-id account-address"></em> is going to create the Offer contract'},
+            'create-offer-submit-button-text': 'Create Offer',
+            'edit-offer-submit-modal-head-text': 'Update Offer',
+            'edit-offer-submit-header-html': {html: 'Account <em class="current-account-id account-address"></em> is going to update the Offer contract with address <em class="offer-address"></em>'},
+            'edit-offer-submit-button-text': 'Update Offer',
+            'offer-submit-caption-text': 'Caption',
+            'offer-submit-min-contribution-text': 'Min contribution balance',
+            'offer-submit-cancel-timeout-text': 'Contribution unlock timeout',
+            'offer-submit-voting-start-balance-text': 'Voting start balance',
+            'offer-submit-voting-start-count-text': 'Voting start contributors count',
+            'offer-submit-voting-start-timeout-text': 'Voting start timeout',
+            'offer-submit-voting-fail-timeout-text': 'Voting fail timeout',
+            'offer-submit-observers-vote-quorum-text': 'Observers quorum %',
+            'offer-submit-contributors-vote-quorum-text': 'Contributors quorum %',
+            'offer-submit-contributors-vote-fund-quorum-text': 'Contributors fund quorum %',
+            'offer-submit-observers-vote-percent-text': 'Observers vote count %',
+            'offer-submit-contributors-vote-percent-text': 'Contributors vote count %',
+            'offer-submit-contributors-vote-fund-percent-text': 'Contributors vote fund %',
+            'offer-submit-description-text': 'Description',
+            'offer-submit-full-details-text': 'Full Details',
         },
         'ru': {
+            'no-ethereum-dialog-header-text': 'Модуль Ethereum не найден',
+            'no-ethereum-dialog-body-html': {
+                html: '<p>Пожалуйста, установите кошелек, поддерживающий сеть Ethereum, чтобы взаимодействовать с OGOO.</p>' +
+                    '<a href="https://metamask.io/download/" target="_blank" class="btn btn-outline-danger w-100 mb-2">Получить кошелек MetaMask</a>'
+            },
+            'no-ethereum-dialog-reload-button-text': 'Перезагрузить страницу',
+            'no-accounts-dialog-header-text': 'Подключите аккаунт',
+            'no-accounts-dialog-body-html': {
+                html: '<p>Пожалуйста, разрешите доступ к вашему аккаунту Ethereum.</p>' +
+                    '<p><span class="text-danger dialog-error small mb-3"></span></p>'
+            },
+            'no-accounts-dialog-connect-button-text': 'Подключить кошелек',
             'nav_dashboard': 'Панель управления',
             'nav_offers': 'Предложения',
             'nav_offers_list': 'Все предложения',
@@ -359,6 +419,7 @@
             'offer-winner-info-head-text': 'Победитель',
             'offer-dates-head-text': 'Даты',
             'offer-approved-at-info-head-text': 'Утверждено',
+            'offer-voting-started-at-info-head-text': 'Голосование началось',
             'offer-completed-at-info-head-text': 'Завершено',
             'offer-failed-at-info-head-text': 'Провалено',
             'offer-contenders-head-text': 'Кандидаты',
@@ -366,13 +427,13 @@
             'offer-contributor-contenders-head-text': 'По вкладчикам:',
             'offer-contenders-total-head-text': 'Всего:',
             'offer-observer-voting-head-text': 'Голосование наблюдателей',
-            'offer-observer-voting-total-head-text': 'Всего:',
+            'offer-observer-voting-total-head-text': 'Всего наблюдателей:',
             'offer-observer-voting-leaders-text': 'Лидеры:',
             'offer-contributor-voting-head-text': 'Голосование вкладчиков',
-            'offer-contributor-voting-total-head-text': 'Всего:',
+            'offer-contributor-voting-total-head-text': 'Всего вкладчиков:',
             'offer-contributor-voting-leaders-text': 'Лидеры:',
             'offer-contributor-voting-by-fund-head-text': 'Голосование вкладчиков по фонду',
-            'offer-contributor-voting-by-fund-total-head-text': 'Всего:',
+            'offer-contributor-voting-by-fund-total-head-text': 'Фонд вкладчиков:',
             'offer-contributor-voting-by-fund-leaders-text': 'Лидеры:',
             'offer-observers-head-text': 'Наблюдатели:',
             'offer-contributor-limitations-head-text': 'Ограничения для вкладчиков:',
@@ -405,16 +466,22 @@
             'ether-address-input-dialog-header-text': 'Введите адрес',
             'remove-offer-dialog-header-text': 'Удалить предложение',
             'remove-offer-dialog-remove-button': 'Удалить',
+            'remove-offer-dialog-warning-html': {
+                html:   
+                    '<p>Как только вы удалите предложение из списка, вы <i>больше не сможете</i> его <i>просматривать</i> в своем списке</p>' +
+                    '<p>Предложение не будет удалено из сети и останется доступно. Данные не будут потеряны.</p>' +
+                    '<p>Вы сможете снова добавить предложение в свой список предложений по его адресу</p>'
+            },
             'watch-offer-dialog-header-text': 'Добавить адрес предложения в список',
             'watch-offer-dialog-address-placeholder': { placeholder: "Адрес предложения" },
             'watch-offer-dialog-add-offer-button': 'Добавить предложение',
-            'contributor-vote-dialog-header-text': 'Голосовать за участника',
-            'contributor-vote-dialog-text': 'Голосовать как вкладчик за предложение',
-            'contributor-vote-dialog-contender-address-placeholder': { placeholder: "Адрес участника" },
+            'contributor-vote-dialog-header-text': 'Голосовать за кандидата',
+            'contributor-vote-dialog-html': {html: '<p><span>Голосовать как вкладчик предложения</span> <em class="offer-title"></em> [<em class="offer-address"></em>]</p>'},
+            'contributor-vote-dialog-contender-address-placeholder': { placeholder: "Адрес кандидата" },
             'contributor-vote-dialog-vote-button': 'Голосовать',
-            'observer-vote-dialog-header-text': 'Голосовать за участника',
-            'observer-vote-dialog-text': 'Голосовать как наблюдатель за предложением',
-            'observer-vote-dialog-contender-address-placeholder': { placeholder: "Адрес участника" },
+            'observer-vote-dialog-header-text': 'Голосовать за кандидата',
+            'observer-vote-dialog-html': {html: '<p><span>Голосовать как наблюдатель предложения</span> <em class="offer-title"></em> [<em class="offer-address"></em>]</p>'},
+            'observer-vote-dialog-contender-address-placeholder': { placeholder: "Адрес кандидата" },
             'observer-vote-dialog-vote-button': 'Голосовать',
             'add-observer-dialog-header-text': 'Добавить наблюдателя к предложению',
             'add-observer-dialog-add-button': 'Добавить наблюдателя',
@@ -423,8 +490,37 @@
             'remove-observer-dialog-remove-button': 'Удалить наблюдателя',
             'approve-offer-dialog-header-text': 'Одобрить предложение',
             'approve-offer-dialog-pre-approve-button': 'Одобрить',
+            'approve-offer-dialog-warning-html': {
+                html:
+                    '<p><b>Предупреждение!</b></p>' +
+                    '<p>После одобрения предложения вы <i>больше не сможете</i> его <i>редактировать</i>, и <i>потеряете весь контроль</i> над ним. Предложение будет автономно управляться исключительно своими алгоритмами.</p>' +
+                    '<p>С момента одобрения предложение будет открыто для сбора вкладов и проведения голосования до его успешного завершения или неудачного окончания.</p>' +
+                    '<p>Если предложение успешно завершено, все средства, внесенные участниками, будут <i>автоматически</i> переведены победителю голосования в соответствии с параметрами, установленными для этого предложения.</p>' +
+                    '<p>Если предложение заканчивается неудачно, все средства, внесенные участниками, будут <i>автоматически</i> возвращены вкладчикам в соответствии с параметрами, установленными для этого предложения.</p>'
+            },
             'approve-offer-dialog-approve-button': 'Одобрить',
             'cancel-contribution-dialog-header-text': 'Отменить вклад',
             'cancel-contribution-dialog-cancel-button': 'Отменить вклад',
+            'create-offer-submit-modal-head-text': 'Создать предложение',
+            'create-offer-submit-header-html': {html: 'Аккаунт <em class="current-account-id account-address"></em> собирается создать контракт предложения'},
+            'create-offer-submit-button-text': 'Создать предложение',
+            'edit-offer-submit-modal-head-text': 'Обновить предложение',
+            'edit-offer-submit-header-html': {html: 'Аккаунт <em class="current-account-id account-address"></em> собирается обновить контракт предложения с адресом <em class="offer-address"></em>'},
+            'edit-offer-submit-button-text': 'Обновить предложение',
+            'offer-submit-caption-text': 'Заголовок',
+            'offer-submit-min-contribution-text': 'Минимальный баланс вклада',
+            'offer-submit-cancel-timeout-text': 'Таймаут разблокировки вклада',
+            'offer-submit-voting-start-balance-text': 'Начальный баланс для голосования',
+            'offer-submit-voting-start-count-text': 'Начальное количество вкладчиков для голосования',
+            'offer-submit-voting-start-timeout-text': 'Таймаут начала голосования',
+            'offer-submit-voting-fail-timeout-text': 'Таймаут провала голосования',
+            'offer-submit-observers-vote-quorum-text': 'Кворум наблюдателей %',
+            'offer-submit-contributors-vote-quorum-text': 'Кворум вкладчиков %',
+            'offer-submit-contributors-vote-fund-quorum-text': 'Кворум фонда вкладчиков %',
+            'offer-submit-observers-vote-percent-text': 'Процент голосов наблюдателей %',
+            'offer-submit-contributors-vote-percent-text': 'Процент голосов вкладчиков %',
+            'offer-submit-contributors-vote-fund-percent-text': 'Процент голосов фонда вкладчиков %',
+            'offer-submit-description-text': 'Описание',
+            'offer-submit-full-details-text': 'Полное описание',
         }
     };
