@@ -874,16 +874,30 @@ $(async function() {
             $(event.currentTarget)[0].old_value = $(event.currentTarget).val();
         });
     }
+
+    var renderMarkdownTo = function(target$, source) {
+        var md = new remarkable.Remarkable('full', {
+            html: true,
+            breaks: true,
+            typographer: true,
+        });
+        target$.html(md.render(source || ''));
+        renderMathInElement(target$[0], {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError: false
+        });
+    };
+
     {
         // initiate markdown preview for markdown input
         const _update_md = function(src$) {
             var markdown$ = src$.parentsUntil(':has(".markdown")').parent().find('.markdown');
-            var md = new remarkable.Remarkable('full', {
-                html: true,
-                breaks: true,
-                typographer:  true,
-            });
-            markdown$.html(md.render(src$.val()));
+            renderMarkdownTo(markdown$, src$.val());
         };
         $(document).on('input', '.markdown-source', function(event) {
             _update_md($(event.target));
@@ -1384,13 +1398,8 @@ $(async function() {
         dialogue$.find('.input-observers-vote-percent').text(Number(definition.observers_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-percent').text(Number(definition.contributors_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-fund-percent').text(Number(definition.contributors_vote_fund_percent) / 100 + '%');
-        var md = new remarkable.Remarkable('full', {
-            html: true,
-            breaks: true,
-            typographer: true,
-        });
-        dialogue$.find('.input-description').html(md.render(definition.description));
-        dialogue$.find('.input-full-details').html(md.render(definition.full_details));
+        renderMarkdownTo(dialogue$.find('.input-description'), definition.description);
+        renderMarkdownTo(dialogue$.find('.input-full-details'), definition.full_details);
         var modal_info$ = dialogue$.find('.modal-footer .modal-info');
         modal_info$.removeClass('text-danger');
         modal_info$.removeClass('text-warning');
@@ -1918,13 +1927,8 @@ $(async function() {
             $('#view-offer .offer-balance-head').removeClass('d-none');
             $('#view-offer .offer-balance-table').removeClass('d-none');
         }
-        var md = new remarkable.Remarkable('full', {
-            html: true,
-            breaks: true,
-            typographer:  true,
-        });
-        $('#view-offer .offer-description').html(md.render(offer_record.definition.description));
-        $('#view-offer .offer-full-details').html(md.render(offer_record.definition.full_details));
+        renderMarkdownTo($('#view-offer .offer-description'), offer_record.definition.description);
+        renderMarkdownTo($('#view-offer .offer-full-details'), offer_record.definition.full_details);
         $('#view-offer .offer-contribution-min-balance').text(etherHuman(offer_record.definition.contribution_min_balance));
         $('#view-offer .offer-contribution-unlock-timeout').text(durationHuman(offer_record.definition.contribution_unlock_timeout));
         $('#view-offer .offer-voting-start-balance').text(etherHuman(offer_record.definition.voting_start_balance));
@@ -2029,6 +2033,15 @@ $(async function() {
         }
     });
 
+    $('#user-guide').on('visible', async function(event) {
+        if(event.target == $('#user-guide')[0]) {
+            var lang = localStorage.getItem('ogoo_lang');
+            var content = await $.ajax(url='./USER-GUIDE.' + lang + '.md');
+            var target$ = $('#user-guide .content');
+            renderMarkdownTo(target$, content);
+        }
+    });
+
     $('#edit-offer form').on('submit', async function(event) {
         // edit offer page submit
         event.preventDefault();
@@ -2104,13 +2117,8 @@ $(async function() {
         dialogue$.find('.input-observers-vote-percent').text(Number(definition.observers_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-percent').text(Number(definition.contributors_vote_percent) / 100 + '%');
         dialogue$.find('.input-contributors-vote-fund-percent').text(Number(definition.contributors_vote_fund_percent) / 100 + '%');
-        var md = new remarkable.Remarkable('full', {
-            html: true,
-            breaks: true,
-            typographer: true,
-        });
-        dialogue$.find('.input-description').html(md.render(definition.description));
-        dialogue$.find('.input-full-details').html(md.render(definition.full_details));
+        renderMarkdownTo(dialogue$.find('.input-description'), definition.description);
+        renderMarkdownTo(dialogue$.find('.input-full-details'), definition.full_details);
         var modal_info$ = dialogue$.find('.modal-footer .modal-info');
         modal_info$.removeClass('text-danger');
         modal_info$.removeClass('text-warning');
